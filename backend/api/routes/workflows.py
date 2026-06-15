@@ -44,35 +44,43 @@ class ApprovalDecisionResponse(BaseModel):
     context: TestContext
 
 
+def run_and_persist_workflow_start(
+    *, created_by: str, ticket: TicketData | None
+) -> TestContext:
+    context = create_initial_context(created_by=created_by, ticket=ticket)
+    completed_context = run_workflow(context)
+    summary = "Workflow started and completed the current synchronous pipeline."
+    metadata = {
+        "context_id": completed_context.context_id,
+        "ticket_id": completed_context.ticket.id if completed_context.ticket else None,
+        "workflow_status": completed_context.workflow_status,
+    }
+    completed_context.record_event(
+        actor=created_by,
+        event_type="workflow_started",
+        summary=summary,
+        metadata=metadata,
+    )
+    append_audit_event(
+        actor=created_by,
+        event_type="workflow_started",
+        summary=summary,
+        metadata=metadata,
+    )
+    save_context(completed_context)
+    return completed_context
+
+
 @router.post(
     "/workflows/start",
     response_model=StartWorkflowResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
 def start_workflow(request: StartWorkflowRequest) -> StartWorkflowResponse:
-    context = create_initial_context(created_by=request.created_by, ticket=request.ticket)
-    completed_context = run_workflow(context)
-    completed_context.record_event(
-        actor=request.created_by,
-        event_type="workflow_started",
-        summary="Workflow started and completed the current synchronous pipeline.",
-        metadata={
-            "context_id": completed_context.context_id,
-            "ticket_id": completed_context.ticket.id if completed_context.ticket else None,
-            "workflow_status": completed_context.workflow_status,
-        },
+    completed_context = run_and_persist_workflow_start(
+        created_by=request.created_by,
+        ticket=request.ticket,
     )
-    append_audit_event(
-        actor=request.created_by,
-        event_type="workflow_started",
-        summary="Workflow started and completed the current synchronous pipeline.",
-        metadata={
-            "context_id": completed_context.context_id,
-            "ticket_id": completed_context.ticket.id if completed_context.ticket else None,
-            "workflow_status": completed_context.workflow_status,
-        },
-    )
-    save_context(completed_context)
     return StartWorkflowResponse(context=completed_context)
 
 

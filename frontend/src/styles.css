@@ -163,6 +163,17 @@ select:focus {
   gap: 10px;
 }
 
+.mock-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 10px;
+  align-items: end;
+}
+
+.mock-search label {
+  margin-bottom: 0;
+}
+
 .primary-button,
 .secondary-button,
 .link-button,
@@ -201,6 +212,10 @@ select:focus {
   width: 40px;
   color: #17324d;
   background: #edf3f8;
+}
+
+.full-width {
+  width: 100%;
 }
 
 .primary-button svg,
@@ -343,6 +358,73 @@ select:focus {
   grid-template-rows: auto auto;
   gap: 5px 10px;
   text-align: left;
+}
+
+.mock-ticket-list {
+  max-height: 250px;
+  overflow: auto;
+  margin: 12px 0;
+  padding-right: 4px;
+}
+
+.mock-ticket {
+  width: 100%;
+  min-height: 64px;
+  border: 1px solid #dbe4ee;
+  border-radius: 8px;
+  background: #fbfdff;
+  color: #15202b;
+  padding: 10px;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  text-align: left;
+}
+
+.mock-ticket.active {
+  border-color: #168270;
+  background: #effaf7;
+}
+
+.mock-ticket span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-wrap: anywhere;
+}
+
+.mock-ticket strong {
+  font-size: 12px;
+}
+
+.priority {
+  align-self: start;
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: #17324d;
+  background: #e8eef7;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.priority.high {
+  color: #8a4c08;
+  background: #ffe6bd;
+}
+
+.priority.critical {
+  color: #9a2d36;
+  background: #ffe0e2;
+}
+
+.empty-state {
+  margin: 6px 0 12px;
+  color: #647489;
+  font-size: 13px;
 }
 
 .test-card.active {

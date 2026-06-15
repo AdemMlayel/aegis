@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardCheck,
+  Database,
   ExternalLink,
   FileCode2,
   GitPullRequest,
@@ -15,7 +16,14 @@ import {
   XCircle
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { decideApproval, getAutomationFile, getWorkflow, startWorkflow } from "./api";
+import {
+  decideApproval,
+  getAutomationFile,
+  getWorkflow,
+  listMockTickets,
+  startWorkflow,
+  startWorkflowFromMockTicket
+} from "./api";
 import type { AutomationBlock, TestCase, TestContext, TicketData } from "./types";
 
 const DEFAULT_TICKET: TicketData = {
@@ -85,6 +93,10 @@ export function App() {
   const [criteria, setCriteria] = useState(DEFAULT_TICKET.acceptance_criteria.join("\n"));
   const [priority, setPriority] = useState<TicketData["priority"]>(DEFAULT_TICKET.priority);
   const [labels, setLabels] = useState(DEFAULT_TICKET.labels.join(", "));
+  const [mockTickets, setMockTickets] = useState<TicketData[]>([]);
+  const [mockQuery, setMockQuery] = useState("");
+  const [selectedMockTicketId, setSelectedMockTicketId] = useState("");
+  const [mockLoading, setMockLoading] = useState(false);
   const [context, setContext] = useState<TestContext | null>(null);
   const [loadId, setLoadId] = useState("");
   const [selectedTestId, setSelectedTestId] = useState<string>("");
@@ -100,6 +112,7 @@ export function App() {
   const selectedAutomation = selectedTest ? context?.automation[selectedTest.id] : undefined;
   const approval = context?.approval ?? null;
   const canReview = approval?.status === "pending_review";
+  const selectedMockTicket = mockTickets.find((ticket) => ticket.id === selectedMockTicketId);
 
   const validationCounts = useMemo(() => {
     const automation = Object.values(context?.automation ?? {});
@@ -115,6 +128,10 @@ export function App() {
     if (storedContextId) {
       setLoadId(storedContextId);
     }
+  }, []);
+
+  useEffect(() => {
+    void refreshMockTickets();
   }, []);
 
   useEffect(() => {
@@ -152,6 +169,32 @@ export function App() {
     setLoadId(next.context_id);
   }
 
+  function fillTicket(ticket: TicketData) {
+    setSelectedMockTicketId(ticket.id);
+    setTicketId(ticket.id);
+    setTitle(ticket.title);
+    setDescription(ticket.description);
+    setCriteria(ticket.acceptance_criteria.join("\n"));
+    setPriority(ticket.priority);
+    setLabels(ticket.labels.join(", "));
+  }
+
+  async function refreshMockTickets(query = mockQuery) {
+    setMockLoading(true);
+    setError(null);
+    try {
+      const tickets = await listMockTickets({ query: query.trim() || undefined });
+      setMockTickets(tickets);
+      if (!selectedMockTicketId && tickets[0]) {
+        setSelectedMockTicketId(tickets[0].id);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Mock tickets failed to load");
+    } finally {
+      setMockLoading(false);
+    }
+  }
+
   async function runStart() {
     setBusy("start");
     setError(null);
@@ -172,6 +215,25 @@ export function App() {
       keepContext(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Workflow start failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function runStartMock(ticket = selectedMockTicket) {
+    if (!ticket) return;
+    fillTicket(ticket);
+    setBusy("start-mock");
+    setError(null);
+    try {
+      const next = await startWorkflowFromMockTicket({
+        created_by: createdBy,
+        ticket_id: ticket.id
+      });
+      setSelectedTestId("");
+      keepContext(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Mock workflow start failed");
     } finally {
       setBusy(null);
     }
@@ -237,6 +299,59 @@ export function App() {
             <span>Review console</span>
           </div>
         </div>
+
+        <section className="panel">
+          <div className="section-title">
+            <Database aria-hidden="true" />
+            <h2>Mock tickets</h2>
+          </div>
+          <div className="mock-search">
+            <label>
+              Search
+              <input
+                value={mockQuery}
+                onChange={(event) => setMockQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void refreshMockTickets();
+                }}
+              />
+            </label>
+            <button
+              className="icon-button"
+              onClick={() => void refreshMockTickets()}
+              disabled={mockLoading}
+              title="Search mock tickets"
+            >
+              {mockLoading ? <Loader2 className="spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
+            </button>
+          </div>
+          <div className="mock-ticket-list">
+            {mockTickets.map((ticket) => (
+              <button
+                key={ticket.id}
+                className={`mock-ticket ${selectedMockTicketId === ticket.id ? "active" : ""}`}
+                onClick={() => fillTicket(ticket)}
+              >
+                <span>
+                  <strong>{ticket.id}</strong>
+                  {ticket.title}
+                </span>
+                <em className={`priority ${ticket.priority}`}>{ticket.priority}</em>
+              </button>
+            ))}
+            {!mockLoading && mockTickets.length === 0 && (
+              <p className="empty-state">No mock tickets found.</p>
+            )}
+          </div>
+          <button
+            className="secondary-button full-width"
+            onClick={() => void runStartMock()}
+            disabled={busy !== null || !selectedMockTicket}
+          >
+            {busy === "start-mock" ? <Loader2 className="spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
+            Start selected
+          </button>
+        </section>
 
         <section className="panel">
           <div className="section-title">

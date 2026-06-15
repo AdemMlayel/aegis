@@ -24,6 +24,32 @@ export async function startWorkflow(payload: {
   return body.context;
 }
 
+export async function listMockTickets(payload: {
+  query?: string;
+  priority?: TicketData["priority"];
+} = {}): Promise<TicketData[]> {
+  const params = new URLSearchParams();
+  if (payload.query) params.set("q", payload.query);
+  if (payload.priority) params.set("priority", payload.priority);
+  const suffix = params.toString();
+  const response = await fetch(`${API_ROOT}/tickets/mock${suffix ? `?${suffix}` : ""}`);
+  const body = await parseResponse<{ tickets: TicketData[] }>(response);
+  return body.tickets;
+}
+
+export async function startWorkflowFromMockTicket(payload: {
+  created_by: string;
+  ticket_id: string;
+}): Promise<TestContext> {
+  const response = await fetch(`${API_ROOT}/workflows/start-from-mock-ticket`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const body = await parseResponse<{ context: TestContext }>(response);
+  return body.context;
+}
+
 export async function getWorkflow(contextId: string): Promise<TestContext> {
   const response = await fetch(`${API_ROOT}/workflows/${contextId}`);
   const body = await parseResponse<{ context: TestContext }>(response);

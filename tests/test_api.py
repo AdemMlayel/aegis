@@ -6,6 +6,60 @@ from backend.graph.artifacts import GENERATED_AUDIT_ROOT
 from backend.main import app
 
 
+def test_mock_ticket_endpoints_return_seed_data() -> None:
+    client = TestClient(app)
+
+    response = client.get("/api/v1/tickets/mock")
+
+    assert response.status_code == 200
+    tickets = response.json()["tickets"]
+    assert len(tickets) >= 5
+    assert {ticket["id"] for ticket in tickets} >= {"MOCK-101", "MOCK-103"}
+
+    filtered_response = client.get("/api/v1/tickets/mock?q=refund&priority=critical")
+
+    assert filtered_response.status_code == 200
+    filtered_tickets = filtered_response.json()["tickets"]
+    assert [ticket["id"] for ticket in filtered_tickets] == ["MOCK-103"]
+
+    ticket_response = client.get("/api/v1/tickets/mock/MOCK-101")
+
+    assert ticket_response.status_code == 200
+    ticket = ticket_response.json()["ticket"]
+    assert ticket["title"] == "Money Transfer Feature"
+    assert ticket["source"] == "fake"
+
+
+def test_start_workflow_from_mock_ticket_endpoint(monkeypatch) -> None:
+    monkeypatch.setattr("backend.integrations.git_handoff._is_git_repo", lambda: False)
+
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/workflows/start-from-mock-ticket",
+        json={"created_by": "pytest", "ticket_id": "MOCK-101"},
+    )
+
+    assert response.status_code == 202
+    context = response.json()["context"]
+    assert context["workflow_status"] == "report_generated"
+    assert context["ticket"]["id"] == "MOCK-101"
+    assert context["ticket"]["assignee"] == "qa_engineer_001"
+    assert context["approval"]["status"] == "pending_review"
+    assert context["automation"]["TC001"]["validation"]["artifact_exists"] is True
+
+
+def test_start_workflow_from_missing_mock_ticket_returns_404() -> None:
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/workflows/start-from-mock-ticket",
+        json={"created_by": "pytest", "ticket_id": "NOPE-404"},
+    )
+
+    assert response.status_code == 404
+
+
 def test_start_workflow_endpoint_returns_completed_context(monkeypatch) -> None:
     monkeypatch.setattr("backend.integrations.git_handoff._is_git_repo", lambda: False)
 

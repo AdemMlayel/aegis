@@ -9,6 +9,7 @@ integrations, LLM calls, memory, Docker isolation, execution, or the dashboard.
 ## What Exists
 
 - Typed `TestContext` and related Pydantic models.
+- Source-controlled mock ticket database under `backend/mock_data/tickets.json`.
 - Stub workflow nodes:
   `load_ticket -> requirement_agent -> coverage_planner -> test_case_generator -> test_data_resolver -> automation_generator -> validator -> human_approval -> report_generator`.
 - Deterministic test-data resolution for generated test cases.
@@ -20,7 +21,10 @@ integrations, LLM calls, memory, Docker isolation, execution, or the dashboard.
 - Git branch/commit/PR execution on approval when the project is inside a Git repo.
 - Git execution result payloads under `generated/git_handoff/`.
 - JSONL audit events under `generated/audit/events.jsonl`.
+- FastAPI endpoint: `GET /api/v1/tickets/mock`.
+- FastAPI endpoint: `GET /api/v1/tickets/mock/{ticket_id}`.
 - FastAPI endpoint: `POST /api/v1/workflows/start`.
+- FastAPI endpoint: `POST /api/v1/workflows/start-from-mock-ticket`.
 - FastAPI endpoint: `GET /api/v1/workflows/{context_id}`.
 - FastAPI endpoint: `POST /api/v1/workflows/{context_id}/approval`.
 - FastAPI endpoint: `GET /api/v1/automation/files/{ticket_id}/{file_name}`.
@@ -50,9 +54,28 @@ npm.cmd run dev
 ```
 
 Open `http://127.0.0.1:5173`. The dashboard proxies `/api` requests to the
-FastAPI server on `http://127.0.0.1:8000`.
+FastAPI server on `http://127.0.0.1:8000` and includes a mock-ticket browser
+for starting workflows without Jira/Azure access.
 
 Then call:
+
+```http
+GET http://127.0.0.1:8000/api/v1/tickets/mock
+```
+
+Start from a seeded mock ticket:
+
+```http
+POST http://127.0.0.1:8000/api/v1/workflows/start-from-mock-ticket
+Content-Type: application/json
+
+{
+  "created_by": "engineer_001",
+  "ticket_id": "MOCK-101"
+}
+```
+
+Or start from an inline ticket:
 
 ```http
 POST http://127.0.0.1:8000/api/v1/workflows/start

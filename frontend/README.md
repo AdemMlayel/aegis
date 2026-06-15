@@ -2,6 +2,9 @@
 
 React dashboard for reviewing generated AegisQA automation.
 
+The dashboard can browse the backend mock ticket database and start workflows
+from those seeded tickets when live ticket-data endpoints are unavailable.
+
 ## Commands
 
 ```powershell

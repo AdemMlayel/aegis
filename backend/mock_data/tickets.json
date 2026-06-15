@@ -1,0 +1,82 @@
+[
+  {
+    "id": "MOCK-101",
+    "title": "Money Transfer Feature",
+    "description": "As an authenticated customer, I want to transfer money to another account so that I can move funds without visiting a branch.",
+    "acceptance_criteria": [
+      "Customer can choose a source account and destination account",
+      "Transfer completes within 3 seconds for valid requests",
+      "Balances update immediately after a successful transfer",
+      "Customer sees a clear error when funds are insufficient"
+    ],
+    "priority": "high",
+    "labels": ["banking", "payments", "web"],
+    "assignee": "qa_engineer_001",
+    "source": "fake",
+    "raw_url": null
+  },
+  {
+    "id": "MOCK-102",
+    "title": "Password Reset Flow",
+    "description": "As a locked-out user, I want to reset my password using a verified email link so that I can regain access safely.",
+    "acceptance_criteria": [
+      "Reset link is sent only to a registered email address",
+      "Reset link expires after 15 minutes",
+      "New password must satisfy the configured password policy",
+      "User can sign in with the new password after reset"
+    ],
+    "priority": "medium",
+    "labels": ["identity", "security", "support"],
+    "assignee": "qa_engineer_002",
+    "source": "fake",
+    "raw_url": null
+  },
+  {
+    "id": "MOCK-103",
+    "title": "Admin Refund Approval",
+    "description": "As an operations manager, I want to approve high-value refund requests with audit tracking so that refund risk is controlled.",
+    "acceptance_criteria": [
+      "Refunds above 1000 require manager approval",
+      "Approver cannot be the same user who created the request",
+      "Approved refunds create an audit entry with actor, timestamp, and amount",
+      "Rejected refunds keep the original payment unchanged"
+    ],
+    "priority": "critical",
+    "labels": ["admin", "payments", "audit"],
+    "assignee": "qa_lead",
+    "source": "fake",
+    "raw_url": null
+  },
+  {
+    "id": "MOCK-104",
+    "title": "Account Statement Export",
+    "description": "As a customer, I want to export account statements as PDF and CSV files so that I can reconcile my records.",
+    "acceptance_criteria": [
+      "Customer can choose a date range up to 24 months",
+      "PDF export includes opening balance, transactions, and closing balance",
+      "CSV export includes transaction date, description, debit, credit, and balance",
+      "Invalid date ranges show a validation message"
+    ],
+    "priority": "medium",
+    "labels": ["banking", "reporting", "export"],
+    "assignee": "qa_engineer_003",
+    "source": "fake",
+    "raw_url": null
+  },
+  {
+    "id": "MOCK-105",
+    "title": "Transfer Limit Validation",
+    "description": "As a retail banking platform, I want to enforce daily transfer limits so that transactions stay within customer and regulatory controls.",
+    "acceptance_criteria": [
+      "Transfers exceeding the daily customer limit are blocked",
+      "Customer sees remaining daily transfer allowance",
+      "Limit checks include completed transfers from the same calendar day",
+      "Internal users can view the blocked transfer reason"
+    ],
+    "priority": "high",
+    "labels": ["banking", "limits", "risk"],
+    "assignee": "qa_engineer_001",
+    "source": "fake",
+    "raw_url": null
+  }
+]
