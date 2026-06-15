@@ -71,6 +71,19 @@ export async function listWorkflows(payload: {
   return body.workflows;
 }
 
+export async function executeWorkflow(payload: {
+  contextId: string;
+  run_by: string;
+}): Promise<TestContext> {
+  const response = await fetch(`${API_ROOT}/workflows/${payload.contextId}/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ run_by: payload.run_by })
+  });
+  const body = await parseResponse<{ context: TestContext }>(response);
+  return body.context;
+}
+
 export async function decideApproval(payload: {
   contextId: string;
   decision: "approve" | "request_changes";

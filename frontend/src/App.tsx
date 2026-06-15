@@ -1,4 +1,5 @@
 import {
+  Activity,
   AlertTriangle,
   CheckCircle2,
   ClipboardCheck,
@@ -18,6 +19,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import {
   decideApproval,
+  executeWorkflow,
   getAutomationFile,
   getWorkflow,
   listMockTickets,
@@ -76,9 +78,9 @@ function formatDate(value?: string | null): string {
 }
 
 function statusTone(status: string): "good" | "warn" | "bad" | "info" {
-  if (status.includes("complete") || status === "approved") return "good";
+  if (status.includes("complete") || status === "approved" || status === "passed") return "good";
   if (status.includes("blocked") || status.includes("failed")) return "bad";
-  if (status.includes("pending") || status.includes("review")) return "warn";
+  if (status.includes("pending") || status.includes("review") || status === "skipped") return "warn";
   return "info";
 }
 
@@ -123,6 +125,7 @@ export function App() {
     tests.find((test) => test.id === selectedTestId) ?? tests[0];
   const selectedAutomation = selectedTest ? context?.automation[selectedTest.id] : undefined;
   const approval = context?.approval ?? null;
+  const execution = context?.execution ?? null;
   const canReview = approval?.status === "pending_review";
   const selectedMockTicket = mockTickets.find((ticket) => ticket.id === selectedMockTicketId);
 
@@ -134,6 +137,13 @@ export function App() {
       failed: automation.filter((item) => item.validation.dry_run_passed === false).length
     };
   }, [context]);
+  const executionCounts = execution?.summary ?? {
+    total: 0,
+    passed: 0,
+    failed: 0,
+    skipped: 0,
+    duration_ms: 0
+  };
 
   useEffect(() => {
     const storedContextId = localStorage.getItem("aegisqa:lastContextId");
@@ -322,6 +332,24 @@ export function App() {
       void refreshWorkflowQueue();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Review action failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function runExecution() {
+    if (!context) return;
+    setBusy("execute");
+    setError(null);
+    try {
+      const next = await executeWorkflow({
+        contextId: context.context_id,
+        run_by: reviewer
+      });
+      keepContext(next);
+      void refreshWorkflowQueue();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Mock execution failed");
     } finally {
       setBusy(null);
     }
@@ -520,6 +548,10 @@ export function App() {
             <span>Approval</span>
             <strong>{approval?.status.replaceAll("_", " ") ?? "None"}</strong>
           </div>
+          <div>
+            <span>Execution</span>
+            <strong>{execution?.status ?? "None"}</strong>
+          </div>
         </section>
 
         <section className="panel queue-panel">
@@ -581,6 +613,7 @@ export function App() {
                 <span>{formatDate(workflow.updated_at)}</span>
                 <StatusPill value={workflow.workflow_status} />
                 <span>{workflow.approval_status?.replaceAll("_", " ") ?? "No approval"}</span>
+                <span>{workflow.execution_status ?? "Not run"}</span>
                 <span>{workflow.test_count} tests</span>
                 <span>r{workflow.automation_revision}</span>
               </button>
@@ -697,6 +730,53 @@ export function App() {
                 )}
               </dl>
             )}
+          </section>
+
+          <section className="panel execution-panel">
+            <div className="section-title">
+              <Activity aria-hidden="true" />
+              <h2>Execution</h2>
+            </div>
+            <div className="execution-topline">
+              <div>
+                <span>Status</span>
+                <strong>{execution?.status ?? "Not run"}</strong>
+              </div>
+              <div>
+                <span>Passed</span>
+                <strong>{executionCounts.passed}</strong>
+              </div>
+              <div>
+                <span>Failed</span>
+                <strong>{executionCounts.failed}</strong>
+              </div>
+              <div>
+                <span>Skipped</span>
+                <strong>{executionCounts.skipped}</strong>
+              </div>
+            </div>
+            <button
+              className="primary-button"
+              onClick={() => void runExecution()}
+              disabled={busy !== null || !context || Object.keys(context.automation).length === 0}
+            >
+              {busy === "execute" ? <Loader2 className="spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
+              Run mock execution
+            </button>
+            <div className="execution-list">
+              {(execution?.results ?? []).map((result) => (
+                <article className="execution-result" key={result.test_case_id}>
+                  <span className={`result-status ${result.status}`}>{result.status}</span>
+                  <div>
+                    <strong>{result.test_case_id}</strong>
+                    <p>{result.title}</p>
+                    <em>{result.message}</em>
+                  </div>
+                  <span>{result.duration_ms} ms</span>
+                </article>
+              ))}
+              {!execution && <p className="empty-state">No execution results yet.</p>}
+            </div>
           </section>
 
           <section className="panel audit-panel">

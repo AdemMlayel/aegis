@@ -2,9 +2,10 @@
 
 Executable spine for the AegisQA AI-powered test automation orchestrator.
 
-This milestone proves the core state flow from ticket intake through starter
-Robot Framework file generation and validation before adding real Jira/Azure
-integrations, LLM calls, memory, Docker isolation, execution, or the dashboard.
+This milestone proves the local product loop from ticket intake through starter
+Robot Framework file generation, validation, mock execution, and review before
+adding real Jira/Azure integrations, LLM calls, memory, Docker isolation, or a
+real execution adapter.
 
 ## What Exists
 
@@ -15,6 +16,7 @@ integrations, LLM calls, memory, Docker isolation, execution, or the dashboard.
 - Deterministic test-data resolution for generated test cases.
 - Minimal `.robot` files written to `generated/robot/<ticket-id>/`.
 - Robot Framework dry-run validation in a dedicated validator node.
+- Mock execution results saved on workflow contexts.
 - Pending-review approval state with approve/request-changes decisions.
 - Automatic regeneration after `request_changes`, including reviewer feedback in regenerated Robot files.
 - File-backed workflow context persistence under `generated/contexts/`.
@@ -27,6 +29,7 @@ integrations, LLM calls, memory, Docker isolation, execution, or the dashboard.
 - FastAPI endpoint: `POST /api/v1/workflows/start`.
 - FastAPI endpoint: `POST /api/v1/workflows/start-from-mock-ticket`.
 - FastAPI endpoint: `GET /api/v1/workflows/{context_id}`.
+- FastAPI endpoint: `POST /api/v1/workflows/{context_id}/execute`.
 - FastAPI endpoint: `POST /api/v1/workflows/{context_id}/approval`.
 - FastAPI endpoint: `GET /api/v1/automation/files/{ticket_id}/{file_name}`.
 - React review dashboard under `frontend/`.
@@ -80,6 +83,17 @@ List saved workflow summaries:
 
 ```http
 GET http://127.0.0.1:8000/api/v1/workflows?approval_status=pending_review
+```
+
+Run mock execution for a workflow:
+
+```http
+POST http://127.0.0.1:8000/api/v1/workflows/{context_id}/execute
+Content-Type: application/json
+
+{
+  "run_by": "qa_engineer_001"
+}
 ```
 
 Or start from an inline ticket:

@@ -1,5 +1,7 @@
 export type Priority = "low" | "medium" | "high" | "critical";
 export type ApprovalStatus = "not_ready" | "pending_review" | "approved" | "changes_requested";
+export type ExecutionStatus = "passed" | "failed" | "skipped";
+export type ExecutionResultStatus = "passed" | "failed" | "skipped";
 
 export type TicketData = {
   id: string;
@@ -39,6 +41,29 @@ export type AutomationBlock = {
   };
 };
 
+export type ExecutionBlock = {
+  status: ExecutionStatus;
+  run_by: string;
+  started_at: string;
+  finished_at: string;
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+    skipped: number;
+    duration_ms: number;
+  };
+  results: Array<{
+    test_case_id: string;
+    title: string;
+    status: ExecutionResultStatus;
+    duration_ms: number;
+    robot_file: string | null;
+    message: string;
+    logs: string[];
+  }>;
+};
+
 export type ApprovalBlock = {
   status: ApprovalStatus;
   requested_at: string | null;
@@ -69,6 +94,11 @@ export type WorkflowSummary = {
   automation_revision: number;
   highest_risk: string | null;
   git_status: "not_started" | "completed" | "blocked" | null;
+  execution_status: ExecutionStatus | null;
+  execution_passed: number;
+  execution_failed: number;
+  execution_skipped: number;
+  executed_at: string | null;
 };
 
 export type AuditEvent = {
@@ -89,6 +119,7 @@ export type TestContext = {
   test_cases: TestCase[];
   automation_revision: number;
   automation: Record<string, AutomationBlock>;
+  execution: ExecutionBlock | null;
   approval: ApprovalBlock | null;
   review_feedback: Array<{
     requested_at: string;

@@ -105,6 +105,33 @@ class AutomationBlock(StrictModel):
     generated_at: datetime = Field(default_factory=utc_now)
 
 
+class ExecutionCaseResult(StrictModel):
+    test_case_id: str
+    title: str
+    status: Literal["passed", "failed", "skipped"]
+    duration_ms: int = Field(default=0, ge=0)
+    robot_file: str | None = None
+    message: str
+    logs: list[str] = Field(default_factory=list)
+
+
+class ExecutionSummary(StrictModel):
+    total: int = Field(default=0, ge=0)
+    passed: int = Field(default=0, ge=0)
+    failed: int = Field(default=0, ge=0)
+    skipped: int = Field(default=0, ge=0)
+    duration_ms: int = Field(default=0, ge=0)
+
+
+class ExecutionBlock(StrictModel):
+    status: Literal["passed", "failed", "skipped"] = "skipped"
+    run_by: str
+    started_at: datetime
+    finished_at: datetime
+    summary: ExecutionSummary
+    results: list[ExecutionCaseResult] = Field(default_factory=list)
+
+
 class ReviewFeedback(StrictModel):
     requested_at: datetime = Field(default_factory=utc_now)
     requested_by: str
@@ -119,6 +146,7 @@ AuditEventType = Literal[
     "approval_decision",
     "git_execution",
     "automation_regenerated",
+    "execution_completed",
 ]
 
 
@@ -160,7 +188,7 @@ class ReportBlock(StrictModel):
 
 class TestContext(StrictModel):
     context_id: str = Field(default_factory=lambda: str(uuid4()))
-    schema_version: str = "0.6.0"
+    schema_version: str = "0.7.0"
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
     created_by: str
@@ -173,6 +201,7 @@ class TestContext(StrictModel):
     test_data: dict[str, TestDataBlock] = Field(default_factory=dict)
     automation_revision: int = 0
     automation: dict[str, AutomationBlock] = Field(default_factory=dict)
+    execution: ExecutionBlock | None = None
     approval: ApprovalBlock | None = None
     review_feedback: list[ReviewFeedback] = Field(default_factory=list)
     audit_log: list[AuditEvent] = Field(default_factory=list)

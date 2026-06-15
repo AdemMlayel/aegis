@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from backend.integrations.git_handoff import create_git_handoff
 from backend.graph.artifacts import relative_to_project, resolve_robot_file
+from backend.graph.execution import run_mock_execution
 from backend.graph.regeneration import regenerate_after_changes
 from backend.graph.state import ReviewFeedback, TestContext, TicketData, utc_now
 from backend.graph.workflow import create_initial_context, run_workflow
@@ -48,6 +49,11 @@ class WorkflowSummary(BaseModel):
     automation_revision: int
     highest_risk: str | None
     git_status: str | None
+    execution_status: str | None
+    execution_passed: int
+    execution_failed: int
+    execution_skipped: int
+    executed_at: datetime | None
 
 
 class WorkflowListResponse(BaseModel):
@@ -68,6 +74,14 @@ class ApprovalDecisionRequest(BaseModel):
 
 
 class ApprovalDecisionResponse(BaseModel):
+    context: TestContext
+
+
+class ExecuteWorkflowRequest(BaseModel):
+    run_by: str = Field(default="local-user", min_length=1)
+
+
+class ExecuteWorkflowResponse(BaseModel):
     context: TestContext
 
 
@@ -125,6 +139,11 @@ def _workflow_summary(context: TestContext) -> WorkflowSummary:
         automation_revision=context.automation_revision,
         highest_risk=context.reports.highest_risk if context.reports else None,
         git_status=context.approval.git_status if context.approval else None,
+        execution_status=context.execution.status if context.execution else None,
+        execution_passed=context.execution.summary.passed if context.execution else 0,
+        execution_failed=context.execution.summary.failed if context.execution else 0,
+        execution_skipped=context.execution.summary.skipped if context.execution else 0,
+        executed_at=context.execution.finished_at if context.execution else None,
     )
 
 
@@ -136,6 +155,7 @@ def _workflow_search_blob(context: TestContext) -> str:
             context.created_by,
             context.workflow_status,
             context.approval.status if context.approval else "",
+            context.execution.status if context.execution else "",
             ticket.id if ticket else "",
             ticket.title if ticket else "",
             " ".join(ticket.labels) if ticket else "",
@@ -188,6 +208,46 @@ def get_workflow_context(context_id: str) -> WorkflowContextResponse:
             detail="Workflow context was not found",
         )
     return WorkflowContextResponse(context=context)
+
+
+@router.post(
+    "/workflows/{context_id}/execute",
+    response_model=ExecuteWorkflowResponse,
+)
+def execute_workflow(
+    context_id: str, request: ExecuteWorkflowRequest
+) -> ExecuteWorkflowResponse:
+    context = load_context(context_id)
+    if context is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workflow context was not found",
+        )
+
+    try:
+        context = run_mock_execution(context, actor=request.run_by)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+
+    execution = context.execution
+    append_audit_event(
+        actor=request.run_by,
+        event_type="execution_completed",
+        summary=f"Mock execution {execution.status if execution else 'completed'}.",
+        metadata={
+            "context_id": context.context_id,
+            "ticket_id": context.ticket.id if context.ticket else None,
+            "execution_status": execution.status if execution else None,
+            "passed": execution.summary.passed if execution else 0,
+            "failed": execution.summary.failed if execution else 0,
+            "skipped": execution.summary.skipped if execution else 0,
+        },
+    )
+    save_context(context)
+    return ExecuteWorkflowResponse(context=context)
 
 
 @router.post(

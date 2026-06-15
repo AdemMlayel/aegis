@@ -93,8 +93,72 @@ def test_workflow_list_endpoint_returns_recent_summaries() -> None:
     assert workflows[0]["ticket_title"] == "Queue History Feature"
     assert workflows[0]["workflow_status"] == "report_generated"
     assert workflows[0]["approval_status"] == "pending_review"
+    assert workflows[0]["execution_status"] is None
     assert workflows[0]["test_count"] == 3
     assert workflows[0]["automation_revision"] == 1
+
+
+def test_execute_workflow_endpoint_records_mock_results() -> None:
+    client = TestClient(app)
+    ticket_id = f"EXEC-{uuid4().hex[:8]}"
+
+    start_response = client.post(
+        "/api/v1/workflows/start",
+        json={
+            "created_by": "pytest",
+            "ticket": {
+                "id": ticket_id,
+                "title": "Execution Results Feature",
+                "description": "As a reviewer, I want to run generated automation.",
+                "acceptance_criteria": ["Mock execution results are saved"],
+                "priority": "high",
+                "labels": ["execution", "review"],
+            },
+        },
+    )
+    context_id = start_response.json()["context"]["context_id"]
+
+    response = client.post(
+        f"/api/v1/workflows/{context_id}/execute",
+        json={"run_by": "qa_runner"},
+    )
+
+    assert response.status_code == 200
+    context = response.json()["context"]
+    execution = context["execution"]
+    summary = execution["summary"]
+    assert context["workflow_status"] == "mock_execution_failed"
+    assert execution["status"] == "failed"
+    assert execution["run_by"] == "qa_runner"
+    assert summary["duration_ms"] > 0
+    assert summary == {
+        "total": 3,
+        "passed": 2,
+        "failed": 1,
+        "skipped": 0,
+        "duration_ms": summary["duration_ms"],
+    }
+    assert [result["status"] for result in execution["results"]] == [
+        "passed",
+        "failed",
+        "passed",
+    ]
+    assert any(
+        event["event_type"] == "execution_completed"
+        for event in context["audit_log"]
+    )
+
+    saved_response = client.get(f"/api/v1/workflows/{context_id}")
+    assert saved_response.status_code == 200
+    assert saved_response.json()["context"]["execution"]["status"] == "failed"
+
+    queue_response = client.get(f"/api/v1/workflows?q={ticket_id}")
+    assert queue_response.status_code == 200
+    workflow = queue_response.json()["workflows"][0]
+    assert workflow["execution_status"] == "failed"
+    assert workflow["execution_passed"] == 2
+    assert workflow["execution_failed"] == 1
+    assert workflow["execution_skipped"] == 0
 
 
 def test_start_workflow_endpoint_returns_completed_context(monkeypatch) -> None:
