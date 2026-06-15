@@ -1,0 +1,81 @@
+from importlib.util import find_spec
+from pathlib import Path
+
+from backend.graph.state import TestContext as WorkflowContext
+from backend.graph.state import TicketData
+from backend.graph.workflow import run_workflow
+
+
+def test_workflow_runs_ticket_to_report() -> None:
+    context = WorkflowContext(
+        created_by="pytest",
+        ticket=TicketData(
+            id="FAKE-123",
+            title="Money Transfer Feature",
+            description="As an authenticated customer, I want to transfer money.",
+            acceptance_criteria=[
+                "Transfer completes within 3 seconds",
+                "Balance updates immediately",
+            ],
+            priority="high",
+            labels=["banking", "payments"],
+        ),
+    )
+
+    result = run_workflow(context)
+
+    assert result.workflow_status == "report_generated"
+    assert result.schema_version == "0.5.0"
+    assert result.ticket is not None
+    assert result.requirement_analysis is not None
+    assert result.requirement_analysis.domain == "banking"
+    assert result.coverage_plan is not None
+    assert result.coverage_plan.risk_level == "high"
+    assert [test_case.id for test_case in result.test_cases] == [
+        "TC001",
+        "TC002",
+        "TC003",
+    ]
+    assert set(result.test_data) == {"TC001", "TC002", "TC003"}
+    assert result.test_data["TC001"].strategy == "factory"
+    assert result.test_data["TC002"].strategy == "fixture"
+    assert set(result.automation) == {"TC001", "TC002", "TC003"}
+    assert all(block.data_reference_check_passed for block in result.automation.values())
+    assert Path(result.automation["TC001"].robot_file).is_file()
+    assert all(block.validation.artifact_exists for block in result.automation.values())
+    assert result.reports is not None
+    assert result.reports.total_test_cases == 3
+    assert "Robot automation files" in result.reports.summary
+
+    validation = result.automation["TC001"].validation
+    if find_spec("robot") is None:
+        assert validation.dry_run_passed is None
+        assert validation.dry_run_skipped_reason is not None
+        assert result.approval is not None
+        assert result.approval.status == "not_ready"
+    else:
+        assert validation.dry_run_passed is True
+        assert validation.validation_attempts == 1
+        assert result.approval is not None
+        assert result.approval.status == "pending_review"
+        assert result.approval.git_branch == "aegis/fake_123"
+        assert result.approval.git_pr_url is None
+        assert result.approval.review_items == [
+            block.robot_file for block in result.automation.values()
+        ]
+
+
+def test_context_defaults_do_not_share_mutable_state() -> None:
+    first = WorkflowContext(created_by="first")
+    second = WorkflowContext(created_by="second")
+
+    completed = run_workflow(WorkflowContext(created_by="pytest"))
+    first.test_cases.append(completed.test_cases[0])
+    first.test_data["TC001"] = completed.test_data["TC001"]
+    first.automation["TC001"] = completed.automation["TC001"]
+    first.approval = completed.approval
+
+    assert second.test_cases == []
+    assert second.test_data == {}
+    assert second.automation == {}
+    assert second.approval is None

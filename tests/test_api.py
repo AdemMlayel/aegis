@@ -1,0 +1,140 @@
+from pathlib import Path
+
+from starlette.testclient import TestClient
+
+from backend.graph.artifacts import GENERATED_AUDIT_ROOT
+from backend.main import app
+
+
+def test_start_workflow_endpoint_returns_completed_context(monkeypatch) -> None:
+    monkeypatch.setattr("backend.integrations.git_handoff._is_git_repo", lambda: False)
+
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/workflows/start",
+        json={
+            "created_by": "pytest",
+            "ticket": {
+                "id": "FAKE-API-1",
+                "title": "Money Transfer Feature",
+                "description": (
+                    "As an authenticated customer, I want to transfer money."
+                ),
+                "acceptance_criteria": ["Transfer completes within 3 seconds"],
+                "priority": "high",
+                "labels": ["banking"],
+            },
+        },
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["context"]["workflow_status"] == "report_generated"
+    context_id = body["context"]["context_id"]
+    assert body["context"]["ticket"]["id"] == "FAKE-API-1"
+    assert set(body["context"]["test_data"]) == {"TC001", "TC002", "TC003"}
+    assert set(body["context"]["automation"]) == {"TC001", "TC002", "TC003"}
+    robot_path = body["context"]["automation"]["TC001"]["robot_file"]
+    assert robot_path.endswith(".robot")
+    assert body["context"]["automation"]["TC001"]["validation"]["artifact_exists"] is True
+    assert body["context"]["approval"]["status"] == "pending_review"
+    assert body["context"]["reports"]["total_test_cases"] == 3
+
+    file_response = client.get(
+        f"/api/v1/automation/files/FAKE-API-1/{Path(robot_path).name}"
+    )
+
+    assert file_response.status_code == 200
+    file_body = file_response.json()
+    assert file_body["path"] == robot_path
+    assert "Money Transfer Feature - Happy Path" in file_body["content"]
+
+    context_response = client.get(f"/api/v1/workflows/{context_id}")
+    assert context_response.status_code == 200
+    assert context_response.json()["context"]["context_id"] == context_id
+
+    approval_response = client.post(
+        f"/api/v1/workflows/{context_id}/approval",
+        json={
+            "decision": "approve",
+            "reviewed_by": "qa_reviewer",
+            "comment": "Looks ready for handoff.",
+        },
+    )
+
+    assert approval_response.status_code == 200
+    approval_body = approval_response.json()
+    approval = approval_body["context"]["approval"]
+    assert approval["status"] == "approved"
+    assert approval["decided_by"] == "qa_reviewer"
+    assert approval["comments"] == ["Looks ready for handoff."]
+    assert approval["git_status"] in {"completed", "blocked"}
+    assert approval["git_branch"] == "aegis/fake_api_1"
+    assert approval["git_pr_url"] is None
+    assert approval["git_handoff_path"].endswith(".json")
+    assert Path(approval["git_handoff_path"]).is_file()
+    if approval["git_status"] == "blocked":
+        assert approval["git_error"]
+        assert approval_body["context"]["workflow_status"] == "approved_git_blocked"
+    else:
+        assert approval_body["context"]["workflow_status"] == "approved_git_complete"
+    assert any(
+        event["event_type"] == "git_execution"
+        for event in approval_body["context"]["audit_log"]
+    )
+
+    saved_response = client.get(f"/api/v1/workflows/{context_id}")
+    assert saved_response.status_code == 200
+    assert saved_response.json()["context"]["approval"]["status"] == "approved"
+    audit_file = GENERATED_AUDIT_ROOT / "events.jsonl"
+    assert audit_file.is_file()
+    audit_text = audit_file.read_text(encoding="utf-8")
+    assert "automation_file_read" in audit_text
+    assert "approval_decision" in audit_text
+
+
+def test_automation_file_endpoint_rejects_non_robot_file() -> None:
+    client = TestClient(app)
+
+    response = client.get("/api/v1/automation/files/FAKE-API-1/output.txt")
+
+    assert response.status_code == 400
+
+
+def test_approval_endpoint_records_requested_changes() -> None:
+    client = TestClient(app)
+
+    start_response = client.post(
+        "/api/v1/workflows/start",
+        json={
+            "created_by": "pytest",
+            "ticket": {
+                "id": "FAKE-CHANGES-1",
+                "title": "Money Transfer Feature",
+                "description": "As an authenticated customer, I want to transfer money.",
+                "acceptance_criteria": ["Transfer completes within 3 seconds"],
+                "priority": "high",
+                "labels": ["banking"],
+            },
+        },
+    )
+    context_id = start_response.json()["context"]["context_id"]
+
+    approval_response = client.post(
+        f"/api/v1/workflows/{context_id}/approval",
+        json={
+            "decision": "request_changes",
+            "reviewed_by": "qa_reviewer",
+            "comment": "Please add an insufficient-funds assertion.",
+        },
+    )
+
+    assert approval_response.status_code == 200
+    context = approval_response.json()["context"]
+    assert context["workflow_status"] == "changes_requested"
+    assert context["approval"]["status"] == "changes_requested"
+    assert context["approval"]["decided_by"] == "qa_reviewer"
+    assert context["approval"]["comments"] == [
+        "Please add an insufficient-funds assertion."
+    ]
