@@ -15,6 +15,9 @@ from backend.graph.artifacts import (
 from backend.graph.state import TestContext
 
 
+LOCAL_GH = PROJECT_ROOT / ".tools" / "gh-extract" / "bin" / "gh.exe"
+
+
 @dataclass(frozen=True)
 class GitExecutionResult:
     handoff_path: Path
@@ -37,8 +40,9 @@ def _run_git(args: list[str]) -> subprocess.CompletedProcess[str]:
 
 
 def _run_gh(args: list[str]) -> subprocess.CompletedProcess[str]:
+    command = str(LOCAL_GH) if LOCAL_GH.is_file() else "gh"
     return subprocess.run(
-        ["gh", *args],
+        [command, *args],
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
@@ -183,7 +187,8 @@ def create_git_handoff(context: TestContext, reviewed_by: str) -> GitExecutionRe
             errors.append(_command_error("git push -u origin", push_result))
 
     pr_url: str | None = None
-    if not errors and shutil.which("gh") is not None:
+    gh_available = shutil.which("gh") is not None or LOCAL_GH.is_file()
+    if not errors and gh_available:
         pr_result = _run_gh(["pr", "create", "--title", pr_title, "--body", pr_body, "--head", branch])
         if pr_result.returncode == 0:
             pr_url = pr_result.stdout.strip().splitlines()[-1]
