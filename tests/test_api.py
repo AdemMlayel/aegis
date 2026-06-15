@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import uuid4
 
 from starlette.testclient import TestClient
 
@@ -58,6 +59,42 @@ def test_start_workflow_from_missing_mock_ticket_returns_404() -> None:
     )
 
     assert response.status_code == 404
+
+
+def test_workflow_list_endpoint_returns_recent_summaries() -> None:
+    client = TestClient(app)
+    ticket_id = f"QUEUE-{uuid4().hex[:8]}"
+
+    start_response = client.post(
+        "/api/v1/workflows/start",
+        json={
+            "created_by": "pytest",
+            "ticket": {
+                "id": ticket_id,
+                "title": "Queue History Feature",
+                "description": "As a reviewer, I want to see workflow history.",
+                "acceptance_criteria": ["Recent workflows are listed"],
+                "priority": "medium",
+                "labels": ["queue", "review"],
+            },
+        },
+    )
+    context = start_response.json()["context"]
+
+    response = client.get(
+        f"/api/v1/workflows?q={ticket_id}&approval_status=pending_review"
+    )
+
+    assert response.status_code == 200
+    workflows = response.json()["workflows"]
+    assert len(workflows) == 1
+    assert workflows[0]["context_id"] == context["context_id"]
+    assert workflows[0]["ticket_id"] == ticket_id
+    assert workflows[0]["ticket_title"] == "Queue History Feature"
+    assert workflows[0]["workflow_status"] == "report_generated"
+    assert workflows[0]["approval_status"] == "pending_review"
+    assert workflows[0]["test_count"] == 3
+    assert workflows[0]["automation_revision"] == 1
 
 
 def test_start_workflow_endpoint_returns_completed_context(monkeypatch) -> None:

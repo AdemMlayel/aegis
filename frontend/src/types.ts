@@ -1,4 +1,5 @@
 export type Priority = "low" | "medium" | "high" | "critical";
+export type ApprovalStatus = "not_ready" | "pending_review" | "approved" | "changes_requested";
 
 export type TicketData = {
   id: string;
@@ -39,7 +40,7 @@ export type AutomationBlock = {
 };
 
 export type ApprovalBlock = {
-  status: "not_ready" | "pending_review" | "approved" | "changes_requested";
+  status: ApprovalStatus;
   requested_at: string | null;
   requested_by: string | null;
   decided_at: string | null;
@@ -53,6 +54,21 @@ export type ApprovalBlock = {
   git_handoff_path: string | null;
   comments: string[];
   notes: string[];
+};
+
+export type WorkflowSummary = {
+  context_id: string;
+  ticket_id: string | null;
+  ticket_title: string | null;
+  workflow_status: string;
+  approval_status: ApprovalStatus | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  test_count: number;
+  automation_revision: number;
+  highest_risk: string | null;
+  git_status: "not_started" | "completed" | "blocked" | null;
 };
 
 export type AuditEvent = {

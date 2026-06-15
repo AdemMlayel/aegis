@@ -317,6 +317,80 @@ select:focus {
   line-height: 1.1;
 }
 
+.queue-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.queue-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.queue-header .section-title {
+  margin-bottom: 0;
+}
+
+.queue-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 280px) 170px 40px;
+  gap: 10px;
+  align-items: end;
+}
+
+.queue-controls label {
+  margin-bottom: 0;
+}
+
+.queue-list {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.queue-row {
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid #dbe4ee;
+  border-radius: 8px;
+  color: #15202b;
+  background: #fbfdff;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) 110px 150px 140px 80px 52px;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+}
+
+.queue-row.active {
+  border-color: #168270;
+  background: #effaf7;
+}
+
+.queue-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #41556b;
+  font-size: 13px;
+  text-transform: capitalize;
+}
+
+.queue-ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.queue-ticket strong {
+  color: #15202b;
+  font-size: 13px;
+}
+
 .content-grid {
   min-height: 0;
   display: grid;
@@ -604,7 +678,8 @@ select:focus {
 
   .topbar,
   .topbar-actions,
-  .approval-actions {
+  .approval-actions,
+  .queue-header {
     align-items: stretch;
     flex-direction: column;
   }
@@ -612,7 +687,9 @@ select:focus {
   .metrics,
   .content-grid,
   .test-detail,
-  .audit-panel .scroll-area {
+  .audit-panel .scroll-area,
+  .queue-controls,
+  .queue-row {
     grid-template-columns: 1fr;
   }
 

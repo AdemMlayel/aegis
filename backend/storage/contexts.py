@@ -22,3 +22,16 @@ def load_context(context_id: str) -> TestContext | None:
     if not path.is_file():
         return None
     return TestContext.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def list_contexts() -> list[TestContext]:
+    if not GENERATED_CONTEXT_ROOT.is_dir():
+        return []
+
+    contexts: list[TestContext] = []
+    for path in GENERATED_CONTEXT_ROOT.glob("*.json"):
+        try:
+            contexts.append(TestContext.model_validate_json(path.read_text(encoding="utf-8")))
+        except ValueError:
+            continue
+    return sorted(contexts, key=lambda context: context.updated_at, reverse=True)

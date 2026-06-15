@@ -21,10 +21,18 @@ import {
   getAutomationFile,
   getWorkflow,
   listMockTickets,
+  listWorkflows,
   startWorkflow,
   startWorkflowFromMockTicket
 } from "./api";
-import type { AutomationBlock, TestCase, TestContext, TicketData } from "./types";
+import type {
+  ApprovalStatus,
+  AutomationBlock,
+  TestCase,
+  TestContext,
+  TicketData,
+  WorkflowSummary
+} from "./types";
 
 const DEFAULT_TICKET: TicketData = {
   id: "FAKE-001",
@@ -97,6 +105,10 @@ export function App() {
   const [mockQuery, setMockQuery] = useState("");
   const [selectedMockTicketId, setSelectedMockTicketId] = useState("");
   const [mockLoading, setMockLoading] = useState(false);
+  const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
+  const [workflowQuery, setWorkflowQuery] = useState("");
+  const [approvalFilter, setApprovalFilter] = useState<ApprovalStatus | "all">("all");
+  const [queueLoading, setQueueLoading] = useState(false);
   const [context, setContext] = useState<TestContext | null>(null);
   const [loadId, setLoadId] = useState("");
   const [selectedTestId, setSelectedTestId] = useState<string>("");
@@ -132,6 +144,7 @@ export function App() {
 
   useEffect(() => {
     void refreshMockTickets();
+    void refreshWorkflowQueue();
   }, []);
 
   useEffect(() => {
@@ -195,6 +208,26 @@ export function App() {
     }
   }
 
+  async function refreshWorkflowQueue(
+    query = workflowQuery,
+    nextApprovalFilter = approvalFilter
+  ) {
+    setQueueLoading(true);
+    setError(null);
+    try {
+      const rows = await listWorkflows({
+        query: query.trim() || undefined,
+        approvalStatus: nextApprovalFilter === "all" ? undefined : nextApprovalFilter,
+        limit: 50
+      });
+      setWorkflows(rows);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Workflow queue failed to load");
+    } finally {
+      setQueueLoading(false);
+    }
+  }
+
   async function runStart() {
     setBusy("start");
     setError(null);
@@ -213,6 +246,7 @@ export function App() {
       });
       setSelectedTestId("");
       keepContext(next);
+      void refreshWorkflowQueue();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Workflow start failed");
     } finally {
@@ -232,6 +266,7 @@ export function App() {
       });
       setSelectedTestId("");
       keepContext(next);
+      void refreshWorkflowQueue();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Mock workflow start failed");
     } finally {
@@ -247,6 +282,7 @@ export function App() {
       const next = await getWorkflow(loadId.trim());
       setSelectedTestId("");
       keepContext(next);
+      void refreshWorkflowQueue();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Workflow load failed");
     } finally {
@@ -260,6 +296,7 @@ export function App() {
     setError(null);
     try {
       keepContext(await getWorkflow(context.context_id));
+      void refreshWorkflowQueue();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Refresh failed");
     } finally {
@@ -282,8 +319,23 @@ export function App() {
       if (decision === "request_changes") {
         setReviewComment("");
       }
+      void refreshWorkflowQueue();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Review action failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function loadWorkflowFromQueue(contextId: string) {
+    setBusy("load-history");
+    setError(null);
+    try {
+      const next = await getWorkflow(contextId);
+      setSelectedTestId("");
+      keepContext(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Workflow load failed");
     } finally {
       setBusy(null);
     }
@@ -467,6 +519,75 @@ export function App() {
           <div>
             <span>Approval</span>
             <strong>{approval?.status.replaceAll("_", " ") ?? "None"}</strong>
+          </div>
+        </section>
+
+        <section className="panel queue-panel">
+          <div className="queue-header">
+            <div className="section-title">
+              <History aria-hidden="true" />
+              <h2>Workflow queue</h2>
+            </div>
+            <div className="queue-controls">
+              <label>
+                Search
+                <input
+                  value={workflowQuery}
+                  onChange={(event) => setWorkflowQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") void refreshWorkflowQueue();
+                  }}
+                />
+              </label>
+              <label>
+                Approval
+                <select
+                  value={approvalFilter}
+                  onChange={(event) => {
+                    const nextFilter = event.target.value as ApprovalStatus | "all";
+                    setApprovalFilter(nextFilter);
+                    void refreshWorkflowQueue(workflowQuery, nextFilter);
+                  }}
+                >
+                  <option value="all">All</option>
+                  <option value="pending_review">Pending review</option>
+                  <option value="approved">Approved</option>
+                  <option value="changes_requested">Changes requested</option>
+                  <option value="not_ready">Not ready</option>
+                </select>
+              </label>
+              <button
+                className="icon-button"
+                onClick={() => void refreshWorkflowQueue()}
+                disabled={queueLoading}
+                title="Refresh workflow queue"
+              >
+                {queueLoading ? <Loader2 className="spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
+              </button>
+            </div>
+          </div>
+          <div className="queue-list">
+            {workflows.map((workflow) => (
+              <button
+                key={workflow.context_id}
+                className={`queue-row ${context?.context_id === workflow.context_id ? "active" : ""}`}
+                onClick={() => void loadWorkflowFromQueue(workflow.context_id)}
+                disabled={busy !== null}
+              >
+                <span className="queue-ticket">
+                  <strong>{workflow.ticket_id ?? "Untitled"}</strong>
+                  {workflow.ticket_title ?? workflow.context_id}
+                </span>
+                <span>{formatDate(workflow.updated_at)}</span>
+                <StatusPill value={workflow.workflow_status} />
+                <span>{workflow.approval_status?.replaceAll("_", " ") ?? "No approval"}</span>
+                <span>{workflow.test_count} tests</span>
+                <span>r{workflow.automation_revision}</span>
+              </button>
+            ))}
+            {!queueLoading && workflows.length === 0 && (
+              <p className="empty-state">No workflows found.</p>
+            )}
           </div>
         </section>
 

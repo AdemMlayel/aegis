@@ -1,4 +1,4 @@
-import type { TestContext, TicketData } from "./types";
+import type { ApprovalStatus, TestContext, TicketData, WorkflowSummary } from "./types";
 
 const API_ROOT = "/api/v1";
 
@@ -54,6 +54,21 @@ export async function getWorkflow(contextId: string): Promise<TestContext> {
   const response = await fetch(`${API_ROOT}/workflows/${contextId}`);
   const body = await parseResponse<{ context: TestContext }>(response);
   return body.context;
+}
+
+export async function listWorkflows(payload: {
+  query?: string;
+  approvalStatus?: ApprovalStatus;
+  limit?: number;
+} = {}): Promise<WorkflowSummary[]> {
+  const params = new URLSearchParams();
+  if (payload.query) params.set("q", payload.query);
+  if (payload.approvalStatus) params.set("approval_status", payload.approvalStatus);
+  if (payload.limit) params.set("limit", String(payload.limit));
+  const suffix = params.toString();
+  const response = await fetch(`${API_ROOT}/workflows${suffix ? `?${suffix}` : ""}`);
+  const body = await parseResponse<{ workflows: WorkflowSummary[] }>(response);
+  return body.workflows;
 }
 
 export async function decideApproval(payload: {

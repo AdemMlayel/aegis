@@ -23,6 +23,7 @@ integrations, LLM calls, memory, Docker isolation, execution, or the dashboard.
 - JSONL audit events under `generated/audit/events.jsonl`.
 - FastAPI endpoint: `GET /api/v1/tickets/mock`.
 - FastAPI endpoint: `GET /api/v1/tickets/mock/{ticket_id}`.
+- FastAPI endpoint: `GET /api/v1/workflows`.
 - FastAPI endpoint: `POST /api/v1/workflows/start`.
 - FastAPI endpoint: `POST /api/v1/workflows/start-from-mock-ticket`.
 - FastAPI endpoint: `GET /api/v1/workflows/{context_id}`.
@@ -73,6 +74,12 @@ Content-Type: application/json
   "created_by": "engineer_001",
   "ticket_id": "MOCK-101"
 }
+```
+
+List saved workflow summaries:
+
+```http
+GET http://127.0.0.1:8000/api/v1/workflows?approval_status=pending_review
 ```
 
 Or start from an inline ticket:

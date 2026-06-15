@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
+from datetime import datetime
 from typing import Literal
+
+from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel, Field
 
 from backend.integrations.git_handoff import create_git_handoff
 from backend.graph.artifacts import relative_to_project, resolve_robot_file
@@ -8,10 +10,16 @@ from backend.graph.regeneration import regenerate_after_changes
 from backend.graph.state import ReviewFeedback, TestContext, TicketData, utc_now
 from backend.graph.workflow import create_initial_context, run_workflow
 from backend.storage.audit import append_audit_event
-from backend.storage.contexts import load_context, save_context
+from backend.storage.contexts import list_contexts, load_context, save_context
 
 
 router = APIRouter(tags=["workflows"])
+ApprovalStatus = Literal[
+    "not_ready",
+    "pending_review",
+    "approved",
+    "changes_requested",
+]
 
 
 class StartWorkflowRequest(BaseModel):
@@ -25,6 +33,25 @@ class StartWorkflowResponse(BaseModel):
 
 class WorkflowContextResponse(BaseModel):
     context: TestContext
+
+
+class WorkflowSummary(BaseModel):
+    context_id: str
+    ticket_id: str | None
+    ticket_title: str | None
+    workflow_status: str
+    approval_status: str | None
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+    test_count: int
+    automation_revision: int
+    highest_risk: str | None
+    git_status: str | None
+
+
+class WorkflowListResponse(BaseModel):
+    workflows: list[WorkflowSummary]
 
 
 class AutomationFileResponse(BaseModel):
@@ -82,6 +109,71 @@ def start_workflow(request: StartWorkflowRequest) -> StartWorkflowResponse:
         ticket=request.ticket,
     )
     return StartWorkflowResponse(context=completed_context)
+
+
+def _workflow_summary(context: TestContext) -> WorkflowSummary:
+    return WorkflowSummary(
+        context_id=context.context_id,
+        ticket_id=context.ticket.id if context.ticket else None,
+        ticket_title=context.ticket.title if context.ticket else None,
+        workflow_status=context.workflow_status,
+        approval_status=context.approval.status if context.approval else None,
+        created_by=context.created_by,
+        created_at=context.created_at,
+        updated_at=context.updated_at,
+        test_count=len(context.test_cases),
+        automation_revision=context.automation_revision,
+        highest_risk=context.reports.highest_risk if context.reports else None,
+        git_status=context.approval.git_status if context.approval else None,
+    )
+
+
+def _workflow_search_blob(context: TestContext) -> str:
+    ticket = context.ticket
+    return " ".join(
+        [
+            context.context_id,
+            context.created_by,
+            context.workflow_status,
+            context.approval.status if context.approval else "",
+            ticket.id if ticket else "",
+            ticket.title if ticket else "",
+            " ".join(ticket.labels) if ticket else "",
+        ]
+    ).casefold()
+
+
+@router.get("/workflows", response_model=WorkflowListResponse)
+def list_workflow_contexts(
+    q: str | None = Query(default=None, min_length=1),
+    workflow_status: str | None = None,
+    approval_status: ApprovalStatus | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+) -> WorkflowListResponse:
+    contexts = list_contexts()
+    if workflow_status:
+        contexts = [
+            context
+            for context in contexts
+            if context.workflow_status == workflow_status
+        ]
+    if approval_status:
+        contexts = [
+            context
+            for context in contexts
+            if context.approval and context.approval.status == approval_status
+        ]
+    if q:
+        needle = q.casefold()
+        contexts = [
+            context
+            for context in contexts
+            if needle in _workflow_search_blob(context)
+        ]
+
+    return WorkflowListResponse(
+        workflows=[_workflow_summary(context) for context in contexts[:limit]]
+    )
 
 
 @router.get(
