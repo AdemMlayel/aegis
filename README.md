@@ -15,6 +15,7 @@ integrations, LLM calls, memory, Docker isolation, execution, or the dashboard.
 - Minimal `.robot` files written to `generated/robot/<ticket-id>/`.
 - Robot Framework dry-run validation in a dedicated validator node.
 - Pending-review approval state with approve/request-changes decisions.
+- Automatic regeneration after `request_changes`, including reviewer feedback in regenerated Robot files.
 - File-backed workflow context persistence under `generated/contexts/`.
 - Git branch/commit/PR execution on approval when the project is inside a Git repo.
 - Git execution result payloads under `generated/git_handoff/`.
@@ -77,6 +78,19 @@ Content-Type: application/json
   "decision": "approve",
   "reviewed_by": "qa_engineer_001",
   "comment": "Ready for Git handoff."
+}
+```
+
+To request changes and immediately regenerate:
+
+```http
+POST http://127.0.0.1:8000/api/v1/workflows/{context_id}/approval
+Content-Type: application/json
+
+{
+  "decision": "request_changes",
+  "reviewed_by": "qa_engineer_001",
+  "comment": "Please add an insufficient-funds assertion."
 }
 ```
 

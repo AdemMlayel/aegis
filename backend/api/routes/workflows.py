@@ -4,7 +4,8 @@ from typing import Literal
 
 from backend.integrations.git_handoff import create_git_handoff
 from backend.graph.artifacts import relative_to_project, resolve_robot_file
-from backend.graph.state import TestContext, TicketData, utc_now
+from backend.graph.regeneration import regenerate_after_changes
+from backend.graph.state import ReviewFeedback, TestContext, TicketData, utc_now
 from backend.graph.workflow import create_initial_context, run_workflow
 from backend.storage.audit import append_audit_event
 from backend.storage.contexts import load_context, save_context
@@ -119,6 +120,17 @@ def decide_workflow_approval(
         context.approval.comments.append(request.comment)
 
     if request.decision == "request_changes":
+        if not request.comment:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="request_changes decisions require a comment",
+            )
+        context.review_feedback.append(
+            ReviewFeedback(
+                requested_by=request.reviewed_by,
+                comment=request.comment,
+            )
+        )
         context.approval.status = "changes_requested"
         context.approval.notes.append("Reviewer requested changes before Git handoff.")
         context.record_event(
@@ -142,6 +154,16 @@ def decide_workflow_approval(
             },
         )
         context.mark("changes_requested")
+        context = regenerate_after_changes(context, actor=request.reviewed_by)
+        append_audit_event(
+            actor=request.reviewed_by,
+            event_type="automation_regenerated",
+            summary="Automation was regenerated after reviewer feedback.",
+            metadata={
+                "context_id": context.context_id,
+                "automation_revision": context.automation_revision,
+            },
+        )
         save_context(context)
         return ApprovalDecisionResponse(context=context)
 

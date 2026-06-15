@@ -26,7 +26,10 @@ The automation milestone writes minimal Robot Framework files under
 checks generated artifacts, and stores the result in `TestContext.automation`.
 The human approval node creates a `pending_review` approval block. Workflow
 contexts are persisted under `generated/contexts/` so the API can later approve
-or request changes. On approval, AegisQA attempts real Git execution:
+or request changes. A `request_changes` decision records reviewer feedback,
+regenerates Robot files, reruns validation, and returns the workflow to
+`pending_review` with a higher automation revision. On approval, AegisQA
+attempts real Git execution:
 create/switch to the `aegis/<ticket-id>` branch, stage the generated Robot
 files, commit them, and create a PR with `gh pr create` when the GitHub CLI is
 available. Every attempt writes a result payload under `generated/git_handoff/`.
@@ -37,9 +40,9 @@ workflow starts, and generated-file reads are also written to
 
 ## Next Boundary
 
-The next useful boundary is review UI and regeneration:
+The next useful boundary is review UI and integrations:
 
 - Add a small dashboard/review UI over the existing API.
-- Add regeneration flow for `changes_requested`.
 - Add real Jira/Azure ticket loading behind the existing fake ticket boundary.
 - Move file-backed context/audit storage to a database.
+- Install/authenticate GitHub CLI for automatic PR creation.

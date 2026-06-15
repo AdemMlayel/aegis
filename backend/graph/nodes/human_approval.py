@@ -6,6 +6,7 @@ def human_approval(context: TestContext) -> TestContext:
     if not context.automation:
         raise ValueError("HumanApproval requires context.automation")
 
+    previous_comments = context.approval.comments if context.approval else []
     review_items = [
         automation.robot_file
         for automation in context.automation.values()
@@ -22,6 +23,7 @@ def human_approval(context: TestContext) -> TestContext:
             review_items=review_items,
             git_branch=f"aegis/{slug(ticket_id)}",
             git_pr_url=None,
+            comments=previous_comments,
             notes=[
                 "Generated Robot files are validated and waiting for human review.",
                 "Approval will attempt Git branch, commit, and PR creation.",
@@ -44,6 +46,7 @@ def human_approval(context: TestContext) -> TestContext:
         requested_at=utc_now(),
         requested_by=context.created_by,
         review_items=review_items,
+        comments=previous_comments,
         notes=[
             "One or more generated Robot files failed validation.",
             "Human review is blocked until validation passes.",

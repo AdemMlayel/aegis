@@ -98,10 +98,18 @@ class AutomationValidation(StrictModel):
 class AutomationBlock(StrictModel):
     test_case_id: str
     robot_file: str
+    revision: int = Field(default=1, ge=1)
     resource_files: list[str] = Field(default_factory=list)
     data_reference_check_passed: bool = False
     validation: AutomationValidation = Field(default_factory=AutomationValidation)
     generated_at: datetime = Field(default_factory=utc_now)
+
+
+class ReviewFeedback(StrictModel):
+    requested_at: datetime = Field(default_factory=utc_now)
+    requested_by: str
+    comment: str
+    status: Literal["open", "applied"] = "open"
 
 
 AuditEventType = Literal[
@@ -110,6 +118,7 @@ AuditEventType = Literal[
     "approval_requested",
     "approval_decision",
     "git_execution",
+    "automation_regenerated",
 ]
 
 
@@ -151,7 +160,7 @@ class ReportBlock(StrictModel):
 
 class TestContext(StrictModel):
     context_id: str = Field(default_factory=lambda: str(uuid4()))
-    schema_version: str = "0.5.0"
+    schema_version: str = "0.6.0"
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
     created_by: str
@@ -162,8 +171,10 @@ class TestContext(StrictModel):
     coverage_plan: CoveragePlan | None = None
     test_cases: list[TestCase] = Field(default_factory=list)
     test_data: dict[str, TestDataBlock] = Field(default_factory=dict)
+    automation_revision: int = 0
     automation: dict[str, AutomationBlock] = Field(default_factory=dict)
     approval: ApprovalBlock | None = None
+    review_feedback: list[ReviewFeedback] = Field(default_factory=list)
     audit_log: list[AuditEvent] = Field(default_factory=list)
     reports: ReportBlock | None = None
 

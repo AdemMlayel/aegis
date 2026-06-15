@@ -25,7 +25,7 @@ def test_workflow_runs_ticket_to_report() -> None:
     result = run_workflow(context)
 
     assert result.workflow_status == "report_generated"
-    assert result.schema_version == "0.5.0"
+    assert result.schema_version == "0.6.0"
     assert result.ticket is not None
     assert result.requirement_analysis is not None
     assert result.requirement_analysis.domain == "banking"
@@ -40,6 +40,8 @@ def test_workflow_runs_ticket_to_report() -> None:
     assert result.test_data["TC001"].strategy == "factory"
     assert result.test_data["TC002"].strategy == "fixture"
     assert set(result.automation) == {"TC001", "TC002", "TC003"}
+    assert result.automation_revision == 1
+    assert result.automation["TC001"].revision == 1
     assert all(block.data_reference_check_passed for block in result.automation.values())
     assert Path(result.automation["TC001"].robot_file).is_file()
     assert all(block.validation.artifact_exists for block in result.automation.values())

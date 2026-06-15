@@ -132,9 +132,64 @@ def test_approval_endpoint_records_requested_changes() -> None:
 
     assert approval_response.status_code == 200
     context = approval_response.json()["context"]
-    assert context["workflow_status"] == "changes_requested"
-    assert context["approval"]["status"] == "changes_requested"
-    assert context["approval"]["decided_by"] == "qa_reviewer"
+    assert context["workflow_status"] == "pending_human_review"
+    assert context["approval"]["status"] == "pending_review"
+    assert context["approval"]["decided_by"] is None
     assert context["approval"]["comments"] == [
         "Please add an insufficient-funds assertion."
     ]
+    assert context["automation_revision"] == 2
+    assert context["automation"]["TC001"]["revision"] == 2
+    assert context["review_feedback"] == [
+        {
+            "requested_at": context["review_feedback"][0]["requested_at"],
+            "requested_by": "qa_reviewer",
+            "comment": "Please add an insufficient-funds assertion.",
+            "status": "applied",
+        }
+    ]
+    assert any(
+        event["event_type"] == "automation_regenerated"
+        for event in context["audit_log"]
+    )
+
+    robot_path = context["automation"]["TC001"]["robot_file"]
+    file_response = client.get(
+        f"/api/v1/automation/files/FAKE-CHANGES-1/{Path(robot_path).name}"
+    )
+
+    assert file_response.status_code == 200
+    assert (
+        "Reviewer feedback applied: Please add an insufficient-funds assertion."
+        in file_response.json()["content"]
+    )
+
+
+def test_request_changes_requires_comment() -> None:
+    client = TestClient(app)
+
+    start_response = client.post(
+        "/api/v1/workflows/start",
+        json={
+            "created_by": "pytest",
+            "ticket": {
+                "id": "FAKE-NO-COMMENT-1",
+                "title": "Money Transfer Feature",
+                "description": "As an authenticated customer, I want to transfer money.",
+                "acceptance_criteria": ["Transfer completes within 3 seconds"],
+                "priority": "high",
+                "labels": ["banking"],
+            },
+        },
+    )
+    context_id = start_response.json()["context"]["context_id"]
+
+    approval_response = client.post(
+        f"/api/v1/workflows/{context_id}/approval",
+        json={
+            "decision": "request_changes",
+            "reviewed_by": "qa_reviewer",
+        },
+    )
+
+    assert approval_response.status_code == 400
