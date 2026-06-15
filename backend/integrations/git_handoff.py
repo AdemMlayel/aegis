@@ -66,6 +66,14 @@ def _remote_exists(remote: str = "origin") -> bool:
     return _run_git(["remote", "get-url", remote]).returncode == 0
 
 
+def _current_branch() -> str | None:
+    result = _run_git(["branch", "--show-current"])
+    if result.returncode != 0:
+        return None
+    branch = result.stdout.strip()
+    return branch or None
+
+
 def _write_handoff_payload(payload: dict[str, object], context_id: str) -> Path:
     GENERATED_GIT_HANDOFF_ROOT.mkdir(parents=True, exist_ok=True)
     handoff_path = GENERATED_GIT_HANDOFF_ROOT / f"{context_id}.json"
@@ -108,6 +116,7 @@ def create_git_handoff(context: TestContext, reviewed_by: str) -> GitExecutionRe
         raise ValueError("Git handoff requires ticket data")
 
     branch = context.approval.git_branch or f"aegis/{slug(context.ticket.id)}"
+    original_branch = _current_branch()
     pr_title = f"[AegisQA] {context.ticket.id} - {context.ticket.title}"
     pr_body = (
         f"Generated Robot Framework automation for {context.ticket.id}.\n\n"
@@ -180,6 +189,11 @@ def create_git_handoff(context: TestContext, reviewed_by: str) -> GitExecutionRe
             pr_url = pr_result.stdout.strip().splitlines()[-1]
         else:
             errors.append(_command_error("gh pr create", pr_result))
+
+    if original_branch is not None and original_branch != branch:
+        restore_result = _run_git(["switch", original_branch])
+        if restore_result.returncode != 0:
+            errors.append(_command_error(f"git switch {original_branch}", restore_result))
 
     status = "blocked" if errors else "completed"
     handoff_path = _write_handoff_payload(
