@@ -24,6 +24,7 @@ integrations, LLM calls, memory, Docker isolation, execution, or the dashboard.
 - FastAPI endpoint: `GET /api/v1/workflows/{context_id}`.
 - FastAPI endpoint: `POST /api/v1/workflows/{context_id}/approval`.
 - FastAPI endpoint: `GET /api/v1/automation/files/{ticket_id}/{file_name}`.
+- React review dashboard under `frontend/`.
 - Unit tests for workflow state flow and the API endpoint.
 
 ## Run Tests
@@ -39,6 +40,17 @@ python -m venv .venv
 ```powershell
 .venv\Scripts\python -m uvicorn backend.main:app --reload
 ```
+
+## Run Dashboard
+
+```powershell
+cd frontend
+npm.cmd install
+npm.cmd run dev
+```
+
+Open `http://127.0.0.1:5173`. The dashboard proxies `/api` requests to the
+FastAPI server on `http://127.0.0.1:8000`.
 
 Then call:
 
