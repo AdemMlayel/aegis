@@ -5,8 +5,10 @@ from backend.skills.base import (
     SkillSpec,
     skill_registry,
 )
+from backend.skills.requirement import AnalyzeRequirementSkill
 
 __all__ = [
+    "AnalyzeRequirementSkill",
     "BaseSkill",
     "SkillRegistrationError",
     "SkillRegistry",

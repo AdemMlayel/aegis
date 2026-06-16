@@ -5,9 +5,11 @@ from backend.tools.base import (
     ToolSpec,
     tool_registry,
 )
+from backend.tools.requirement_heuristics import LocalRequirementHeuristicTool
 
 __all__ = [
     "BaseTool",
+    "LocalRequirementHeuristicTool",
     "ToolRegistrationError",
     "ToolRegistry",
     "ToolSpec",
