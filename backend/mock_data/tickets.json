@@ -12,6 +12,29 @@
     "priority": "high",
     "labels": ["banking", "payments", "web"],
     "assignee": "qa_engineer_001",
+    "status": "ready",
+    "comments": [
+      {
+        "author": "product_owner",
+        "body": "Happy path and insufficient-funds behavior are release blockers."
+      },
+      {
+        "author": "qa_lead",
+        "body": "Prioritize validation around balance updates and duplicate submits."
+      }
+    ],
+    "linked_requirements": [
+      {
+        "id": "REQ-MOCK-101-1",
+        "title": "Authenticated customers can submit valid transfers",
+        "status": "approved"
+      },
+      {
+        "id": "REQ-MOCK-101-2",
+        "title": "Insufficient funds are rejected without balance changes",
+        "status": "approved"
+      }
+    ],
     "source": "fake",
     "raw_url": null
   },
@@ -28,6 +51,20 @@
     "priority": "medium",
     "labels": ["identity", "security", "support"],
     "assignee": "qa_engineer_002",
+    "status": "backlog",
+    "comments": [
+      {
+        "author": "support_lead",
+        "body": "Include expired-link and reused-link scenarios."
+      }
+    ],
+    "linked_requirements": [
+      {
+        "id": "REQ-MOCK-102-1",
+        "title": "Password reset links expire after the configured window",
+        "status": "draft"
+      }
+    ],
     "source": "fake",
     "raw_url": null
   },
@@ -44,6 +81,25 @@
     "priority": "critical",
     "labels": ["admin", "payments", "audit"],
     "assignee": "qa_lead",
+    "status": "in_progress",
+    "comments": [
+      {
+        "author": "risk_manager",
+        "body": "Audit trail evidence must include actor, timestamp, amount, and outcome."
+      }
+    ],
+    "linked_requirements": [
+      {
+        "id": "REQ-MOCK-103-1",
+        "title": "High-value refunds require independent approval",
+        "status": "approved"
+      },
+      {
+        "id": "REQ-MOCK-103-2",
+        "title": "Refund decisions produce immutable audit records",
+        "status": "needs_clarification"
+      }
+    ],
     "source": "fake",
     "raw_url": null
   },
@@ -60,6 +116,20 @@
     "priority": "medium",
     "labels": ["banking", "reporting", "export"],
     "assignee": "qa_engineer_003",
+    "status": "ready",
+    "comments": [
+      {
+        "author": "data_analyst",
+        "body": "CSV column order matters for downstream reconciliation imports."
+      }
+    ],
+    "linked_requirements": [
+      {
+        "id": "REQ-MOCK-104-1",
+        "title": "Customers can export statements for supported date ranges",
+        "status": "approved"
+      }
+    ],
     "source": "fake",
     "raw_url": null
   },
@@ -76,6 +146,20 @@
     "priority": "high",
     "labels": ["banking", "limits", "risk"],
     "assignee": "qa_engineer_001",
+    "status": "blocked",
+    "comments": [
+      {
+        "author": "compliance",
+        "body": "Daily limit reset timezone still needs confirmation."
+      }
+    ],
+    "linked_requirements": [
+      {
+        "id": "REQ-MOCK-105-1",
+        "title": "Daily transfer limit checks include completed transfers",
+        "status": "needs_clarification"
+      }
+    ],
     "source": "fake",
     "raw_url": null
   }

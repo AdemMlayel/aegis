@@ -11,7 +11,7 @@ real execution adapter.
 
 - Typed `TestContext` and related Pydantic models.
 - Base Agent, Skill, and Tool registries for the blueprint runtime boundary.
-- Source-controlled mock ticket database under `backend/mock_data/tickets.json`.
+- SQLite-backed mock ticket database seeded from `backend/mock_data/tickets.json`.
 - Stub workflow nodes:
   `load_ticket -> requirement_agent -> coverage_planner -> test_case_generator -> test_data_resolver -> automation_generator -> validator -> human_approval -> report_generator`.
 - Deterministic test-data resolution for generated test cases.
@@ -26,6 +26,10 @@ real execution adapter.
 - SQLite audit events under `generated/storage/aegisqa.sqlite3`.
 - FastAPI endpoint: `GET /api/v1/tickets/mock`.
 - FastAPI endpoint: `GET /api/v1/tickets/mock/{ticket_id}`.
+- FastAPI endpoint: `POST /api/v1/tickets/mock`.
+- FastAPI endpoint: `PATCH /api/v1/tickets/mock/{ticket_id}`.
+- FastAPI endpoint: `POST /api/v1/tickets/mock/{ticket_id}/comments`.
+- FastAPI endpoint: `DELETE /api/v1/tickets/mock/{ticket_id}`.
 - FastAPI endpoint: `GET /api/v1/workflows`.
 - FastAPI endpoint: `POST /api/v1/workflows/start`.
 - FastAPI endpoint: `POST /api/v1/workflows/start-from-mock-ticket`.
@@ -66,6 +70,31 @@ Then call:
 
 ```http
 GET http://127.0.0.1:8000/api/v1/tickets/mock
+```
+
+Filter mock tickets by text, priority, status, assignee, or label:
+
+```http
+GET http://127.0.0.1:8000/api/v1/tickets/mock?q=refund&priority=critical&status=in_progress
+```
+
+Create or update local mock tickets while real Jira/Azure access is unavailable:
+
+```http
+POST http://127.0.0.1:8000/api/v1/tickets/mock
+Content-Type: application/json
+
+{
+  "id": "MOCK-900",
+  "title": "Local Experiment Ticket",
+  "description": "As a QA engineer, I want a mutable local ticket.",
+  "acceptance_criteria": ["Local tickets can be filtered and used to start workflows"],
+  "priority": "medium",
+  "labels": ["local", "experiment"],
+  "assignee": "qa_engineer_001",
+  "source": "fake",
+  "status": "backlog"
+}
 ```
 
 Start from a seeded mock ticket:

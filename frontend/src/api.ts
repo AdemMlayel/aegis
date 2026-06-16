@@ -1,4 +1,4 @@
-import type { ApprovalStatus, TestContext, TicketData, WorkflowSummary } from "./types";
+import type { ApprovalStatus, TestContext, TicketData, TicketStatus, WorkflowSummary } from "./types";
 
 const API_ROOT = "/api/v1";
 
@@ -27,10 +27,16 @@ export async function startWorkflow(payload: {
 export async function listMockTickets(payload: {
   query?: string;
   priority?: TicketData["priority"];
+  status?: TicketStatus;
+  assignee?: string;
+  label?: string;
 } = {}): Promise<TicketData[]> {
   const params = new URLSearchParams();
   if (payload.query) params.set("q", payload.query);
   if (payload.priority) params.set("priority", payload.priority);
+  if (payload.status) params.set("status", payload.status);
+  if (payload.assignee) params.set("assignee", payload.assignee);
+  if (payload.label) params.set("label", payload.label);
   const suffix = params.toString();
   const response = await fetch(`${API_ROOT}/tickets/mock${suffix ? `?${suffix}` : ""}`);
   const body = await parseResponse<{ tickets: TicketData[] }>(response);

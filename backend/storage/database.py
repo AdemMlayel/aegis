@@ -63,6 +63,29 @@ def initialize_database(db_path: Path = SQLITE_DB_PATH) -> Path:
                 ON audit_events(context_id);
             CREATE INDEX IF NOT EXISTS idx_audit_events_event_type
                 ON audit_events(event_type);
+
+            CREATE TABLE IF NOT EXISTS mock_tickets (
+                id TEXT PRIMARY KEY,
+                payload_json TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                priority TEXT NOT NULL,
+                status TEXT NOT NULL,
+                assignee TEXT,
+                labels_json TEXT NOT NULL,
+                source TEXT NOT NULL,
+                raw_url TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                search_blob TEXT NOT NULL DEFAULT ''
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_mock_tickets_priority
+                ON mock_tickets(priority);
+            CREATE INDEX IF NOT EXISTS idx_mock_tickets_status
+                ON mock_tickets(status);
+            CREATE INDEX IF NOT EXISTS idx_mock_tickets_assignee
+                ON mock_tickets(assignee);
             """
         )
     return db_path

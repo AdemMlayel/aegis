@@ -17,10 +17,10 @@ load_ticket
   -> report_generator
 ```
 
-The implementation intentionally uses fake ticket input and deterministic stub
-logic. That keeps the state contract easy to test before adding LLM calls,
-memory retrieval, Jira/Azure DevOps, real execution isolation, and full
-evidence-based reporting.
+The implementation intentionally uses deterministic local logic and a SQLite
+mock-ticket database seeded from `backend/mock_data/tickets.json`. That keeps the
+state contract easy to test before adding LLM calls, memory retrieval,
+Jira/Azure DevOps, real execution isolation, and full evidence-based reporting.
 
 The registry boundary lives in `backend/agents/base.py`,
 `backend/skills/base.py`, and `backend/tools/base.py`. It provides decorator
@@ -42,12 +42,13 @@ The automation milestone writes minimal Robot Framework files under
 `generated/robot/<ticket-id>/`. The validator node runs `robot --dryrun`,
 checks generated artifacts, and stores the result in `TestContext.automation`.
 The human approval node creates a `pending_review` approval block. Workflow
-contexts, queue/history summaries, and global audit events are persisted in
-SQLite under `generated/storage/aegisqa.sqlite3` so the API can later approve or
-request changes. Legacy JSON context files under `generated/contexts/` are
-imported into SQLite on first read. A `request_changes` decision records
-reviewer feedback, regenerates Robot files, reruns validation, and returns the
-workflow to `pending_review` with a higher automation revision. On approval, AegisQA
+contexts, queue/history summaries, global audit events, and mutable mock tickets
+are persisted in SQLite under `generated/storage/aegisqa.sqlite3` so the API can
+later approve or request changes. Legacy JSON context files under
+`generated/contexts/` are imported into SQLite on first read. A
+`request_changes` decision records reviewer feedback, regenerates Robot files,
+reruns validation, and returns the workflow to `pending_review` with a higher
+automation revision. On approval, AegisQA
 attempts real Git execution:
 create/switch to the `aegis/<ticket-id>` branch, stage the generated Robot
 files, commit them, and create a PR with `gh pr create` when the GitHub CLI is

@@ -1,7 +1,21 @@
 export type Priority = "low" | "medium" | "high" | "critical";
+export type TicketStatus = "backlog" | "ready" | "in_progress" | "blocked" | "done";
 export type ApprovalStatus = "not_ready" | "pending_review" | "approved" | "changes_requested";
 export type ExecutionStatus = "passed" | "failed" | "skipped";
 export type ExecutionResultStatus = "passed" | "failed" | "skipped";
+
+export type MockTicketComment = {
+  author: string;
+  body: string;
+  created_at: string;
+};
+
+export type MockLinkedRequirement = {
+  id: string;
+  title: string;
+  status: "draft" | "approved" | "needs_clarification";
+  source: string;
+};
 
 export type TicketData = {
   id: string;
@@ -13,6 +27,11 @@ export type TicketData = {
   assignee?: string | null;
   source?: string;
   raw_url?: string | null;
+  status?: TicketStatus;
+  created_at?: string;
+  updated_at?: string;
+  comments?: MockTicketComment[];
+  linked_requirements?: MockLinkedRequirement[];
 };
 
 export type TestCase = {
