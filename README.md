@@ -18,7 +18,7 @@ real execution adapter.
 - Minimal `.robot` files written to `generated/robot/<ticket-id>/`.
 - Robot Framework dry-run validation in a dedicated validator node.
 - Mock execution results saved on workflow contexts.
-- SQLite-backed CI execution runs with JSON, JUnit XML, and HTML result views.
+- SQLite-backed queued CI execution runs with JSON, JUnit XML, and HTML result views.
 - Pending-review approval state with approve/request-changes decisions.
 - Automatic regeneration after `request_changes`, including reviewer feedback in regenerated Robot files.
 - SQLite-backed workflow context persistence under `generated/storage/aegisqa.sqlite3`.
@@ -148,6 +148,10 @@ Content-Type: application/json
   "actor": "ci_runner"
 }
 ```
+
+The response returns a persisted queued `run_id` immediately. A FastAPI
+background task updates the run through `running` into `passed`, `failed`,
+`skipped`, or `blocked`.
 
 Inspect saved execution results:
 

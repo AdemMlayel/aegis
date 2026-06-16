@@ -86,6 +86,10 @@ function statusTone(status: string): "good" | "warn" | "bad" | "info" {
   return "info";
 }
 
+function isFinalRunStatus(status: string): boolean {
+  return !["queued", "running"].includes(status);
+}
+
 function StatusPill({ value }: { value: string }) {
   return <span className={`status-pill ${statusTone(value)}`}>{value.replaceAll("_", " ")}</span>;
 }
@@ -270,6 +274,20 @@ export function App() {
     }
   }
 
+  async function waitForExecutionRun(runId: string, contextId: string) {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const rows = await listExecutionRuns({ contextId, limit: 25 });
+      setExecutionRuns(rows);
+      const run = rows.find((item) => item.run_id === runId);
+      if (run && isFinalRunStatus(run.status)) {
+        keepContext(await getWorkflow(contextId));
+        return;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 750));
+    }
+    keepContext(await getWorkflow(contextId));
+  }
+
   async function runStart() {
     setBusy("start");
     setError(null);
@@ -381,9 +399,8 @@ export function App() {
         tags: splitLabels(executionTags),
         actor: reviewer
       });
-      const next = await getWorkflow(run.context_id);
-      keepContext(next);
       await refreshExecutionRuns(run.context_id);
+      await waitForExecutionRun(run.run_id, run.context_id);
       void refreshWorkflowQueue();
     } catch (err) {
       setError(err instanceof Error ? err.message : "CI execution failed");
@@ -870,14 +887,18 @@ export function App() {
                             JSON
                             <ExternalLink aria-hidden="true" />
                           </a>
-                          <a href={`${statusUrl}/junit.xml`} target="_blank" rel="noreferrer">
-                            JUnit
-                            <ExternalLink aria-hidden="true" />
-                          </a>
-                          <a href={`${statusUrl}/report.html`} target="_blank" rel="noreferrer">
-                            HTML
-                            <ExternalLink aria-hidden="true" />
-                          </a>
+                          {run.execution && (
+                            <>
+                              <a href={`${statusUrl}/junit.xml`} target="_blank" rel="noreferrer">
+                                JUnit
+                                <ExternalLink aria-hidden="true" />
+                              </a>
+                              <a href={`${statusUrl}/report.html`} target="_blank" rel="noreferrer">
+                                HTML
+                                <ExternalLink aria-hidden="true" />
+                              </a>
+                            </>
+                          )}
                         </div>
                       </article>
                     );

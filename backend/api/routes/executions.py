@@ -3,7 +3,7 @@ from __future__ import annotations
 from html import escape as html_escape
 from xml.sax.saxutils import escape as xml_escape
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from backend.graph.execution import run_mock_execution
@@ -74,7 +74,10 @@ def _load_context_for_suite(suite: str) -> TestContext | None:
     response_model=ExecuteRunResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-def execute_suite(request: ExecutionRunRequest) -> ExecuteRunResponse:
+def execute_suite(
+    request: ExecutionRunRequest,
+    background_tasks: BackgroundTasks,
+) -> ExecuteRunResponse:
     context = _load_context_for_suite(request.suite)
     if context is None:
         raise HTTPException(
@@ -85,18 +88,72 @@ def execute_suite(request: ExecutionRunRequest) -> ExecuteRunResponse:
     record = create_execution_run(
         context_id=context.context_id,
         request=request,
-        status="running",
+        status="queued",
     )
+    background_tasks.add_task(process_execution_run, record.run_id)
+
+    return ExecuteRunResponse(
+        run_id=record.run_id,
+        context_id=context.context_id,
+        status=record.status,
+        **_run_urls(record.run_id),
+    )
+
+
+def process_execution_run(run_id: str) -> None:
+    record = load_execution_run(run_id)
+    if record is None:
+        return
+
+    record.status = "running"
+    record.updated_at = utc_now()
+    save_execution_run(record)
+
+    context = load_context(record.context_id)
+    if context is None:
+        record.status = "blocked"
+        record.updated_at = utc_now()
+        save_execution_run(record)
+        append_audit_event(
+            actor=record.request.actor,
+            event_type="execution_completed",
+            summary="CI execution blocked.",
+            metadata={
+                "run_id": record.run_id,
+                "context_id": record.context_id,
+                "suite": record.request.suite,
+                "env": record.request.env,
+                "branch": record.request.branch,
+                "tags": record.request.tags,
+                "execution_status": record.status,
+                "error": "Workflow context was not found",
+            },
+        )
+        return
+
     try:
-        context = run_mock_execution(context, actor=request.actor)
+        context = run_mock_execution(context, actor=record.request.actor)
     except ValueError as exc:
         record.status = "blocked"
         record.updated_at = utc_now()
         save_execution_run(record)
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+        append_audit_event(
+            actor=record.request.actor,
+            event_type="execution_completed",
+            summary="CI execution blocked.",
+            metadata={
+                "run_id": record.run_id,
+                "context_id": context.context_id,
+                "ticket_id": context.ticket.id if context.ticket else None,
+                "suite": record.request.suite,
+                "env": record.request.env,
+                "branch": record.request.branch,
+                "tags": record.request.tags,
+                "execution_status": record.status,
+                "error": str(exc),
+            },
+        )
+        return
 
     execution = context.execution
     if execution is None:
@@ -109,17 +166,17 @@ def execute_suite(request: ExecutionRunRequest) -> ExecuteRunResponse:
     save_execution_run(record)
 
     append_audit_event(
-        actor=request.actor,
+        actor=record.request.actor,
         event_type="execution_completed",
         summary=f"CI execution {record.status}.",
         metadata={
             "run_id": record.run_id,
             "context_id": context.context_id,
             "ticket_id": context.ticket.id if context.ticket else None,
-            "suite": request.suite,
-            "env": request.env,
-            "branch": request.branch,
-            "tags": request.tags,
+            "suite": record.request.suite,
+            "env": record.request.env,
+            "branch": record.request.branch,
+            "tags": record.request.tags,
             "execution_status": record.status,
             "passed": execution.summary.passed if execution else 0,
             "failed": execution.summary.failed if execution else 0,
@@ -127,13 +184,6 @@ def execute_suite(request: ExecutionRunRequest) -> ExecuteRunResponse:
         },
     )
     save_context(context)
-
-    return ExecuteRunResponse(
-        run_id=record.run_id,
-        context_id=context.context_id,
-        status=record.status,
-        **_run_urls(record.run_id),
-    )
 
 
 @router.get("/results", response_model=ExecutionRunListResponse)

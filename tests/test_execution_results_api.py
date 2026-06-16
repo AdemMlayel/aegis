@@ -41,7 +41,7 @@ def test_ci_execute_endpoint_persists_results_and_artifacts() -> None:
     body = execute_response.json()
     run_id = body["run_id"]
     assert body["context_id"] == context_id
-    assert body["status"] == "failed"
+    assert body["status"] == "queued"
     assert body["status_url"] == f"/api/v1/results/{run_id}"
     assert body["summary_url"] == f"/api/v1/results/{run_id}/summary.json"
     assert body["junit_url"] == f"/api/v1/results/{run_id}/junit.xml"
