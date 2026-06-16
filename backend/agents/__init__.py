@@ -7,6 +7,7 @@ from backend.agents.base import (
 )
 from backend.agents.coverage_planner import CoveragePlannerAgent
 from backend.agents.requirement_agent import RequirementAgent
+from backend.agents.test_case_generator import TestCaseGeneratorAgent
 
 __all__ = [
     "AgentRegistrationError",
@@ -15,5 +16,6 @@ __all__ = [
     "BaseAgent",
     "CoveragePlannerAgent",
     "RequirementAgent",
+    "TestCaseGeneratorAgent",
     "agent_registry",
 ]

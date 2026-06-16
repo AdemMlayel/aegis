@@ -7,10 +7,12 @@ from backend.skills.base import (
 )
 from backend.skills.coverage import PlanCoverageSkill
 from backend.skills.requirement import AnalyzeRequirementSkill
+from backend.skills.test_generation import GenerateTestCasesSkill
 
 __all__ = [
     "AnalyzeRequirementSkill",
     "BaseSkill",
+    "GenerateTestCasesSkill",
     "PlanCoverageSkill",
     "SkillRegistrationError",
     "SkillRegistry",
