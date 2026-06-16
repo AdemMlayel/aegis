@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import backend.tools.coverage_heuristics  # Registers LocalCoverageHeuristicTool.
-from backend.graph.state import CoveragePlan, TestContext
+from backend.graph.state import CoveragePlan, PromptUsageRef, TestContext
 from backend.skills.base import BaseSkill, skill_registry
 from backend.tools.base import ToolRegistry, tool_registry as default_tool_registry
 
@@ -21,14 +21,23 @@ class PlanCoverageSkill(BaseSkill):
         if context.ticket is None:
             raise ValueError("CoveragePlanner requires context.ticket")
 
-        tool = self.tool_registry.create("LocalCoverageHeuristicTool")
-        coverage_plan = tool.invoke(
+        result = self.tool_registry.execute(
+            "LocalCoverageHeuristicTool",
+            actor="system",
+            context_id=context.context_id,
+            audit_sink=context.record_event,
             ticket=context.ticket,
             requirement_analysis=context.requirement_analysis,
         )
+        coverage_plan = result.value
         if not isinstance(coverage_plan, CoveragePlan):
             raise TypeError("Coverage planning tools must return CoveragePlan")
 
         context.coverage_plan = coverage_plan
+        prompt_key = ("coverage_planning_v1", "1.0.0")
+        if prompt_key not in {(item.name, item.version) for item in context.intelligence_trace.prompt_versions}:
+            context.intelligence_trace.prompt_versions.append(
+                PromptUsageRef(name=prompt_key[0], version=prompt_key[1])
+            )
         context.mark("coverage_planned")
         return context

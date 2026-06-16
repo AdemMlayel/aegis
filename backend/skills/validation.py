@@ -19,11 +19,15 @@ class ValidateAutomationSkill(BaseSkill):
         if not context.automation:
             raise ValueError("Validator requires context.automation")
 
-        tool = self.tool_registry.create("LocalRobotValidationTool")
-        automation = tool.invoke(
+        result = self.tool_registry.execute(
+            "LocalRobotValidationTool",
+            actor="system",
+            context_id=context.context_id,
+            audit_sink=context.record_event,
             automation=context.automation,
             test_data=context.test_data,
         )
+        automation = result.value
         if not isinstance(automation, dict) or not all(
             isinstance(block, AutomationBlock) for block in automation.values()
         ):

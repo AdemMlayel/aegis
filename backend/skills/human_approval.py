@@ -21,13 +21,17 @@ class RequestHumanApprovalSkill(BaseSkill):
 
         previous_comments = context.approval.comments if context.approval else []
         ticket_id = context.ticket.id if context.ticket else context.context_id
-        tool = self.tool_registry.create("LocalHumanApprovalPolicyTool")
-        approval = tool.invoke(
+        result = self.tool_registry.execute(
+            "LocalHumanApprovalPolicyTool",
+            actor="system",
+            context_id=context.context_id,
+            audit_sink=context.record_event,
             automation=context.automation,
             created_by=context.created_by,
             ticket_id=ticket_id,
             previous_comments=previous_comments,
         )
+        approval = result.value
         if not isinstance(approval, ApprovalBlock):
             raise TypeError("Human approval tools must return ApprovalBlock")
 

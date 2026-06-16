@@ -2,8 +2,12 @@
 
 ## Current Milestone
 
-The current codebase implements the first executable spine and the base
-Agent/Skill/Tool registry boundary that future production agents will use:
+This package is an architecture-first local implementation of AegisQA.  It is
+intentionally designed to prove the complete orchestration model with mock data
+before connecting to company Jira/Azure, identity, Vault, databases, browsers, or
+CI infrastructure.
+
+The current synchronous workflow is:
 
 ```text
 load_ticket
@@ -14,20 +18,32 @@ load_ticket
   -> automation_generator
   -> validator
   -> human_approval
+  -> execution_dispatcher
+  -> investigation_coordinator
+  -> memory_archiver
   -> report_generator
 ```
 
-The implementation intentionally uses deterministic local logic and a SQLite
-mock-ticket database seeded from `backend/mock_data/tickets.json`. That keeps the
-state contract easy to test before adding LLM calls, memory retrieval,
-Jira/Azure DevOps, real execution isolation, and full evidence-based reporting.
+The graph now includes the approved lifecycle stages even when execution is
+intentionally deferred until human approval.  On a normal mock workflow start,
+execution is recorded as `skipped`, investigation is recorded as `skipped`, and a
+local memory snapshot is archived under `generated/memory/`.  Approved workflows
+can then be executed through the execution boundary.
 
-The registry boundary lives in `backend/agents/base.py`,
-`backend/skills/base.py`, and `backend/tools/base.py`. It provides decorator
-registration, metadata listing, duplicate protection, and instance creation.
-Requirement analysis, coverage planning, test-case generation, test data
-resolution, automation generation, validation, human approval, and reporting are
-the first migrated slices:
+## Runtime Boundaries
+
+The core runtime still uses the blueprint separation:
+
+- Agent boundary: `backend/agents/base.py`
+- Skill boundary: `backend/skills/base.py`
+- Tool boundary: `backend/tools/base.py`
+- Workflow context: `backend/graph/state.py`
+- Workflow graph: `backend/graph/workflow.py`
+- Execution adapters: `backend/execution/base.py`
+- Ticket connectors: `backend/tickets/base.py`
+- Local security/RBAC: `backend/security/rbac.py`
+
+The current deterministic slices are:
 
 - `RequirementAgent -> AnalyzeRequirementSkill -> LocalRequirementHeuristicTool`
 - `CoveragePlannerAgent -> PlanCoverageSkill -> LocalCoverageHeuristicTool`
@@ -38,33 +54,113 @@ the first migrated slices:
 - `HumanApprovalAgent -> RequestHumanApprovalSkill -> LocalHumanApprovalPolicyTool`
 - `ReportGeneratorAgent -> GenerateReportSkill -> LocalReportGenerationTool`
 
-The automation milestone writes minimal Robot Framework files under
-`generated/robot/<ticket-id>/`. The validator node runs `robot --dryrun`,
-checks generated artifacts, and stores the result in `TestContext.automation`.
-The human approval node creates a `pending_review` approval block. Workflow
-contexts, queue/history summaries, global audit events, and mutable mock tickets
-are persisted in SQLite under `generated/storage/aegisqa.sqlite3` so the API can
-later approve or request changes. Legacy JSON context files under
-`generated/contexts/` are imported into SQLite on first read. A
-`request_changes` decision records reviewer feedback, regenerates Robot files,
-reruns validation, and returns the workflow to `pending_review` with a higher
-automation revision. On approval, AegisQA
-attempts real Git execution:
-create/switch to the `aegis/<ticket-id>` branch, stage the generated Robot
-files, commit them, and create a PR with `gh pr create` when the GitHub CLI is
-available. Every attempt writes a result payload under `generated/git_handoff/`.
-If the project is not inside a Git work tree, the approval remains recorded and
-Git status is marked blocked with the reason. Approval decisions, Git attempts,
-workflow starts, and generated-file reads are also written to the SQLite
-`audit_events` table.
+## Tool Contract
 
-## Next Boundary
+`ToolRegistry.execute(...)` is the preferred call path.  It wraps every tool
+invocation with:
 
-The executable workflow now routes its deterministic business nodes through the
-Agent/Skill/Tool contracts. The next useful boundary is deciding which
-integration surfaces should become connector-backed tools:
+- a typed `ToolResult`,
+- retry metadata,
+- duration metadata,
+- input/output hashes,
+- failure capture,
+- context audit events.
 
-- Keep tools stateless and isolated before adding real Jira/Azure, database,
-  filesystem, Robot, Vault, and LLM integrations.
-- Replace deterministic local tools with connector-backed integrations one
-  boundary at a time.
+Direct `tool.invoke(...)` remains available for tests and backward-compatible
+low-level use, but workflow skills call tools through the contract wrapper.
+
+## Security and RBAC
+
+The API now has a local RBAC scaffold under `backend/security/rbac.py`.
+
+Default local behavior is permissive so developers can prove the architecture
+without a company identity provider.  Set `AEGISQA_AUTH_MODE=strict` to require
+local headers or a development bearer token.
+
+Supported roles:
+
+- `viewer`
+- `qa_engineer`
+- `qa_lead`
+- `admin`
+
+Supported capabilities include ticket read/write, workflow start/read/approve,
+workflow execution, artifact read, and audit read.  Routes are protected through
+FastAPI dependencies while keeping local mock workflows easy to run.
+
+## Ticket Connectors
+
+The first ticket connector is `jira_mock`, registered in `backend/tickets/`.  It
+returns Jira-shaped `TicketData` from the local mock ticket database and never
+calls external APIs.  This proves the future Jira boundary while respecting the
+current constraint to avoid company systems.
+
+Useful endpoints:
+
+```text
+GET /api/v1/tickets/connectors
+GET /api/v1/tickets/jira/mock
+GET /api/v1/tickets/jira/mock/{ticket_id}
+```
+
+## Execution Adapters
+
+Two adapters are registered:
+
+- `mock`: deterministic execution with predictable pass/fail/skip behavior.
+- `robot`: local Robot Framework CLI execution with artifact capture.
+
+The `robot` adapter does not call external services.  It requires a local Robot
+Framework installation and stores artifacts under `generated/execution/`.
+When Robot is unavailable, the validator falls back to deterministic structural
+validation so tests and local architecture demos remain reproducible.
+
+## Persistence
+
+Local SQLite persistence remains under `generated/storage/aegisqa.sqlite3`.
+Generated runtime artifacts remain under `generated/` and are excluded from clean
+packages.
+
+## Packaging Rule
+
+Source packages must exclude local/generated material:
+
+- `.venv/`
+- `.tools/`
+- `.pytest_cache/`
+- `.git/`
+- `node_modules/`
+- `frontend/dist/`
+- `generated/`
+- `__pycache__/`
+- `*.pyc`
+- `aegisqa.egg-info/`
+
+Use `python scripts/package_clean.py` to create a clean local source copy.
+
+
+## Milestone 3 Lite Integration Architecture
+
+The project now includes an explicit provider catalog under `backend/integrations/providers.py` and a local integration profile builder under `backend/integrations/profile.py`.
+
+The selected local/mock providers are written into `TestContext.integration_profile` when a workflow starts. This lets reviewers see which integration boundaries were used without connecting to company APIs.
+
+Default providers:
+
+- Ticket connector: `jira_mock`
+- Execution adapter: `mock`
+- Artifact store: `local_fs`
+- Secret provider: `mock_vault`
+- Git handoff tool: `LocalGitHandoffTool`
+
+New boundaries:
+
+- Artifact store: `backend/artifacts/base.py`, `backend/artifacts/local.py`
+- Secret provider: `backend/secrets/base.py`, `backend/secrets/mock_vault.py`
+- Provider catalog: `backend/integrations/providers.py`
+- Integration profile: `backend/integrations/profile.py`
+- Integration APIs: `backend/api/routes/integrations.py`
+
+The mock Vault provider returns secret references such as `mock-vault://jira/api-token` and never resolves real secret values. The local filesystem artifact store writes only to `generated/artifacts/`, which remains excluded from clean packages.
+
+External providers are intentionally disabled by default with `AEGISQA_EXTERNAL_CONNECTORS_ENABLED=false`.

@@ -23,4 +23,4 @@ class MockExecutionAdapter(BaseExecutionAdapter):
         branch: str | None = None,
         tags: Iterable[str] = (),
     ) -> TestContext:
-        return run_mock_execution(context, actor=actor)
+        return run_mock_execution(context, actor=actor, env=env)

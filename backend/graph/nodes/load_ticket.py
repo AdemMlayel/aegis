@@ -1,4 +1,5 @@
 from backend.graph.state import TestContext, TicketData
+from backend.integrations.profile import build_integration_profile
 
 
 def default_ticket() -> TicketData:
@@ -19,6 +20,8 @@ def default_ticket() -> TicketData:
 def load_ticket(context: TestContext) -> TestContext:
     if context.ticket is None:
         context.ticket = default_ticket()
+    if context.integration_profile is None:
+        context.integration_profile = build_integration_profile()
 
     context.mark("ticket_loaded")
     return context

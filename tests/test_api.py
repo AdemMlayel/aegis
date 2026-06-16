@@ -93,12 +93,12 @@ def test_workflow_list_endpoint_returns_recent_summaries() -> None:
     assert workflows[0]["ticket_title"] == "Queue History Feature"
     assert workflows[0]["workflow_status"] == "report_generated"
     assert workflows[0]["approval_status"] == "pending_review"
-    assert workflows[0]["execution_status"] is None
+    assert workflows[0]["execution_status"] == "skipped"
     assert workflows[0]["test_count"] == 3
     assert workflows[0]["automation_revision"] == 1
 
 
-def test_execute_workflow_endpoint_records_mock_results() -> None:
+def test_execute_workflow_endpoint_records_mock_results(monkeypatch) -> None:
     client = TestClient(app)
     ticket_id = f"EXEC-{uuid4().hex[:8]}"
 
@@ -117,6 +117,16 @@ def test_execute_workflow_endpoint_records_mock_results() -> None:
         },
     )
     context_id = start_response.json()["context"]["context_id"]
+    monkeypatch.setattr("backend.integrations.git_handoff._is_git_repo", lambda: False)
+    approval_response = client.post(
+        f"/api/v1/workflows/{context_id}/approval",
+        json={
+            "decision": "approve",
+            "reviewed_by": "qa_reviewer",
+            "comment": "Approved for local mock execution.",
+        },
+    )
+    assert approval_response.status_code == 200
 
     response = client.post(
         f"/api/v1/workflows/{context_id}/execute",
@@ -127,7 +137,10 @@ def test_execute_workflow_endpoint_records_mock_results() -> None:
     context = response.json()["context"]
     execution = context["execution"]
     summary = execution["summary"]
-    assert context["workflow_status"] == "mock_execution_failed"
+    assert context["workflow_status"] == "report_generated"
+    assert context["investigation"]["status"] == "completed"
+    assert context["memory_archive"]["status"] == "archived"
+    assert context["execution_request"]["status"] == "completed"
     assert execution["status"] == "failed"
     assert execution["run_by"] == "qa_runner"
     assert summary["duration_ms"] > 0
@@ -236,6 +249,11 @@ def test_start_workflow_endpoint_returns_completed_context(monkeypatch) -> None:
         assert approval_body["context"]["workflow_status"] == "approved_git_complete"
     assert any(
         event["event_type"] == "git_execution"
+        for event in approval_body["context"]["audit_log"]
+    )
+    assert any(
+        event["event_type"] == "tool_invoked"
+        and event["metadata"]["tool_name"] == "LocalGitHandoffTool"
         for event in approval_body["context"]["audit_log"]
     )
 

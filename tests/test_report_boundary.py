@@ -81,15 +81,17 @@ def test_report_graph_node_preserves_existing_summary_behavior() -> None:
     assert context.reports is not None
     assert context.reports.summary == (
         "Generated 2 starter test cases and 2 Robot automation files for "
-        "REPORT-READY-1. Validated 1/2; approval status is not_ready."
+        "REPORT-READY-1. Validated 1/2; approval status is not_ready; "
+        "execution status is not_started; investigation status is not_started; "
+        "memory status is not_started."
     )
     assert context.reports.total_test_cases == 2
     assert context.reports.highest_risk == "high"
     assert context.reports.next_actions == [
         "Review requirement clarification questions",
         "Review generated Robot files through the automation file endpoint",
-        "Replace the Git handoff stub with real branch and PR creation",
-        "Add audit records for approval decisions",
+        "Execute approved automation through the mock or Robot execution adapter",
+        "Review investigation and archived-memory payloads before promoting to external systems",
     ]
 
 

@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import json
+
+import backend.artifacts  # Registers local artifact stores.
+from backend.artifacts import artifact_store_registry
+from backend.config.settings import settings
 from backend.graph.state import (
     AutomationBlock,
+    ExecutionArtifact,
     ExecutionBlock,
     ExecutionCaseResult,
     ExecutionSummary,
@@ -11,7 +17,7 @@ from backend.graph.state import (
 )
 
 
-def run_mock_execution(context: TestContext, *, actor: str) -> TestContext:
+def run_mock_execution(context: TestContext, *, actor: str, env: str = "local") -> TestContext:
     if not context.test_cases or not context.automation:
         raise ValueError("Workflow has no generated automation to execute")
 
@@ -41,6 +47,23 @@ def run_mock_execution(context: TestContext, *, actor: str) -> TestContext:
         else "passed"
     )
 
+    summary_artifact = _store_mock_execution_summary(
+        context=context,
+        actor=actor,
+        env=env,
+        execution_status=execution_status,
+        summary=summary,
+        results=results,
+    )
+    artifacts = [
+        ExecutionArtifact(
+            kind="summary",
+            path=summary_artifact.path if summary_artifact else None,
+            content_type="application/json",
+            description="Deterministic mock execution summary stored in the local artifact store.",
+        )
+    ]
+
     context.execution = ExecutionBlock(
         status=execution_status,
         run_by=actor,
@@ -48,6 +71,9 @@ def run_mock_execution(context: TestContext, *, actor: str) -> TestContext:
         finished_at=finished_at,
         summary=summary,
         results=results,
+        adapter="mock",
+        env=env,
+        artifacts=artifacts,
     )
     context.mark(f"mock_execution_{execution_status}")
     context.record_event(
@@ -113,3 +139,40 @@ def _mock_status(
     if ticket_priority == "low" and test_case.type == "boundary":
         return "skipped", "Skipped by the low-risk mock execution profile."
     return "passed", "Mock execution completed successfully."
+
+
+def _store_mock_execution_summary(
+    *,
+    context: TestContext,
+    actor: str,
+    env: str,
+    execution_status: str,
+    summary: ExecutionSummary,
+    results: list[ExecutionCaseResult],
+):
+    if not artifact_store_registry.has(settings.default_artifact_store):
+        return None
+    store = artifact_store_registry.create(settings.default_artifact_store)
+    payload = {
+        "context_id": context.context_id,
+        "ticket_id": context.ticket.id if context.ticket else None,
+        "actor": actor,
+        "env": env,
+        "adapter": "mock",
+        "status": execution_status,
+        "summary": summary.model_dump(mode="json"),
+        "results": [result.model_dump(mode="json") for result in results],
+    }
+    return store.put_text(
+        context_id=context.context_id,
+        kind="execution",
+        name="mock-execution-summary.json",
+        content=json.dumps(payload, indent=2, sort_keys=True),
+        content_type="application/json",
+        description="Mock execution summary artifact.",
+        metadata={
+            "ticket_id": context.ticket.id if context.ticket else None,
+            "adapter": "mock",
+            "status": execution_status,
+        },
+    )

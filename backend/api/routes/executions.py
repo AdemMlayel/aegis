@@ -4,6 +4,8 @@ import asyncio
 from html import escape as html_escape
 from xml.sax.saxutils import escape as xml_escape
 
+from typing import Annotated
+
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -13,11 +15,13 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
     status,
+    Depends,
 )
 from pydantic import BaseModel
 
 from backend.execution import execution_adapter_registry
 from backend.graph.state import ExecutionBlock, TestContext, utc_now
+from backend.graph.workflow import run_after_execution_analysis
 from backend.storage.audit import append_audit_event
 from backend.storage.contexts import list_contexts, load_context, save_context
 from backend.storage.execution_events import (
@@ -25,6 +29,7 @@ from backend.storage.execution_events import (
     append_execution_event,
     list_execution_events,
 )
+from backend.security import Capability, Principal, require_capability
 from backend.storage.execution_runs import (
     ExecutionRunRecord,
     ExecutionRunRequest,
@@ -101,6 +106,7 @@ def _load_context_for_suite(suite: str) -> TestContext | None:
 def execute_suite(
     request: ExecutionRunRequest,
     background_tasks: BackgroundTasks,
+    principal: Annotated[Principal, Depends(require_capability(Capability.EXECUTE_WORKFLOW))],
 ) -> ExecuteRunResponse:
     if not execution_adapter_registry.has(request.adapter):
         raise HTTPException(
@@ -207,6 +213,7 @@ def process_execution_run(run_id: str) -> None:
             branch=record.request.branch,
             tags=record.request.tags,
         )
+        context = run_after_execution_analysis(context)
     except ValueError as exc:
         record.status = "blocked"
         record.updated_at = utc_now()
@@ -326,6 +333,7 @@ def process_execution_run(run_id: str) -> None:
 
 @router.get("/results", response_model=ExecutionRunListResponse)
 def list_results(
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
     context_id: str | None = None,
     run_status: ExecutionRunStatus | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=200),
@@ -340,19 +348,28 @@ def list_results(
 
 
 @router.get("/results/{run_id}", response_model=ExecutionRunDetailResponse)
-def get_result(run_id: str) -> ExecutionRunDetailResponse:
+def get_result(
+    run_id: str,
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> ExecutionRunDetailResponse:
     record = _load_run_or_404(run_id)
     return ExecutionRunDetailResponse(run=record, **_run_urls(run_id))
 
 
 @router.get("/results/{run_id}/summary.json", response_model=ExecutionRunDetailResponse)
-def get_result_summary(run_id: str) -> ExecutionRunDetailResponse:
+def get_result_summary(
+    run_id: str,
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> ExecutionRunDetailResponse:
     record = _load_run_or_404(run_id)
     return ExecutionRunDetailResponse(run=record, **_run_urls(run_id))
 
 
 @router.get("/results/{run_id}/junit.xml")
-def get_result_junit(run_id: str) -> Response:
+def get_result_junit(
+    run_id: str,
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_ARTIFACTS))],
+) -> Response:
     record = _load_run_or_404(run_id)
     if record.junit_xml is None:
         raise HTTPException(
@@ -363,7 +380,10 @@ def get_result_junit(run_id: str) -> Response:
 
 
 @router.get("/results/{run_id}/report.html")
-def get_result_report(run_id: str) -> Response:
+def get_result_report(
+    run_id: str,
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_ARTIFACTS))],
+) -> Response:
     record = _load_run_or_404(run_id)
     if record.execution is None:
         raise HTTPException(
@@ -379,6 +399,7 @@ def get_result_report(run_id: str) -> Response:
 @router.get("/results/{run_id}/logs", response_model=ExecutionEventListResponse)
 def get_result_logs(
     run_id: str,
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_ARTIFACTS))],
     limit: int = Query(default=200, ge=1, le=1000),
 ) -> ExecutionEventListResponse:
     _load_run_or_404(run_id)

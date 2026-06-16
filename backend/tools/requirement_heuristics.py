@@ -2,14 +2,24 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend.config.settings import settings
 from backend.graph.state import CompletenessChecklist, RequirementAnalysis, TicketData
+from backend.intelligence.context import (
+    format_knowledge_context,
+    format_memory_context,
+    prompt_version_ref,
+    search_knowledge_for_ticket,
+    search_memory_for_ticket,
+)
+from backend.llm import llm_provider_registry
+from backend.prompts import prompt_registry
 from backend.tools.base import BaseTool, tool_registry
 
 
 @tool_registry.register(
     name="LocalRequirementHeuristicTool",
     isolation="process",
-    description="Extracts requirement analysis fields with deterministic local heuristics.",
+    description="Extracts requirement analysis fields with deterministic local heuristics plus local AI/RAG traceability.",
 )
 class LocalRequirementHeuristicTool(BaseTool):
     def invoke(self, **kwargs: Any) -> RequirementAnalysis:
@@ -57,6 +67,28 @@ def analyze_ticket(ticket: TicketData) -> RequirementAnalysis:
         missing_fields.append("Data constraints are not described")
         clarification_questions.append("What input limits, formats, or currencies apply?")
 
+    knowledge_results = search_knowledge_for_ticket(ticket, limit=3)
+    memory_results = search_memory_for_ticket(ticket, limit=3)
+    prompt = prompt_registry.get("requirement_analysis_v1")
+    rendered_prompt = prompt.render(
+        ticket_title=ticket.title,
+        priority=ticket.priority,
+        labels=", ".join(ticket.labels),
+        description=ticket.description,
+        acceptance_criteria=ticket.acceptance_criteria or ["No acceptance criteria provided"],
+        knowledge_context=format_knowledge_context(knowledge_results),
+        memory_context=format_memory_context(memory_results),
+    )
+    llm_response = llm_provider_registry.create(settings.default_llm_provider).complete(
+        prompt_name=prompt.name,
+        prompt_version=prompt.version,
+        rendered_prompt=rendered_prompt,
+        system_instruction="You are a QA requirement analysis assistant operating in deterministic local mode.",
+    )
+
+    knowledge_refs = [result.chunk.chunk_id for result in knowledge_results]
+    memory_refs = [result.entry.memory_id for result in memory_results]
+
     return RequirementAnalysis(
         business_action=ticket.title,
         domain=domain,
@@ -67,6 +99,11 @@ def analyze_ticket(ticket: TicketData) -> RequirementAnalysis:
         completeness_checklist=checklist,
         missing_fields=missing_fields,
         clarification_questions=clarification_questions,
+        memory_refs_used=memory_refs,
+        knowledge_refs_used=knowledge_refs,
+        prompt_versions_used=[prompt_version_ref("requirement_analysis_v1")],
+        llm_summary=llm_response.text,
+        confidence=0.82 if has_acceptance_criteria else 0.62,
     )
 
 
@@ -74,6 +111,8 @@ def _infer_domain(labels: list[str], title: str, description: str) -> str:
     text = " ".join([title, description, *labels]).lower()
     if any(term in text for term in ("payment", "transfer", "banking", "account")):
         return "banking"
+    if any(term in text for term in ("api", "endpoint", "request", "response")):
+        return "api"
     return "general"
 
 
@@ -83,4 +122,6 @@ def _infer_actor(description: str) -> str:
         return "customer"
     if "admin" in lowered:
         return "admin"
+    if "engineer" in lowered:
+        return "engineer"
     return "user"

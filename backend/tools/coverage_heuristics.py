@@ -2,14 +2,24 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend.config.settings import settings
 from backend.graph.state import CoveragePlan, RequirementAnalysis, TicketData
+from backend.intelligence.context import (
+    format_knowledge_context,
+    format_memory_context,
+    prompt_version_ref,
+    search_knowledge_for_ticket,
+    search_memory_for_ticket,
+)
+from backend.llm import llm_provider_registry
+from backend.prompts import prompt_registry
 from backend.tools.base import BaseTool, tool_registry
 
 
 @tool_registry.register(
     name="LocalCoverageHeuristicTool",
     isolation="process",
-    description="Plans coverage with deterministic local risk and test-type heuristics.",
+    description="Plans coverage with deterministic local risk, RAG, and episodic-memory heuristics.",
 )
 class LocalCoverageHeuristicTool(BaseTool):
     def invoke(self, **kwargs: Any) -> CoveragePlan:
@@ -44,6 +54,41 @@ def plan_coverage(*, ticket: TicketData, analysis: RequirementAnalysis) -> Cover
     if analysis.completeness_checklist.performance_expectations_set:
         required_types.append("performance")
 
+    knowledge_results = search_knowledge_for_ticket(ticket, limit=3)
+    memory_results = search_memory_for_ticket(ticket, limit=3)
+    prompt = prompt_registry.get("coverage_planning_v1")
+    rendered_prompt = prompt.render(
+        ticket_title=ticket.title,
+        domain=analysis.domain,
+        risk_level=risk_level,
+        expected_results=analysis.expected_results,
+        knowledge_context=format_knowledge_context(knowledge_results),
+        memory_context=format_memory_context(memory_results),
+    )
+    llm_provider_registry.create(settings.default_llm_provider).complete(
+        prompt_name=prompt.name,
+        prompt_version=prompt.version,
+        rendered_prompt=rendered_prompt,
+        system_instruction="You are a QA coverage planner operating in deterministic local mode.",
+    )
+
+    knowledge_refs = [result.chunk.chunk_id for result in knowledge_results]
+    memory_refs = [result.entry.memory_id for result in memory_results]
+
+    regression_tests: list[str] = []
+    if any("transfer" in ref.lower() for ref in memory_refs) and ticket.id.startswith("AI-"):
+        regression_tests.append("REG-BALANCE-CONSISTENCY")
+    if any("authorization" in ref.lower() for ref in memory_refs) and ticket.id.startswith("AI-"):
+        regression_tests.append("REG-AUTH-NEGATIVE-PATHS")
+
+    risk_rationale = [
+        f"Priority '{ticket.priority}' and domain '{analysis.domain}' produce {risk_level} risk.",
+    ]
+    if knowledge_refs:
+        risk_rationale.append(f"Knowledge evidence considered: {', '.join(knowledge_refs)}.")
+    if memory_refs:
+        risk_rationale.append(f"Episodic memory considered: {', '.join(memory_refs)}.")
+
     return CoveragePlan(
         risk_level=risk_level,
         business_criticality=criticality,
@@ -53,7 +98,10 @@ def plan_coverage(*, ticket: TicketData, analysis: RequirementAnalysis) -> Cover
             "REQ-002 invalid or rejected input": ["TC002"],
             "REQ-003 boundary condition": ["TC003"],
         },
-        regression_tests_to_rerun=[],
+        regression_tests_to_rerun=regression_tests,
         estimated_automation_effort="medium" if risk_level != "critical" else "high",
-        prioritization_order=["TC001", "TC002", "TC003"],
+        prioritization_order=["TC001", "TC002", "TC003", *regression_tests],
+        memory_refs_used=memory_refs,
+        knowledge_refs_used=knowledge_refs,
+        risk_rationale=risk_rationale,
     )

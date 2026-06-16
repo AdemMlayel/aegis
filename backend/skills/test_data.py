@@ -19,8 +19,14 @@ class ResolveTestDataSkill(BaseSkill):
         if not context.test_cases:
             raise ValueError("TestDataResolver requires context.test_cases")
 
-        tool = self.tool_registry.create("LocalTestDataHeuristicTool")
-        test_data = tool.invoke(test_cases=context.test_cases)
+        result = self.tool_registry.execute(
+            "LocalTestDataHeuristicTool",
+            actor="system",
+            context_id=context.context_id,
+            audit_sink=context.record_event,
+            test_cases=context.test_cases,
+        )
+        test_data = result.value
         if not isinstance(test_data, dict) or not all(
             isinstance(block, TestDataBlock) for block in test_data.values()
         ):

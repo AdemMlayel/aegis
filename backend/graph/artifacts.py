@@ -10,6 +10,8 @@ GENERATED_CONTEXT_ROOT = PROJECT_ROOT / "generated" / "contexts"
 GENERATED_GIT_HANDOFF_ROOT = PROJECT_ROOT / "generated" / "git_handoff"
 GENERATED_AUDIT_ROOT = PROJECT_ROOT / "generated" / "audit"
 GENERATED_STORAGE_ROOT = PROJECT_ROOT / "generated" / "storage"
+GENERATED_EXECUTION_ROOT = PROJECT_ROOT / "generated" / "execution"
+GENERATED_MEMORY_ROOT = PROJECT_ROOT / "generated" / "memory"
 
 
 def slug(value: str) -> str:
@@ -38,3 +40,11 @@ def resolve_robot_file(ticket_id: str, file_name: str) -> Path:
     except ValueError as exc:
         raise ValueError("Robot file path escapes the generated artifact root") from exc
     return candidate
+
+
+def execution_output_dir(context_id: str) -> Path:
+    return GENERATED_EXECUTION_ROOT / slug(context_id)
+
+
+def memory_output_dir() -> Path:
+    return GENERATED_MEMORY_ROOT

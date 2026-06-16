@@ -1,8 +1,10 @@
-from collections.abc import Callable
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from backend.graph import nodes
-from backend.graph.state import TestContext, TicketData
+from backend.graph.state import ExecutionRequestBlock, TestContext, TicketData
 
 try:
     from langgraph.graph import END, StateGraph
@@ -13,29 +15,114 @@ except ImportError:  # LangGraph is declared but not required for local skeleton
 
 WorkflowNode = Callable[[TestContext], TestContext]
 
-NODE_SEQUENCE: tuple[tuple[str, WorkflowNode], ...] = (
+PRE_VALIDATION_NODE_SEQUENCE: tuple[tuple[str, WorkflowNode], ...] = (
     ("load_ticket", nodes.load_ticket),
     ("requirement_agent", nodes.requirement_agent),
     ("coverage_planner", nodes.coverage_planner),
     ("test_case_generator", nodes.test_case_generator),
     ("test_data_resolver", nodes.test_data_resolver),
+)
+
+VALIDATION_LOOP_NODE_SEQUENCE: tuple[tuple[str, WorkflowNode], ...] = (
     ("automation_generator", nodes.automation_generator),
     ("validator", nodes.validator),
+    ("validation_retry_gate", nodes.validation_retry_gate),
+)
+
+POST_VALIDATION_NODE_SEQUENCE: tuple[tuple[str, WorkflowNode], ...] = (
     ("human_approval", nodes.human_approval),
+    ("execution_dispatcher", nodes.execution_dispatcher),
+    ("investigation_coordinator", nodes.investigation_coordinator),
+    ("memory_archiver", nodes.memory_archiver),
     ("report_generator", nodes.report_generator),
 )
+
+POST_APPROVAL_NODE_SEQUENCE: tuple[tuple[str, WorkflowNode], ...] = (
+    ("execution_dispatcher", nodes.execution_dispatcher),
+    ("investigation_coordinator", nodes.investigation_coordinator),
+    ("memory_archiver", nodes.memory_archiver),
+    ("report_generator", nodes.report_generator),
+)
+
+NODE_SEQUENCE: tuple[tuple[str, WorkflowNode], ...] = (
+    *PRE_VALIDATION_NODE_SEQUENCE,
+    *VALIDATION_LOOP_NODE_SEQUENCE,
+    *POST_VALIDATION_NODE_SEQUENCE,
+)
+
+
+def _coerce_context(initial_state: TestContext | dict[str, Any]) -> TestContext:
+    return (
+        initial_state
+        if isinstance(initial_state, TestContext)
+        else TestContext.model_validate(initial_state)
+    )
+
+
+def _invoke_node(name: str, node: WorkflowNode, context: TestContext) -> TestContext:
+    context.trace_node(node_name=name, status="started")
+    try:
+        updated = node(context)
+    except Exception as exc:  # noqa: BLE001 - graph traces failures for audit/debug.
+        context.trace_node(
+            node_name=name,
+            status="failed",
+            summary=str(exc),
+            metadata={"exception_type": type(exc).__name__},
+        )
+        raise
+    updated.trace_node(
+        node_name=name,
+        status="completed",
+        summary=f"Node completed with workflow status {updated.workflow_status}.",
+    )
+    return updated
+
+
+def _run_nodes(
+    context: TestContext,
+    sequence: Iterable[tuple[str, WorkflowNode]],
+) -> TestContext:
+    for name, node in sequence:
+        context = _invoke_node(name, node, context)
+    return context
 
 
 class SequentialWorkflow:
     def invoke(self, initial_state: TestContext | dict[str, Any]) -> TestContext:
-        context = (
-            initial_state
-            if isinstance(initial_state, TestContext)
-            else TestContext.model_validate(initial_state)
+        context = _coerce_context(initial_state)
+        context = _run_nodes(context, PRE_VALIDATION_NODE_SEQUENCE)
+
+        while True:
+            context = _run_nodes(context, VALIDATION_LOOP_NODE_SEQUENCE)
+            if context.workflow_status != "automation_regeneration_requested":
+                break
+            context.trace_node(
+                node_name="validation_retry_gate",
+                status="routed",
+                summary="Routing back to automation generation after validation failure.",
+                metadata={
+                    "retry_count": context.validation_retry_count,
+                    "max_retries": context.max_validation_retries,
+                },
+            )
+
+        return _run_nodes(context, POST_VALIDATION_NODE_SEQUENCE)
+
+
+def _route_after_validation_gate(context: TestContext) -> str:
+    if context.workflow_status == "automation_regeneration_requested":
+        context.trace_node(
+            node_name="validation_retry_gate",
+            status="routed",
+            summary="Routing back to automation generation after validation failure.",
+            metadata={
+                "retry_count": context.validation_retry_count,
+                "max_retries": context.max_validation_retries,
+            },
         )
-        for _, node in NODE_SEQUENCE:
-            context = node(context)
-        return context
+        return "automation_generator"
+    return "human_approval"
 
 
 def build_langgraph_workflow() -> Any:
@@ -44,7 +131,7 @@ def build_langgraph_workflow() -> Any:
 
     workflow = StateGraph(TestContext)
     for name, node in NODE_SEQUENCE:
-        workflow.add_node(name, node)
+        workflow.add_node(name, _wrap_langgraph_node(name, node))
 
     workflow.set_entry_point("load_ticket")
     workflow.add_edge("load_ticket", "requirement_agent")
@@ -53,10 +140,28 @@ def build_langgraph_workflow() -> Any:
     workflow.add_edge("test_case_generator", "test_data_resolver")
     workflow.add_edge("test_data_resolver", "automation_generator")
     workflow.add_edge("automation_generator", "validator")
-    workflow.add_edge("validator", "human_approval")
-    workflow.add_edge("human_approval", "report_generator")
+    workflow.add_edge("validator", "validation_retry_gate")
+    workflow.add_conditional_edges(
+        "validation_retry_gate",
+        _route_after_validation_gate,
+        {
+            "automation_generator": "automation_generator",
+            "human_approval": "human_approval",
+        },
+    )
+    workflow.add_edge("human_approval", "execution_dispatcher")
+    workflow.add_edge("execution_dispatcher", "investigation_coordinator")
+    workflow.add_edge("investigation_coordinator", "memory_archiver")
+    workflow.add_edge("memory_archiver", "report_generator")
     workflow.add_edge("report_generator", END)
     return workflow.compile()
+
+
+def _wrap_langgraph_node(name: str, node: WorkflowNode) -> WorkflowNode:
+    def wrapped(context: TestContext) -> TestContext:
+        return _invoke_node(name, node, context)
+
+    return wrapped
 
 
 def build_workflow() -> Any:
@@ -74,3 +179,41 @@ def create_initial_context(
 def run_workflow(context: TestContext) -> TestContext:
     result = build_workflow().invoke(context)
     return result if isinstance(result, TestContext) else TestContext.model_validate(result)
+
+
+def run_post_approval_workflow(
+    context: TestContext,
+    *,
+    requested_by: str,
+    adapter: str = "mock",
+    env: str = "local",
+    branch: str | None = None,
+    tags: Iterable[str] = (),
+) -> TestContext:
+    """Run the blueprint nodes that occur after human approval.
+
+    The initial synchronous workflow defers execution until approval. This helper
+    resumes the graph locally with mock or local Robot adapters, then continues
+    investigation, memory archive, and report generation so the orchestration can
+    be demonstrated without company APIs.
+    """
+    context.execution_request = ExecutionRequestBlock(
+        requested_by=requested_by,
+        adapter=adapter,
+        env=env,
+        branch=branch,
+        tags=list(tags),
+    )
+    return _run_nodes(context, POST_APPROVAL_NODE_SEQUENCE)
+
+
+def run_after_execution_analysis(context: TestContext) -> TestContext:
+    """Run investigation, memory archive, and reporting after an execution adapter."""
+    return _run_nodes(
+        context,
+        (
+            ("investigation_coordinator", nodes.investigation_coordinator),
+            ("memory_archiver", nodes.memory_archiver),
+            ("report_generator", nodes.report_generator),
+        ),
+    )

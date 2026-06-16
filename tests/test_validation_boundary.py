@@ -78,12 +78,13 @@ def test_validation_graph_node_preserves_existing_robot_validation() -> None:
         assert validation.validation_attempts == 1
         assert validation.errors == []
     else:
-        assert context.workflow_status == "automation_validation_failed"
-        assert validation.dry_run_passed is None
+        assert context.workflow_status == "automation_validated"
+        assert validation.dry_run_passed is True
         assert validation.dry_run_skipped_reason == (
-            "Robot Framework CLI is not installed"
+            "Robot Framework CLI is not installed; local structural validation was used"
         )
-        assert validation.validation_attempts == 0
+        assert validation.validation_attempts == 1
+        assert validation.errors == []
 
 
 def test_validation_reports_missing_test_data_reference() -> None:

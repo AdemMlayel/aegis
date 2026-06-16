@@ -61,11 +61,44 @@ export type AutomationBlock = {
   };
 };
 
+export type ExecutionArtifact = {
+  kind: "log" | "junit" | "html" | "robot-output" | "screenshot" | "trace" | "summary";
+  path: string | null;
+  content_type: string;
+  description: string;
+};
+
+export type InvestigationBlock = {
+  status: "not_started" | "completed" | "skipped";
+  generated_at: string | null;
+  findings: Array<{
+    test_case_id: string | null;
+    severity: "info" | "warning" | "high" | "critical";
+    category: "test" | "application" | "environment" | "data" | "unknown";
+    summary: string;
+    evidence_refs: string[];
+    confidence: number;
+  }>;
+  root_cause_summary: string | null;
+  confidence: number;
+};
+
+export type MemoryArchiveBlock = {
+  status: "not_started" | "archived" | "skipped";
+  archived_at: string | null;
+  memory_id: string | null;
+  summary: string | null;
+  tags: string[];
+  source_refs: string[];
+};
+
 export type ExecutionBlock = {
   status: ExecutionStatus;
   run_by: string;
   started_at: string;
   finished_at: string;
+  adapter: string;
+  env: string;
   summary: {
     total: number;
     passed: number;
@@ -82,6 +115,7 @@ export type ExecutionBlock = {
     message: string;
     logs: string[];
   }>;
+  artifacts: ExecutionArtifact[];
 };
 
 export type ExecutionRunRequest = {
@@ -192,6 +226,8 @@ export type TestContext = {
   automation_revision: number;
   automation: Record<string, AutomationBlock>;
   execution: ExecutionBlock | null;
+  investigation: InvestigationBlock | null;
+  memory_archive: MemoryArchiveBlock | null;
   approval: ApprovalBlock | null;
   review_feedback: Array<{
     requested_at: string;

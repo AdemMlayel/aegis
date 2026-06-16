@@ -111,7 +111,9 @@ def test_ci_execute_endpoint_persists_results_and_artifacts() -> None:
     assert saved_context_response.status_code == 200
     saved_context = saved_context_response.json()["context"]
     assert saved_context["execution"]["status"] == "failed"
-    assert saved_context["workflow_status"] == "mock_execution_failed"
+    assert saved_context["workflow_status"] == "report_generated"
+    assert saved_context["investigation"]["status"] == "completed"
+    assert saved_context["memory_archive"]["status"] == "archived"
 
 
 def test_execution_websocket_streams_run_status() -> None:

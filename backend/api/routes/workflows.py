@@ -1,17 +1,19 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from backend.integrations.git_handoff import create_git_handoff
+import backend.tools.git_handoff  # Registers LocalGitHandoffTool.
+from backend.tools.git_handoff import GitExecutionResult
+from backend.tools.base import tool_registry
 from backend.graph.artifacts import relative_to_project, resolve_robot_file
-from backend.graph.execution import run_mock_execution
 from backend.graph.regeneration import regenerate_after_changes
 from backend.graph.state import ReviewFeedback, TestContext, TicketData, utc_now
-from backend.graph.workflow import create_initial_context, run_workflow
+from backend.graph.workflow import create_initial_context, run_post_approval_workflow, run_workflow
 from backend.storage.audit import append_audit_event
 from backend.storage.contexts import list_contexts, load_context, save_context
+from backend.security import Capability, Principal, require_capability
 
 
 router = APIRouter(tags=["workflows"])
@@ -117,7 +119,10 @@ def run_and_persist_workflow_start(
     response_model=StartWorkflowResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-def start_workflow(request: StartWorkflowRequest) -> StartWorkflowResponse:
+def start_workflow(
+    request: StartWorkflowRequest,
+    principal: Annotated[Principal, Depends(require_capability(Capability.START_WORKFLOW))],
+) -> StartWorkflowResponse:
     completed_context = run_and_persist_workflow_start(
         created_by=request.created_by,
         ticket=request.ticket,
@@ -165,6 +170,7 @@ def _workflow_search_blob(context: TestContext) -> str:
 
 @router.get("/workflows", response_model=WorkflowListResponse)
 def list_workflow_contexts(
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
     q: str | None = Query(default=None, min_length=1),
     workflow_status: str | None = None,
     approval_status: ApprovalStatus | None = None,
@@ -200,7 +206,10 @@ def list_workflow_contexts(
     "/workflows/{context_id}",
     response_model=WorkflowContextResponse,
 )
-def get_workflow_context(context_id: str) -> WorkflowContextResponse:
+def get_workflow_context(
+    context_id: str,
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> WorkflowContextResponse:
     context = load_context(context_id)
     if context is None:
         raise HTTPException(
@@ -215,7 +224,9 @@ def get_workflow_context(context_id: str) -> WorkflowContextResponse:
     response_model=ExecuteWorkflowResponse,
 )
 def execute_workflow(
-    context_id: str, request: ExecuteWorkflowRequest
+    context_id: str,
+    request: ExecuteWorkflowRequest,
+    principal: Annotated[Principal, Depends(require_capability(Capability.EXECUTE_WORKFLOW))],
 ) -> ExecuteWorkflowResponse:
     context = load_context(context_id)
     if context is None:
@@ -224,14 +235,18 @@ def execute_workflow(
             detail="Workflow context was not found",
         )
 
-    try:
-        context = run_mock_execution(context, actor=request.run_by)
-    except ValueError as exc:
+    if context.approval is None or context.approval.status != "approved":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+            detail="Workflow must be approved before execution",
+        )
 
+    context = run_post_approval_workflow(
+        context,
+        requested_by=request.run_by,
+        adapter="mock",
+        env="local",
+    )
     execution = context.execution
     append_audit_event(
         actor=request.run_by,
@@ -255,7 +270,9 @@ def execute_workflow(
     response_model=ApprovalDecisionResponse,
 )
 def decide_workflow_approval(
-    context_id: str, request: ApprovalDecisionRequest
+    context_id: str,
+    request: ApprovalDecisionRequest,
+    principal: Annotated[Principal, Depends(require_capability(Capability.APPROVE_WORKFLOW))],
 ) -> ApprovalDecisionResponse:
     context = load_context(context_id)
     if context is None:
@@ -337,7 +354,17 @@ def decide_workflow_approval(
             detail="Workflow cannot be approved until all automation passes validation",
         )
 
-    git_result = create_git_handoff(context, request.reviewed_by)
+    git_tool_result = tool_registry.execute(
+        "LocalGitHandoffTool",
+        actor="system",
+        context_id=context.context_id,
+        audit_sink=context.record_event,
+        context=context,
+        reviewed_by=request.reviewed_by,
+    )
+    git_result = git_tool_result.value
+    if not isinstance(git_result, GitExecutionResult):
+        raise TypeError("LocalGitHandoffTool must return GitExecutionResult")
     context.approval.status = "approved"
     context.approval.git_branch = git_result.branch
     context.approval.git_commit_sha = git_result.commit_sha
@@ -407,7 +434,11 @@ def decide_workflow_approval(
     "/automation/files/{ticket_id}/{file_name}",
     response_model=AutomationFileResponse,
 )
-def read_automation_file(ticket_id: str, file_name: str) -> AutomationFileResponse:
+def read_automation_file(
+    ticket_id: str,
+    file_name: str,
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_ARTIFACTS))],
+) -> AutomationFileResponse:
     try:
         robot_file = resolve_robot_file(ticket_id, file_name)
     except ValueError as exc:

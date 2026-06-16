@@ -7,6 +7,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from backend.config.settings import settings
+
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
@@ -35,6 +37,36 @@ class TicketData(StrictModel):
     raw_url: str | None = None
 
 
+class IntelligenceEvidenceRef(StrictModel):
+    ref_id: str
+    source: str
+    title: str
+    score: float = Field(default=0.0, ge=0, le=1)
+    excerpt: str = ""
+
+
+class PromptUsageRef(StrictModel):
+    name: str
+    version: str
+
+
+class LLMUsageRef(StrictModel):
+    provider: str
+    model: str
+    prompt_name: str
+    prompt_version: str
+    deterministic: bool = True
+    summary: str
+
+
+class IntelligenceTraceBlock(StrictModel):
+    llm_provider: str = "mock_llm"
+    knowledge_refs: list[IntelligenceEvidenceRef] = Field(default_factory=list)
+    memory_refs: list[IntelligenceEvidenceRef] = Field(default_factory=list)
+    prompt_versions: list[PromptUsageRef] = Field(default_factory=list)
+    llm_calls: list[LLMUsageRef] = Field(default_factory=list)
+
+
 class CompletenessChecklist(StrictModel):
     actor_identified: bool = False
     preconditions_defined: bool = False
@@ -56,6 +88,10 @@ class RequirementAnalysis(StrictModel):
     missing_fields: list[str] = Field(default_factory=list)
     clarification_questions: list[str] = Field(default_factory=list)
     memory_refs_used: list[str] = Field(default_factory=list)
+    knowledge_refs_used: list[str] = Field(default_factory=list)
+    prompt_versions_used: list[str] = Field(default_factory=list)
+    llm_summary: str | None = None
+    confidence: float = Field(default=0.7, ge=0, le=1)
 
 
 class CoveragePlan(StrictModel):
@@ -66,6 +102,9 @@ class CoveragePlan(StrictModel):
     regression_tests_to_rerun: list[str] = Field(default_factory=list)
     estimated_automation_effort: Literal["low", "medium", "high"] = "medium"
     prioritization_order: list[str] = Field(default_factory=list)
+    memory_refs_used: list[str] = Field(default_factory=list)
+    knowledge_refs_used: list[str] = Field(default_factory=list)
+    risk_rationale: list[str] = Field(default_factory=list)
 
 
 class TestCase(StrictModel):
@@ -78,6 +117,9 @@ class TestCase(StrictModel):
     steps: list[str] = Field(default_factory=list)
     expected_outcome: str
     test_data_requirements: dict[str, list[str]] = Field(default_factory=dict)
+    evidence_refs: list[str] = Field(default_factory=list)
+    memory_refs: list[str] = Field(default_factory=list)
+    generation_notes: list[str] = Field(default_factory=list)
 
 
 class TestDataBlock(StrictModel):
@@ -123,13 +165,61 @@ class ExecutionSummary(StrictModel):
     duration_ms: int = Field(default=0, ge=0)
 
 
+class ExecutionArtifact(StrictModel):
+    kind: Literal["log", "junit", "html", "robot-output", "screenshot", "trace", "summary"]
+    path: str | None = None
+    content_type: str = "text/plain"
+    description: str = ""
+
+
+class ExecutionRequestBlock(StrictModel):
+    requested_by: str = "system"
+    requested_at: datetime = Field(default_factory=utc_now)
+    adapter: str = "mock"
+    env: str = "local"
+    branch: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    status: Literal["pending", "deferred", "running", "completed", "blocked"] = "pending"
+    blocked_reason: str | None = None
+
+
 class ExecutionBlock(StrictModel):
-    status: Literal["passed", "failed", "skipped"] = "skipped"
+    status: Literal["passed", "failed", "skipped", "blocked"] = "skipped"
     run_by: str
     started_at: datetime
     finished_at: datetime
     summary: ExecutionSummary
     results: list[ExecutionCaseResult] = Field(default_factory=list)
+    adapter: str = "mock"
+    env: str = "local"
+    artifacts: list[ExecutionArtifact] = Field(default_factory=list)
+
+
+class InvestigationFinding(StrictModel):
+    test_case_id: str | None = None
+    severity: Literal["info", "warning", "high", "critical"] = "info"
+    category: Literal["test", "application", "environment", "data", "unknown"] = "unknown"
+    summary: str
+    evidence_refs: list[str] = Field(default_factory=list)
+    confidence: float = Field(default=0.5, ge=0, le=1)
+
+
+class InvestigationBlock(StrictModel):
+    status: Literal["not_started", "completed", "skipped"] = "not_started"
+    generated_at: datetime | None = None
+    findings: list[InvestigationFinding] = Field(default_factory=list)
+    root_cause_summary: str | None = None
+    confidence: float = Field(default=0.0, ge=0, le=1)
+
+
+class MemoryArchiveBlock(StrictModel):
+    status: Literal["not_started", "archived", "skipped"] = "not_started"
+    archived_at: datetime | None = None
+    memory_id: str | None = None
+    summary: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    source_refs: list[str] = Field(default_factory=list)
+    indexed_refs: list[str] = Field(default_factory=list)
 
 
 class ReviewFeedback(StrictModel):
@@ -146,7 +236,11 @@ AuditEventType = Literal[
     "approval_decision",
     "git_execution",
     "automation_regenerated",
+    "automation_validation_retry",
     "execution_completed",
+    "investigation_completed",
+    "memory_archived",
+    "tool_invoked",
 ]
 
 
@@ -184,15 +278,58 @@ class ReportBlock(StrictModel):
     total_test_cases: int
     highest_risk: str
     next_actions: list[str] = Field(default_factory=list)
+    knowledge_refs_used: list[str] = Field(default_factory=list)
+    memory_refs_used: list[str] = Field(default_factory=list)
+    prompt_versions_used: list[str] = Field(default_factory=list)
+    confidence: float = Field(default=0.7, ge=0, le=1)
+
+
+class WorkflowTraceEvent(StrictModel):
+    node_name: str
+    status: Literal["started", "completed", "failed", "routed"]
+    timestamp: datetime = Field(default_factory=utc_now)
+    iteration: int = Field(default=1, ge=1)
+    summary: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class IntegrationProviderRef(StrictModel):
+    kind: Literal["ticket_connector", "execution_adapter", "artifact_store", "secret_provider", "git_handoff", "llm_provider", "knowledge_store", "memory_store"]
+    name: str
+    mode: Literal["mock", "local", "external"] = "local"
+    requires_external_api: bool = False
+    status: Literal["ready", "disabled", "placeholder"] = "ready"
+    notes: list[str] = Field(default_factory=list)
+
+
+class IntegrationProfileBlock(StrictModel):
+    ticket_connector: IntegrationProviderRef | None = None
+    execution_adapter: IntegrationProviderRef | None = None
+    artifact_store: IntegrationProviderRef | None = None
+    secret_provider: IntegrationProviderRef | None = None
+    git_handoff: IntegrationProviderRef | None = None
+    llm_provider: IntegrationProviderRef | None = None
+    knowledge_store: IntegrationProviderRef | None = None
+    memory_store: IntegrationProviderRef | None = None
+    policy: Literal["mock_only", "local_only", "external_allowed"] = "mock_only"
+    external_connectors_enabled: bool = False
 
 
 class TestContext(StrictModel):
     context_id: str = Field(default_factory=lambda: str(uuid4()))
-    schema_version: str = "0.7.0"
+    schema_version: str = settings.workflow_schema_version
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
     created_by: str
     workflow_status: str = "initialized"
+    current_node: str | None = None
+    graph_iteration: int = Field(default=1, ge=1)
+    validation_retry_count: int = Field(default=0, ge=0)
+    max_validation_retries: int = Field(default=2, ge=0, le=5)
+    workflow_trace: list[WorkflowTraceEvent] = Field(default_factory=list)
+
+    integration_profile: IntegrationProfileBlock | None = None
+    intelligence_trace: IntelligenceTraceBlock = Field(default_factory=IntelligenceTraceBlock)
 
     ticket: TicketData | None = None
     requirement_analysis: RequirementAnalysis | None = None
@@ -201,7 +338,10 @@ class TestContext(StrictModel):
     test_data: dict[str, TestDataBlock] = Field(default_factory=dict)
     automation_revision: int = 0
     automation: dict[str, AutomationBlock] = Field(default_factory=dict)
+    execution_request: ExecutionRequestBlock | None = None
     execution: ExecutionBlock | None = None
+    investigation: InvestigationBlock | None = None
+    memory_archive: MemoryArchiveBlock | None = None
     approval: ApprovalBlock | None = None
     review_feedback: list[ReviewFeedback] = Field(default_factory=list)
     audit_log: list[AuditEvent] = Field(default_factory=list)
@@ -210,6 +350,26 @@ class TestContext(StrictModel):
     def mark(self, status: str) -> None:
         self.workflow_status = status
         self.updated_at = utc_now()
+
+    def trace_node(
+        self,
+        *,
+        node_name: str,
+        status: Literal["started", "completed", "failed", "routed"],
+        summary: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> WorkflowTraceEvent:
+        self.current_node = node_name
+        trace = WorkflowTraceEvent(
+            node_name=node_name,
+            status=status,
+            iteration=self.graph_iteration,
+            summary=summary,
+            metadata=metadata or {},
+        )
+        self.workflow_trace.append(trace)
+        self.updated_at = utc_now()
+        return trace
 
     def record_event(
         self,

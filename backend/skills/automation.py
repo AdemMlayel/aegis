@@ -25,14 +25,18 @@ class GenerateAutomationSkill(BaseSkill):
 
         revision = context.automation_revision + 1
         feedback = [item for item in context.review_feedback if item.status == "open"]
-        tool = self.tool_registry.create("LocalRobotAutomationTool")
-        automation = tool.invoke(
+        result = self.tool_registry.execute(
+            "LocalRobotAutomationTool",
+            actor="system",
+            context_id=context.context_id,
+            audit_sink=context.record_event,
             ticket_id=context.ticket.id,
             test_cases=context.test_cases,
             test_data=context.test_data,
             revision=revision,
             feedback=feedback,
         )
+        automation = result.value
         if not isinstance(automation, dict) or not all(
             isinstance(block, AutomationBlock) for block in automation.values()
         ):
