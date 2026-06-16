@@ -10,6 +10,7 @@ real execution adapter.
 ## What Exists
 
 - Typed `TestContext` and related Pydantic models.
+- Base Agent, Skill, and Tool registries for the blueprint runtime boundary.
 - Source-controlled mock ticket database under `backend/mock_data/tickets.json`.
 - Stub workflow nodes:
   `load_ticket -> requirement_agent -> coverage_planner -> test_case_generator -> test_data_resolver -> automation_generator -> validator -> human_approval -> report_generator`.

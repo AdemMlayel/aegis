@@ -2,7 +2,8 @@
 
 ## Current Milestone
 
-The current codebase implements the first executable spine:
+The current codebase implements the first executable spine and the base
+Agent/Skill/Tool registry boundary that future production agents will use:
 
 ```text
 load_ticket
@@ -18,8 +19,13 @@ load_ticket
 
 The implementation intentionally uses fake ticket input and deterministic stub
 logic. That keeps the state contract easy to test before adding LLM calls,
-memory retrieval, Jira/Azure DevOps, human approval, execution, and full
-reporting.
+memory retrieval, Jira/Azure DevOps, real execution isolation, and full
+evidence-based reporting.
+
+The registry boundary lives in `backend/agents/base.py`,
+`backend/skills/base.py`, and `backend/tools/base.py`. It provides decorator
+registration, metadata listing, duplicate protection, and instance creation.
+The current graph nodes have not yet been migrated behind those registries.
 
 The automation milestone writes minimal Robot Framework files under
 `generated/robot/<ticket-id>/`. The validator node runs `robot --dryrun`,
@@ -40,9 +46,13 @@ workflow starts, and generated-file reads are also written to
 
 ## Next Boundary
 
-The next useful boundary is review UI and integrations:
+The next useful boundary is migrating deterministic graph-node logic behind
+the new Agent/Skill/Tool contracts:
 
-- Add a small dashboard/review UI over the existing API.
-- Add real Jira/Azure ticket loading behind the existing fake ticket boundary.
+- Move each current node implementation behind an agent class.
+- Introduce reusable skills for requirement analysis, coverage planning, test
+  generation, test data resolution, automation generation, validation, and
+  reporting.
+- Keep tools stateless and isolated before adding real Jira/Azure, database,
+  filesystem, Robot, Vault, and LLM integrations.
 - Move file-backed context/audit storage to a database.
-- Install/authenticate GitHub CLI for automatic PR creation.
