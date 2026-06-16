@@ -18,6 +18,7 @@ real execution adapter.
 - Minimal `.robot` files written to `generated/robot/<ticket-id>/`.
 - Robot Framework dry-run validation in a dedicated validator node.
 - Mock execution results saved on workflow contexts.
+- SQLite-backed CI execution runs with JSON, JUnit XML, and HTML result views.
 - Pending-review approval state with approve/request-changes decisions.
 - Automatic regeneration after `request_changes`, including reviewer feedback in regenerated Robot files.
 - SQLite-backed workflow context persistence under `generated/storage/aegisqa.sqlite3`.
@@ -36,9 +37,15 @@ real execution adapter.
 - FastAPI endpoint: `GET /api/v1/workflows/{context_id}`.
 - FastAPI endpoint: `POST /api/v1/workflows/{context_id}/execute`.
 - FastAPI endpoint: `POST /api/v1/workflows/{context_id}/approval`.
+- FastAPI endpoint: `POST /api/v1/execute`.
+- FastAPI endpoint: `GET /api/v1/results`.
+- FastAPI endpoint: `GET /api/v1/results/{run_id}`.
+- FastAPI endpoint: `GET /api/v1/results/{run_id}/summary.json`.
+- FastAPI endpoint: `GET /api/v1/results/{run_id}/junit.xml`.
+- FastAPI endpoint: `GET /api/v1/results/{run_id}/report.html`.
 - FastAPI endpoint: `GET /api/v1/automation/files/{ticket_id}/{file_name}`.
 - React review dashboard under `frontend/`.
-- Unit tests for workflow state flow and the API endpoint.
+- Unit tests for workflow state flow, architecture boundaries, persistence, and API endpoints.
 
 ## Run Tests
 
@@ -124,6 +131,30 @@ Content-Type: application/json
 {
   "run_by": "qa_engineer_001"
 }
+```
+
+Trigger the CI-style execution boundary by workflow `context_id` or ticket id:
+
+```http
+POST http://127.0.0.1:8000/api/v1/execute
+Content-Type: application/json
+
+{
+  "suite": "MOCK-101",
+  "branch": "feature/generated-tests",
+  "env": "staging",
+  "tags": ["smoke", "generated"],
+  "actor": "ci_runner"
+}
+```
+
+Inspect saved execution results:
+
+```http
+GET http://127.0.0.1:8000/api/v1/results/{run_id}
+GET http://127.0.0.1:8000/api/v1/results/{run_id}/summary.json
+GET http://127.0.0.1:8000/api/v1/results/{run_id}/junit.xml
+GET http://127.0.0.1:8000/api/v1/results/{run_id}/report.html
 ```
 
 Or start from an inline ticket:

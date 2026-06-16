@@ -86,6 +86,29 @@ def initialize_database(db_path: Path = SQLITE_DB_PATH) -> Path:
                 ON mock_tickets(status);
             CREATE INDEX IF NOT EXISTS idx_mock_tickets_assignee
                 ON mock_tickets(assignee);
+
+            CREATE TABLE IF NOT EXISTS execution_runs (
+                run_id TEXT PRIMARY KEY,
+                context_id TEXT NOT NULL,
+                request_json TEXT NOT NULL,
+                status TEXT NOT NULL,
+                suite TEXT NOT NULL,
+                branch TEXT,
+                env TEXT NOT NULL,
+                tags_json TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                result_json TEXT,
+                junit_xml TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_execution_runs_context_id
+                ON execution_runs(context_id);
+            CREATE INDEX IF NOT EXISTS idx_execution_runs_status
+                ON execution_runs(status);
+            CREATE INDEX IF NOT EXISTS idx_execution_runs_updated_at
+                ON execution_runs(updated_at DESC);
             """
         )
     return db_path
