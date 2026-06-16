@@ -5,6 +5,12 @@ import type {
   ExecutionRunRecord,
   ExecutionRunRequest,
   ExecutionRunStatus,
+  IntegrationProfile,
+  KnowledgeSearchItem,
+  LLMProvider,
+  MemorySearchItem,
+  PromptTemplate,
+  ProviderCatalog,
   TestContext,
   TicketData,
   TicketStatus,
@@ -163,4 +169,42 @@ export async function getAutomationFile(ticketId: string, robotFile: string): Pr
   );
   const body = await parseResponse<{ content: string }>(response);
   return body.content;
+}
+
+export async function getProviderCatalog(payload: {
+  includeExternal?: boolean;
+} = {}): Promise<ProviderCatalog> {
+  const params = new URLSearchParams();
+  if (payload.includeExternal) params.set("include_external", "true");
+  const suffix = params.toString();
+  const response = await fetch(`${API_ROOT}/integrations/providers${suffix ? `?${suffix}` : ""}`);
+  return parseResponse<ProviderCatalog>(response);
+}
+
+export async function getIntegrationProfile(): Promise<IntegrationProfile> {
+  const response = await fetch(`${API_ROOT}/integrations/profile`);
+  const body = await parseResponse<{ profile: IntegrationProfile }>(response);
+  return body.profile;
+}
+
+export async function listPromptTemplates(): Promise<PromptTemplate[]> {
+  const response = await fetch(`${API_ROOT}/intelligence/prompts`);
+  return parseResponse<PromptTemplate[]>(response);
+}
+
+export async function listLlmProviders(): Promise<LLMProvider[]> {
+  const response = await fetch(`${API_ROOT}/intelligence/llm-providers`);
+  return parseResponse<LLMProvider[]>(response);
+}
+
+export async function searchKnowledge(query: string, limit = 3): Promise<KnowledgeSearchItem[]> {
+  const params = new URLSearchParams({ query, limit: String(limit) });
+  const response = await fetch(`${API_ROOT}/intelligence/knowledge/search?${params.toString()}`);
+  return parseResponse<KnowledgeSearchItem[]>(response);
+}
+
+export async function searchMemory(query: string, limit = 3): Promise<MemorySearchItem[]> {
+  const params = new URLSearchParams({ query, limit: String(limit) });
+  const response = await fetch(`${API_ROOT}/intelligence/memory/search?${params.toString()}`);
+  return parseResponse<MemorySearchItem[]>(response);
 }

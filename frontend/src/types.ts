@@ -4,6 +4,16 @@ export type ApprovalStatus = "not_ready" | "pending_review" | "approved" | "chan
 export type ExecutionStatus = "passed" | "failed" | "skipped";
 export type ExecutionResultStatus = "passed" | "failed" | "skipped";
 export type ExecutionRunStatus = ExecutionStatus | "queued" | "running" | "blocked";
+export type ProviderKind =
+  | "ticket_connector"
+  | "execution_adapter"
+  | "artifact_store"
+  | "secret_provider"
+  | "git_handoff"
+  | "llm_provider"
+  | "knowledge_store"
+  | "memory_store";
+export type ProviderMode = "mock" | "local" | "external";
 
 export type MockTicketComment = {
   author: string;
@@ -170,6 +180,117 @@ export type ExecuteRunResponse = {
   websocket_url: string | null;
 };
 
+export type ProviderCatalogEntry = {
+  kind: ProviderKind;
+  name: string;
+  mode: ProviderMode;
+  description: string;
+  version: string;
+  requires_external_api: boolean;
+  enabled: boolean;
+  selected: boolean;
+  config_key: string | null;
+};
+
+export type ProviderSelection = {
+  kind: ProviderKind;
+  selected: string;
+  requires_external_api: boolean;
+  status: string;
+};
+
+export type ProviderCatalog = {
+  environment: string;
+  external_connectors_enabled: boolean;
+  selected: ProviderSelection[];
+  providers: ProviderCatalogEntry[];
+};
+
+export type IntegrationProviderRef = {
+  kind: ProviderKind;
+  name: string;
+  mode: ProviderMode;
+  requires_external_api: boolean;
+  status: "ready" | "disabled" | "placeholder";
+  notes: string[];
+};
+
+export type IntegrationProfile = {
+  ticket_connector: IntegrationProviderRef | null;
+  execution_adapter: IntegrationProviderRef | null;
+  artifact_store: IntegrationProviderRef | null;
+  secret_provider: IntegrationProviderRef | null;
+  git_handoff: IntegrationProviderRef | null;
+  llm_provider: IntegrationProviderRef | null;
+  knowledge_store: IntegrationProviderRef | null;
+  memory_store: IntegrationProviderRef | null;
+  policy: "mock_only" | "local_only" | "external_allowed";
+  external_connectors_enabled: boolean;
+};
+
+export type PromptTemplate = {
+  name: string;
+  version: string;
+  description: string;
+};
+
+export type LLMProvider = {
+  name: string;
+  mode: ProviderMode;
+  model: string;
+  requires_external_api: boolean;
+  description: string;
+};
+
+export type KnowledgeSearchItem = {
+  ref_id: string;
+  title: string;
+  source: string;
+  score: number;
+  excerpt: string;
+  matched_terms: string[];
+};
+
+export type MemorySearchItem = {
+  ref_id: string;
+  title: string;
+  score: number;
+  summary: string;
+  tags: string[];
+  source_refs: string[];
+  matched_terms: string[];
+};
+
+export type IntelligenceTrace = {
+  llm_provider: string;
+  knowledge_refs: Array<{
+    ref_id: string;
+    source: string;
+    title: string;
+    score: number;
+    excerpt: string;
+  }>;
+  memory_refs: Array<{
+    ref_id: string;
+    source: string;
+    title: string;
+    score: number;
+    excerpt: string;
+  }>;
+  prompt_versions: Array<{
+    name: string;
+    version: string;
+  }>;
+  llm_calls: Array<{
+    provider: string;
+    model: string;
+    prompt_name: string;
+    prompt_version: string;
+    deterministic: boolean;
+    summary: string;
+  }>;
+};
+
 export type ApprovalBlock = {
   status: ApprovalStatus;
   requested_at: string | null;
@@ -225,6 +346,18 @@ export type TestContext = {
   test_cases: TestCase[];
   automation_revision: number;
   automation: Record<string, AutomationBlock>;
+  integration_profile: IntegrationProfile | null;
+  intelligence_trace: IntelligenceTrace;
+  execution_request: {
+    requested_by: string;
+    requested_at: string;
+    adapter: string;
+    env: string;
+    branch: string | null;
+    tags: string[];
+    status: "pending" | "deferred" | "running" | "completed" | "blocked";
+    blocked_reason: string | null;
+  } | null;
   execution: ExecutionBlock | null;
   investigation: InvestigationBlock | null;
   memory_archive: MemoryArchiveBlock | null;

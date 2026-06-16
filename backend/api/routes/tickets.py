@@ -4,12 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 
 from backend.config.settings import settings
-from backend.api.routes.workflows import (
-    StartWorkflowResponse,
-    run_and_persist_workflow_start,
-)
 from backend.graph.state import TestContext, TicketData
 from backend.security import Capability, Principal, require_capability
+from backend.services.workflows import start_workflow as start_workflow_service
 from backend.tickets import ticket_connector_registry
 from backend.storage.mock_tickets import (
     MockTicketRecord,
@@ -37,6 +34,9 @@ class MockTicketsResponse(BaseModel):
 class MockTicketResponse(BaseModel):
     ticket: MockTicketRecord
 
+
+class StartWorkflowResponse(BaseModel):
+    context: TestContext
 
 
 
@@ -268,7 +268,7 @@ def start_workflow_from_ticket_connector(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Connector ticket was not found",
         )
-    context: TestContext = run_and_persist_workflow_start(
+    context: TestContext = start_workflow_service(
         created_by=request.created_by,
         ticket=ticket,
     )
@@ -290,7 +290,7 @@ def start_workflow_from_mock_ticket(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Mock ticket was not found",
         )
-    context: TestContext = run_and_persist_workflow_start(
+    context: TestContext = start_workflow_service(
         created_by=request.created_by,
         ticket=ticket,
     )

@@ -16,6 +16,8 @@ Implemented and test-covered locally:
 - Contract-based tool execution with retries, duration, input/output hashes, and audit records.
 - Local RBAC/auth scaffold with permissive mode by default and strict mode available.
 - SQLite-backed mock ticket database seeded from `backend/mock_data/tickets.json`.
+- Versioned SQLite migration runner for the local schema and future Postgres path.
+- Service-layer boundary for workflow, execution, integration, and intelligence orchestration.
 - Jira-shaped mock connector: `jira_mock`, plus generic connector start/search endpoints.
 - Workflow lifecycle:
   `load_ticket -> requirement_agent -> coverage_planner -> test_case_generator -> test_data_resolver -> automation_generator -> validator -> human_approval -> execution_dispatcher -> investigation_coordinator -> memory_archiver -> report_generator`.
@@ -30,8 +32,8 @@ Implemented and test-covered locally:
 - Local filesystem artifact store: `local_fs`.
 - Mock Vault-compatible secret provider: `mock_vault`, returning references only.
 - Provider catalog endpoints that show selected local/mock providers and keep external connectors disabled.
-- React review dashboard under `frontend/`.
-- 76 passing Python tests.
+- React review dashboard under `frontend/`, including provider catalog and intelligence metadata panels.
+- 78 passing Python tests.
 
 ## What Is Deliberately Mocked
 

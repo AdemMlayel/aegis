@@ -1,6 +1,7 @@
 import {
   Activity,
   AlertTriangle,
+  Brain,
   CheckCircle2,
   ClipboardCheck,
   Database,
@@ -10,6 +11,7 @@ import {
   History,
   Loader2,
   Play,
+  Plug,
   RefreshCw,
   RotateCcw,
   Search,
@@ -21,11 +23,17 @@ import {
   decideApproval,
   executeSuite,
   getAutomationFile,
+  getIntegrationProfile,
+  getProviderCatalog,
   getWorkflow,
+  listLlmProviders,
   listExecutionEvents,
   listExecutionRuns,
   listMockTickets,
+  listPromptTemplates,
   listWorkflows,
+  searchKnowledge,
+  searchMemory,
   startWorkflow,
   startWorkflowFromMockTicket
 } from "./api";
@@ -34,6 +42,12 @@ import type {
   AutomationBlock,
   ExecutionEvent,
   ExecutionRunRecord,
+  IntegrationProfile,
+  KnowledgeSearchItem,
+  LLMProvider,
+  MemorySearchItem,
+  PromptTemplate,
+  ProviderCatalog,
   TestCase,
   TestContext,
   TicketData,
@@ -88,6 +102,10 @@ function statusTone(status: string): "good" | "warn" | "bad" | "info" {
   return "info";
 }
 
+function formatProviderKind(value: string): string {
+  return value.replaceAll("_", " ");
+}
+
 function isFinalRunStatus(status: string): boolean {
   return !["queued", "running"].includes(status);
 }
@@ -136,6 +154,15 @@ export function App() {
   const [selectedRunId, setSelectedRunId] = useState("");
   const [resultsLoading, setResultsLoading] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [providerCatalog, setProviderCatalog] = useState<ProviderCatalog | null>(null);
+  const [integrationProfile, setIntegrationProfile] = useState<IntegrationProfile | null>(null);
+  const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
+  const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
+  const [knowledgeResults, setKnowledgeResults] = useState<KnowledgeSearchItem[]>([]);
+  const [memoryResults, setMemoryResults] = useState<MemorySearchItem[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(false);
+  const [includeExternalProviders, setIncludeExternalProviders] = useState(false);
+  const [intelligenceQuery, setIntelligenceQuery] = useState("banking transfer risk");
   const [executionAdapter, setExecutionAdapter] = useState("mock");
   const [executionEnv, setExecutionEnv] = useState("staging");
   const [executionBranch, setExecutionBranch] = useState("");
@@ -157,6 +184,11 @@ export function App() {
   const execution = context?.execution ?? null;
   const canReview = approval?.status === "pending_review";
   const selectedMockTicket = mockTickets.find((ticket) => ticket.id === selectedMockTicketId);
+  const executionAdapterOptions =
+    providerCatalog?.providers.filter((provider) => provider.kind === "execution_adapter" && provider.enabled) ?? [];
+  const selectedProviderNames = new Set(
+    providerCatalog?.selected.map((provider) => `${provider.kind}:${provider.selected}`) ?? []
+  );
 
   const validationCounts = useMemo(() => {
     const automation = Object.values(context?.automation ?? {});
@@ -185,6 +217,10 @@ export function App() {
     void refreshMockTickets();
     void refreshWorkflowQueue();
   }, []);
+
+  useEffect(() => {
+    void refreshProviderMetadata();
+  }, [includeExternalProviders]);
 
   useEffect(() => {
     if (!context || selectedTestId) return;
@@ -320,6 +356,32 @@ export function App() {
       setError(err instanceof Error ? err.message : "Execution logs failed to load");
     } finally {
       setLogsLoading(false);
+    }
+  }
+
+  async function refreshProviderMetadata(query = intelligenceQuery) {
+    const searchText = query.trim() || "banking transfer risk";
+    setProvidersLoading(true);
+    setError(null);
+    try {
+      const [catalog, profile, prompts, llms, knowledge, memory] = await Promise.all([
+        getProviderCatalog({ includeExternal: includeExternalProviders }),
+        getIntegrationProfile(),
+        listPromptTemplates(),
+        listLlmProviders(),
+        searchKnowledge(searchText, 3),
+        searchMemory(searchText, 3)
+      ]);
+      setProviderCatalog(catalog);
+      setIntegrationProfile(profile);
+      setPromptTemplates(prompts);
+      setLlmProviders(llms);
+      setKnowledgeResults(knowledge);
+      setMemoryResults(memory);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Provider metadata failed to load");
+    } finally {
+      setProvidersLoading(false);
     }
   }
 
@@ -712,6 +774,205 @@ export function App() {
           </div>
         </section>
 
+        <section className="panel providers-panel">
+          <div className="provider-header">
+            <div className="section-title">
+              <Plug aria-hidden="true" />
+              <h2>Providers</h2>
+            </div>
+            <div className="provider-controls">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={includeExternalProviders}
+                  onChange={(event) => setIncludeExternalProviders(event.target.checked)}
+                />
+                External
+              </label>
+              <button
+                className="icon-button"
+                onClick={() => void refreshProviderMetadata()}
+                disabled={providersLoading}
+                title="Refresh providers"
+              >
+                {providersLoading ? <Loader2 className="spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="provider-summary">
+            <div>
+              <span>Environment</span>
+              <strong>{providerCatalog?.environment ?? "local"}</strong>
+            </div>
+            <div>
+              <span>Policy</span>
+              <strong>{integrationProfile?.policy.replaceAll("_", " ") ?? "mock only"}</strong>
+            </div>
+            <div>
+              <span>Selected</span>
+              <strong>{providerCatalog?.selected.length ?? 0}</strong>
+            </div>
+            <div>
+              <span>Registered</span>
+              <strong>{providerCatalog?.providers.length ?? 0}</strong>
+            </div>
+            <div>
+              <span>External</span>
+              <strong>{providerCatalog?.external_connectors_enabled ? "on" : "off"}</strong>
+            </div>
+          </div>
+
+          <div className="provider-layout">
+            <div className="selected-provider-panel">
+              <h3>Selected</h3>
+              <div className="selected-provider-list">
+                {(providerCatalog?.selected ?? []).map((provider) => (
+                  <article className="selected-provider" key={`${provider.kind}-${provider.selected}`}>
+                    <span>{formatProviderKind(provider.kind)}</span>
+                    <strong>{provider.selected}</strong>
+                    <StatusPill value={provider.status} />
+                  </article>
+                ))}
+                {!providersLoading && !providerCatalog?.selected.length && (
+                  <p className="empty-state">No providers selected.</p>
+                )}
+              </div>
+              {integrationProfile && (
+                <dl className="profile-facts">
+                  <div>
+                    <dt>Ticket</dt>
+                    <dd>{integrationProfile.ticket_connector?.name ?? "None"}</dd>
+                  </div>
+                  <div>
+                    <dt>Execution</dt>
+                    <dd>{integrationProfile.execution_adapter?.name ?? "None"}</dd>
+                  </div>
+                  <div>
+                    <dt>LLM</dt>
+                    <dd>{integrationProfile.llm_provider?.name ?? "None"}</dd>
+                  </div>
+                  <div>
+                    <dt>Memory</dt>
+                    <dd>{integrationProfile.memory_store?.name ?? "None"}</dd>
+                  </div>
+                </dl>
+              )}
+            </div>
+
+            <div className="provider-catalog-panel">
+              <h3>Catalog</h3>
+              <div className="provider-catalog-list">
+                {(providerCatalog?.providers ?? []).map((provider) => (
+                  <article
+                    className={`provider-card ${provider.enabled ? "" : "disabled"} ${
+                      selectedProviderNames.has(`${provider.kind}:${provider.name}`) ? "selected" : ""
+                    }`}
+                    key={`${provider.kind}-${provider.name}`}
+                  >
+                    <div className="provider-card-head">
+                      <span>
+                        <strong>{provider.name}</strong>
+                        {formatProviderKind(provider.kind)}
+                      </span>
+                      <div className="provider-badges">
+                        <StatusPill value={provider.mode} />
+                        <StatusPill value={provider.enabled ? "ready" : "disabled"} />
+                      </div>
+                    </div>
+                    <p>{provider.description}</p>
+                    <em>{provider.config_key ?? "runtime"}</em>
+                  </article>
+                ))}
+                {providersLoading && <p className="empty-state">Loading providers.</p>}
+              </div>
+            </div>
+          </div>
+
+          <div className="intelligence-area">
+            <div className="intelligence-toolbar">
+              <div className="section-title">
+                <Brain aria-hidden="true" />
+                <h2>Intelligence</h2>
+              </div>
+              <div className="intelligence-search">
+                <label>
+                  Search
+                  <input
+                    value={intelligenceQuery}
+                    onChange={(event) => setIntelligenceQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void refreshProviderMetadata();
+                    }}
+                  />
+                </label>
+                <button
+                  className="icon-button"
+                  onClick={() => void refreshProviderMetadata()}
+                  disabled={providersLoading}
+                  title="Search intelligence stores"
+                >
+                  {providersLoading ? <Loader2 className="spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="intelligence-grid">
+              <div className="intelligence-column">
+                <h3>Prompts</h3>
+                {promptTemplates.map((prompt) => (
+                  <article className="intelligence-item" key={`${prompt.name}-${prompt.version}`}>
+                    <strong>{prompt.name}</strong>
+                    <span>{prompt.version}</span>
+                    <p>{prompt.description}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="intelligence-column">
+                <h3>LLM</h3>
+                {llmProviders.map((provider) => (
+                  <article className="intelligence-item" key={provider.name}>
+                    <strong>{provider.name}</strong>
+                    <span>{provider.model}</span>
+                    <p>{provider.description}</p>
+                  </article>
+                ))}
+                {context?.intelligence_trace && (
+                  <article className="intelligence-item trace">
+                    <strong>{context.intelligence_trace.llm_provider}</strong>
+                    <span>{context.intelligence_trace.llm_calls.length} calls</span>
+                    <p>
+                      {context.intelligence_trace.knowledge_refs.length} knowledge refs,
+                      {" "}
+                      {context.intelligence_trace.memory_refs.length} memory refs
+                    </p>
+                  </article>
+                )}
+              </div>
+              <div className="intelligence-column">
+                <h3>Knowledge</h3>
+                {knowledgeResults.map((result) => (
+                  <article className="intelligence-item" key={result.ref_id}>
+                    <strong>{result.title}</strong>
+                    <span>{result.source}</span>
+                    <p>{result.excerpt}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="intelligence-column">
+                <h3>Memory</h3>
+                {memoryResults.map((result) => (
+                  <article className="intelligence-item" key={result.ref_id}>
+                    <strong>{result.title}</strong>
+                    <span>{result.tags.join(", ") || result.ref_id}</span>
+                    <p>{result.summary}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="panel queue-panel">
           <div className="queue-header">
             <div className="section-title">
@@ -928,7 +1189,12 @@ export function App() {
               <label>
                 Adapter
                 <select value={executionAdapter} onChange={(event) => setExecutionAdapter(event.target.value)}>
-                  <option value="mock">Mock local</option>
+                  {executionAdapterOptions.length === 0 && <option value="mock">mock</option>}
+                  {executionAdapterOptions.map((provider) => (
+                    <option value={provider.name} key={provider.name}>
+                      {provider.name}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>

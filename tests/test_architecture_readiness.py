@@ -90,6 +90,20 @@ def test_milestone3_provider_catalog_is_local_and_swappable() -> None:
     assert selected[ProviderKind.EXECUTION_ADAPTER] == "mock"
 
 
+def test_api_orchestration_services_are_available() -> None:
+    from backend.services import executions, integrations, workflows
+
+    catalog = integrations.read_provider_catalog()
+    urls = executions.run_urls("exec-pytest")
+
+    assert callable(workflows.start_workflow)
+    assert callable(workflows.decide_workflow_approval)
+    assert callable(executions.queue_execution_run)
+    assert callable(integrations.read_integration_profile)
+    assert catalog["providers"]
+    assert urls["logs_url"] == "/api/v1/results/exec-pytest/logs"
+
+
 def test_integration_endpoints_expose_local_providers_only() -> None:
     client = TestClient(app)
 
