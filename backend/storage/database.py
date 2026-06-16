@@ -109,6 +109,27 @@ def initialize_database(db_path: Path = SQLITE_DB_PATH) -> Path:
                 ON execution_runs(status);
             CREATE INDEX IF NOT EXISTS idx_execution_runs_updated_at
                 ON execution_runs(updated_at DESC);
+
+            CREATE TABLE IF NOT EXISTS execution_events (
+                id TEXT PRIMARY KEY,
+                run_id TEXT NOT NULL,
+                context_id TEXT NOT NULL,
+                level TEXT NOT NULL,
+                phase TEXT NOT NULL,
+                status TEXT,
+                test_case_id TEXT,
+                message TEXT NOT NULL,
+                metadata_json TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_execution_events_run_id_created_at
+                ON execution_events(run_id, created_at ASC);
+            CREATE INDEX IF NOT EXISTS idx_execution_events_context_id
+                ON execution_events(context_id);
+            CREATE INDEX IF NOT EXISTS idx_execution_events_phase
+                ON execution_events(phase);
             """
         )
     return db_path

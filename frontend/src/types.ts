@@ -103,6 +103,26 @@ export type ExecutionRunRecord = {
   updated_at: string;
 };
 
+export type ExecutionEvent = {
+  id: string;
+  run_id: string;
+  context_id: string;
+  level: "debug" | "info" | "warning" | "error";
+  phase:
+    | "queued"
+    | "running"
+    | "case_started"
+    | "case_finished"
+    | "artifact"
+    | "completed"
+    | "blocked";
+  status: string | null;
+  test_case_id: string | null;
+  message: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
 export type ExecuteRunResponse = {
   run_id: string;
   context_id: string;
@@ -111,6 +131,7 @@ export type ExecuteRunResponse = {
   summary_url: string;
   junit_url: string;
   report_url: string;
+  logs_url: string;
   websocket_url: string | null;
 };
 

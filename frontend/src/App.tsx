@@ -22,6 +22,7 @@ import {
   executeSuite,
   getAutomationFile,
   getWorkflow,
+  listExecutionEvents,
   listExecutionRuns,
   listMockTickets,
   listWorkflows,
@@ -31,6 +32,7 @@ import {
 import type {
   ApprovalStatus,
   AutomationBlock,
+  ExecutionEvent,
   ExecutionRunRecord,
   TestCase,
   TestContext,
@@ -130,7 +132,10 @@ export function App() {
   const [approvalFilter, setApprovalFilter] = useState<ApprovalStatus | "all">("all");
   const [queueLoading, setQueueLoading] = useState(false);
   const [executionRuns, setExecutionRuns] = useState<ExecutionRunRecord[]>([]);
+  const [executionEvents, setExecutionEvents] = useState<ExecutionEvent[]>([]);
+  const [selectedRunId, setSelectedRunId] = useState("");
   const [resultsLoading, setResultsLoading] = useState(false);
+  const [logsLoading, setLogsLoading] = useState(false);
   const [executionEnv, setExecutionEnv] = useState("staging");
   const [executionBranch, setExecutionBranch] = useState("");
   const [executionTags, setExecutionTags] = useState("smoke, generated");
@@ -188,6 +193,8 @@ export function App() {
   useEffect(() => {
     if (!context) {
       setExecutionRuns([]);
+      setExecutionEvents([]);
+      setSelectedRunId("");
       return;
     }
     void refreshExecutionRuns(context.context_id);
@@ -272,6 +279,8 @@ export function App() {
   async function refreshExecutionRuns(contextId = context?.context_id) {
     if (!contextId) {
       setExecutionRuns([]);
+      setExecutionEvents([]);
+      setSelectedRunId("");
       return;
     }
     setResultsLoading(true);
@@ -279,10 +288,37 @@ export function App() {
     try {
       const rows = await listExecutionRuns({ contextId, limit: 25 });
       setExecutionRuns(rows);
+      const activeRunId =
+        selectedRunId && rows.some((run) => run.run_id === selectedRunId)
+          ? selectedRunId
+          : rows[0]?.run_id ?? "";
+      setSelectedRunId(activeRunId);
+      if (activeRunId) {
+        await refreshExecutionEvents(activeRunId);
+      } else {
+        setExecutionEvents([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Execution results failed to load");
     } finally {
       setResultsLoading(false);
+    }
+  }
+
+  async function refreshExecutionEvents(runId = selectedRunId) {
+    if (!runId) {
+      setExecutionEvents([]);
+      return;
+    }
+    setLogsLoading(true);
+    setError(null);
+    try {
+      setExecutionEvents(await listExecutionEvents(runId));
+      setSelectedRunId(runId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Execution logs failed to load");
+    } finally {
+      setLogsLoading(false);
     }
   }
 
@@ -309,9 +345,16 @@ export function App() {
 
       socket.onmessage = (event) => {
         try {
-          const payload = JSON.parse(event.data) as { run?: ExecutionRunRecord };
+          const payload = JSON.parse(event.data) as {
+            run?: ExecutionRunRecord;
+            events?: ExecutionEvent[];
+          };
           if (!payload.run || payload.run.run_id !== runId) return;
           setExecutionRuns((current) => upsertExecutionRun(current, payload.run as ExecutionRunRecord));
+          setSelectedRunId(payload.run.run_id);
+          if (payload.events) {
+            setExecutionEvents(payload.events);
+          }
           if (isFinalRunStatus(payload.run.status)) {
             finish(true);
           }
@@ -457,6 +500,7 @@ export function App() {
         tags: splitLabels(executionTags),
         actor: reviewer
       });
+      setSelectedRunId(run.run_id);
       await refreshExecutionRuns(run.context_id);
       await waitForExecutionRun(run.run_id, run.context_id, run.websocket_url);
       void refreshWorkflowQueue();
@@ -927,7 +971,10 @@ export function App() {
                     const summary = run.execution?.summary;
                     const statusUrl = `/api/v1/results/${encodeURIComponent(run.run_id)}`;
                     return (
-                      <article className="run-row" key={run.run_id}>
+                      <article
+                        className={`run-row ${selectedRunId === run.run_id ? "active" : ""}`}
+                        key={run.run_id}
+                      >
                         <div className="run-main">
                           <StatusPill value={run.status} />
                           <span>
@@ -941,6 +988,9 @@ export function App() {
                           <span>{summary ? `${summary.passed}/${summary.total} passed` : "No summary"}</span>
                         </div>
                         <div className="artifact-links">
+                          <button type="button" onClick={() => void refreshExecutionEvents(run.run_id)}>
+                            Logs
+                          </button>
                           <a href={statusUrl} target="_blank" rel="noreferrer">
                             JSON
                             <ExternalLink aria-hidden="true" />
@@ -967,6 +1017,34 @@ export function App() {
                   {resultsLoading && (
                     <p className="empty-state">Loading execution runs.</p>
                   )}
+                </div>
+              </div>
+
+              <div className="execution-log-panel">
+                <div className="log-header">
+                  <h3>Live logs</h3>
+                  <button
+                    className="icon-button"
+                    onClick={() => void refreshExecutionEvents()}
+                    disabled={logsLoading || !selectedRunId}
+                    title="Refresh execution logs"
+                  >
+                    {logsLoading ? <Loader2 className="spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
+                  </button>
+                </div>
+                <div className="execution-log-list">
+                  {executionEvents.map((event) => (
+                    <article className={`execution-log ${event.level}`} key={event.id}>
+                      <span>{formatDate(event.created_at)}</span>
+                      <strong>{event.phase.replaceAll("_", " ")}</strong>
+                      <em>{event.test_case_id ?? event.status ?? event.level}</em>
+                      <p>{event.message}</p>
+                    </article>
+                  ))}
+                  {!logsLoading && executionEvents.length === 0 && (
+                    <p className="empty-state">No execution logs yet.</p>
+                  )}
+                  {logsLoading && <p className="empty-state">Loading execution logs.</p>}
                 </div>
               </div>
             </div>

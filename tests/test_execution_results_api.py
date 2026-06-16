@@ -46,11 +46,13 @@ def test_ci_execute_endpoint_persists_results_and_artifacts() -> None:
     assert body["summary_url"] == f"/api/v1/results/{run_id}/summary.json"
     assert body["junit_url"] == f"/api/v1/results/{run_id}/junit.xml"
     assert body["report_url"] == f"/api/v1/results/{run_id}/report.html"
+    assert body["logs_url"] == f"/api/v1/results/{run_id}/logs"
     assert body["websocket_url"] == f"/api/v1/ws/exec/{run_id}"
 
     result_response = client.get(body["status_url"])
     assert result_response.status_code == 200
     result_body = result_response.json()
+    assert result_body["logs_url"] == f"/api/v1/results/{run_id}/logs"
     assert result_body["websocket_url"] == f"/api/v1/ws/exec/{run_id}"
     run = result_body["run"]
     assert run["run_id"] == run_id
@@ -71,6 +73,18 @@ def test_ci_execute_endpoint_persists_results_and_artifacts() -> None:
     summary_response = client.get(body["summary_url"])
     assert summary_response.status_code == 200
     assert summary_response.json()["run"]["run_id"] == run_id
+
+    logs_response = client.get(body["logs_url"])
+    assert logs_response.status_code == 200
+    events = logs_response.json()["events"]
+    assert [event["phase"] for event in events[:2]] == ["queued", "running"]
+    assert events[-1]["phase"] == "completed"
+    assert events[-1]["status"] == "failed"
+    assert {event["test_case_id"] for event in events if event["test_case_id"]} >= {
+        "TC001",
+        "TC002",
+        "TC003",
+    }
 
     junit_response = client.get(body["junit_url"])
     assert junit_response.status_code == 200
@@ -134,6 +148,9 @@ def test_execution_websocket_streams_run_status() -> None:
 
     assert payload["run"]["run_id"] == execute_response.json()["run_id"]
     assert payload["run"]["status"] == "failed"
+    assert payload["events"][-1]["phase"] == "completed"
+    assert payload["events"][-1]["status"] == "failed"
+    assert payload["logs_url"].endswith("/logs")
     assert payload["websocket_url"] == websocket_url
 
 

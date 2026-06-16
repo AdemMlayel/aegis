@@ -17,6 +17,10 @@ from backend.graph.state import (
 from backend.storage.audit import append_audit_event, list_audit_events
 from backend.storage.contexts import list_contexts, load_context, save_context
 from backend.storage.database import SQLITE_DB_PATH, initialize_database
+from backend.storage.execution_events import (
+    append_execution_event,
+    list_execution_events,
+)
 
 
 def _workflow_context(ticket_id: str) -> WorkflowContext:
@@ -147,3 +151,45 @@ def test_audit_events_are_persisted_to_sqlite() -> None:
         ).fetchone()
 
     assert row == (context_id, "pytest", event_type, "SQLite audit event.")
+
+
+def test_execution_events_are_persisted_to_sqlite() -> None:
+    initialize_database()
+    run_id = f"exec-{uuid4()}"
+    context_id = f"CTX-{uuid4().hex[:8]}"
+
+    event = append_execution_event(
+        run_id=run_id,
+        context_id=context_id,
+        phase="case_finished",
+        status="failed",
+        test_case_id="TC002",
+        message="Negative case failed.",
+        level="error",
+        metadata={"duration_ms": 1234},
+    )
+
+    events = list_execution_events(run_id=run_id)
+
+    assert events == [event]
+    assert events[0].metadata == {"duration_ms": 1234}
+
+    with sqlite3.connect(SQLITE_DB_PATH) as connection:
+        row = connection.execute(
+            """
+            SELECT run_id, context_id, level, phase, status, test_case_id, message
+            FROM execution_events
+            WHERE id = ?
+            """,
+            (event.id,),
+        ).fetchone()
+
+    assert row == (
+        run_id,
+        context_id,
+        "error",
+        "case_finished",
+        "failed",
+        "TC002",
+        "Negative case failed.",
+    )

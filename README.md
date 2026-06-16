@@ -18,7 +18,7 @@ real execution adapter.
 - Minimal `.robot` files written to `generated/robot/<ticket-id>/`.
 - Robot Framework dry-run validation in a dedicated validator node.
 - Mock execution results saved on workflow contexts.
-- SQLite-backed queued CI execution runs with JSON, JUnit XML, and HTML result views.
+- SQLite-backed queued CI execution runs with event logs, JSON, JUnit XML, and HTML result views.
 - Pending-review approval state with approve/request-changes decisions.
 - Automatic regeneration after `request_changes`, including reviewer feedback in regenerated Robot files.
 - SQLite-backed workflow context persistence under `generated/storage/aegisqa.sqlite3`.
@@ -41,11 +41,12 @@ real execution adapter.
 - FastAPI endpoint: `GET /api/v1/results`.
 - FastAPI endpoint: `GET /api/v1/results/{run_id}`.
 - FastAPI endpoint: `GET /api/v1/results/{run_id}/summary.json`.
+- FastAPI endpoint: `GET /api/v1/results/{run_id}/logs`.
 - FastAPI endpoint: `GET /api/v1/results/{run_id}/junit.xml`.
 - FastAPI endpoint: `GET /api/v1/results/{run_id}/report.html`.
 - FastAPI websocket: `/api/v1/ws/exec/{run_id}`.
 - FastAPI endpoint: `GET /api/v1/automation/files/{ticket_id}/{file_name}`.
-- React review dashboard under `frontend/`, including workflow queue and execution result history.
+- React review dashboard under `frontend/`, including workflow queue, execution result history, and live run logs.
 - Unit tests for workflow state flow, architecture boundaries, persistence, and API endpoints.
 
 ## Run Tests
@@ -159,6 +160,7 @@ Inspect saved execution results:
 ```http
 GET http://127.0.0.1:8000/api/v1/results/{run_id}
 GET http://127.0.0.1:8000/api/v1/results/{run_id}/summary.json
+GET http://127.0.0.1:8000/api/v1/results/{run_id}/logs
 GET http://127.0.0.1:8000/api/v1/results/{run_id}/junit.xml
 GET http://127.0.0.1:8000/api/v1/results/{run_id}/report.html
 ```

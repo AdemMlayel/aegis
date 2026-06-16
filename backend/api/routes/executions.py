@@ -20,6 +20,11 @@ from backend.graph.execution import run_mock_execution
 from backend.graph.state import ExecutionBlock, TestContext, utc_now
 from backend.storage.audit import append_audit_event
 from backend.storage.contexts import list_contexts, load_context, save_context
+from backend.storage.execution_events import (
+    ExecutionEvent,
+    append_execution_event,
+    list_execution_events,
+)
 from backend.storage.execution_runs import (
     ExecutionRunRecord,
     ExecutionRunRequest,
@@ -43,6 +48,7 @@ class ExecuteRunResponse(BaseModel):
     summary_url: str
     junit_url: str
     report_url: str
+    logs_url: str
     websocket_url: str | None = None
 
 
@@ -52,11 +58,16 @@ class ExecutionRunDetailResponse(BaseModel):
     summary_url: str
     junit_url: str
     report_url: str
+    logs_url: str
     websocket_url: str | None = None
 
 
 class ExecutionRunListResponse(BaseModel):
     runs: list[ExecutionRunRecord]
+
+
+class ExecutionEventListResponse(BaseModel):
+    events: list[ExecutionEvent]
 
 
 def _run_urls(run_id: str) -> dict[str, str]:
@@ -65,6 +76,7 @@ def _run_urls(run_id: str) -> dict[str, str]:
         "summary_url": f"/api/v1/results/{run_id}/summary.json",
         "junit_url": f"/api/v1/results/{run_id}/junit.xml",
         "report_url": f"/api/v1/results/{run_id}/report.html",
+        "logs_url": f"/api/v1/results/{run_id}/logs",
         "websocket_url": f"/api/v1/ws/exec/{run_id}",
     }
 
@@ -102,6 +114,19 @@ def execute_suite(
         request=request,
         status="queued",
     )
+    append_execution_event(
+        run_id=record.run_id,
+        context_id=context.context_id,
+        phase="queued",
+        status=record.status,
+        message="Execution run was queued.",
+        metadata={
+            "suite": request.suite,
+            "env": request.env,
+            "branch": request.branch,
+            "tags": request.tags,
+        },
+    )
     background_tasks.add_task(process_execution_run, record.run_id)
 
     return ExecuteRunResponse(
@@ -120,12 +145,33 @@ def process_execution_run(run_id: str) -> None:
     record.status = "running"
     record.updated_at = utc_now()
     save_execution_run(record)
+    append_execution_event(
+        run_id=record.run_id,
+        context_id=record.context_id,
+        phase="running",
+        status=record.status,
+        message="Execution worker started.",
+        metadata={
+            "suite": record.request.suite,
+            "env": record.request.env,
+            "branch": record.request.branch,
+            "tags": record.request.tags,
+        },
+    )
 
     context = load_context(record.context_id)
     if context is None:
         record.status = "blocked"
         record.updated_at = utc_now()
         save_execution_run(record)
+        append_execution_event(
+            run_id=record.run_id,
+            context_id=record.context_id,
+            phase="blocked",
+            level="error",
+            status=record.status,
+            message="Workflow context was not found.",
+        )
         append_audit_event(
             actor=record.request.actor,
             event_type="execution_completed",
@@ -149,6 +195,15 @@ def process_execution_run(run_id: str) -> None:
         record.status = "blocked"
         record.updated_at = utc_now()
         save_execution_run(record)
+        append_execution_event(
+            run_id=record.run_id,
+            context_id=context.context_id,
+            phase="blocked",
+            level="error",
+            status=record.status,
+            message=str(exc),
+            metadata={"ticket_id": context.ticket.id if context.ticket else None},
+        )
         append_audit_event(
             actor=record.request.actor,
             event_type="execution_completed",
@@ -171,11 +226,61 @@ def process_execution_run(run_id: str) -> None:
     if execution is None:
         record.status = "blocked"
     else:
+        for result in execution.results:
+            append_execution_event(
+                run_id=record.run_id,
+                context_id=context.context_id,
+                phase="case_started",
+                status="running",
+                test_case_id=result.test_case_id,
+                message=f"Started {result.title}.",
+                metadata={"robot_file": result.robot_file},
+            )
+            append_execution_event(
+                run_id=record.run_id,
+                context_id=context.context_id,
+                phase="case_finished",
+                level="error" if result.status == "failed" else "info",
+                status=result.status,
+                test_case_id=result.test_case_id,
+                message=result.message,
+                metadata={
+                    "title": result.title,
+                    "duration_ms": result.duration_ms,
+                    "robot_file": result.robot_file,
+                    "logs": result.logs,
+                },
+            )
         record.status = execution.status
         record.execution = execution
         record.junit_xml = render_junit_xml(record.run_id, execution)
     record.updated_at = utc_now()
     save_execution_run(record)
+    if record.junit_xml:
+        append_execution_event(
+            run_id=record.run_id,
+            context_id=context.context_id,
+            phase="artifact",
+            status=record.status,
+            message="JUnit and HTML execution artifacts are available.",
+            metadata={
+                "junit_url": _run_urls(record.run_id)["junit_url"],
+                "report_url": _run_urls(record.run_id)["report_url"],
+            },
+        )
+    append_execution_event(
+        run_id=record.run_id,
+        context_id=context.context_id,
+        phase="completed" if record.status != "blocked" else "blocked",
+        level="error" if record.status in {"failed", "blocked"} else "info",
+        status=record.status,
+        message=f"Execution run finished with status {record.status}.",
+        metadata={
+            "passed": execution.summary.passed if execution else 0,
+            "failed": execution.summary.failed if execution else 0,
+            "skipped": execution.summary.skipped if execution else 0,
+        },
+    )
 
     append_audit_event(
         actor=record.request.actor,
@@ -250,10 +355,22 @@ def get_result_report(run_id: str) -> Response:
     )
 
 
+@router.get("/results/{run_id}/logs", response_model=ExecutionEventListResponse)
+def get_result_logs(
+    run_id: str,
+    limit: int = Query(default=200, ge=1, le=1000),
+) -> ExecutionEventListResponse:
+    _load_run_or_404(run_id)
+    return ExecutionEventListResponse(
+        events=list_execution_events(run_id=run_id, limit=limit)
+    )
+
+
 @router.websocket("/ws/exec/{run_id}")
 async def stream_execution_run(websocket: WebSocket, run_id: str) -> None:
     await websocket.accept()
     last_status: str | None = None
+    last_event_count = -1
     try:
         for _ in range(120):
             record = load_execution_run(run_id)
@@ -268,9 +385,16 @@ async def stream_execution_run(websocket: WebSocket, run_id: str) -> None:
                 await websocket.close(code=1008)
                 return
 
-            if record.status != last_status or record.status in FINAL_EXECUTION_STATUSES:
-                await websocket.send_json(_run_stream_payload(record))
+            events = list_execution_events(run_id=run_id, limit=200)
+            event_count = len(events)
+            if (
+                record.status != last_status
+                or event_count != last_event_count
+                or record.status in FINAL_EXECUTION_STATUSES
+            ):
+                await websocket.send_json(_run_stream_payload(record, events))
                 last_status = record.status
+                last_event_count = event_count
 
             if record.status in FINAL_EXECUTION_STATUSES:
                 await websocket.close(code=1000)
@@ -293,9 +417,13 @@ def _load_run_or_404(run_id: str) -> ExecutionRunRecord:
     return record
 
 
-def _run_stream_payload(record: ExecutionRunRecord) -> dict[str, object]:
+def _run_stream_payload(
+    record: ExecutionRunRecord,
+    events: list[ExecutionEvent] | None = None,
+) -> dict[str, object]:
     return {
         "run": record.model_dump(mode="json"),
+        "events": [event.model_dump(mode="json") for event in (events or [])],
         **_run_urls(record.run_id),
     }
 

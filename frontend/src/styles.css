@@ -682,12 +682,14 @@ select:focus {
 }
 
 .execution-current,
-.run-history {
+.run-history,
+.execution-log-panel {
   min-width: 0;
 }
 
 .execution-current h3,
-.run-history h3 {
+.run-history h3,
+.execution-log-panel h3 {
   margin: 0 0 10px;
   color: #41556b;
   font-size: 13px;
@@ -784,6 +786,11 @@ select:focus {
   gap: 10px;
 }
 
+.run-row.active {
+  border-color: #168270;
+  background: #effaf7;
+}
+
 .run-main {
   display: grid;
   grid-template-columns: 92px minmax(0, 1fr);
@@ -829,7 +836,8 @@ select:focus {
   gap: 8px;
 }
 
-.artifact-links a {
+.artifact-links a,
+.artifact-links button {
   min-height: 30px;
   border: 1px solid #dbe4ee;
   border-radius: 6px;
@@ -844,9 +852,85 @@ select:focus {
   text-decoration: none;
 }
 
+.artifact-links button {
+  cursor: pointer;
+}
+
 .artifact-links svg {
   width: 14px;
   height: 14px;
+}
+
+.execution-log-panel {
+  grid-column: 1 / -1;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.log-header h3 {
+  margin-bottom: 0;
+}
+
+.execution-log-list {
+  border: 1px solid #1c2b3a;
+  border-radius: 8px;
+  background: #101820;
+  color: #dbeafe;
+  display: grid;
+  gap: 1px;
+  max-height: 300px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.execution-log {
+  min-height: 44px;
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: 96px 130px 90px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+}
+
+.execution-log:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.execution-log span,
+.execution-log em {
+  color: #9fb3c8;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.execution-log strong {
+  color: #f0f7ff;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.execution-log p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.execution-log.error p,
+.execution-log.error strong {
+  color: #ffb4b8;
+}
+
+.execution-log.warning p,
+.execution-log.warning strong {
+  color: #ffe08a;
 }
 
 .audit-panel .scroll-area {
@@ -933,6 +1017,7 @@ select:focus {
   .execution-config,
   .execution-layout,
   .execution-result,
+  .execution-log,
   .run-main,
   .run-meta,
   .audit-panel .scroll-area,

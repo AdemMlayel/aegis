@@ -1,6 +1,7 @@
 import type {
   ApprovalStatus,
   ExecuteRunResponse,
+  ExecutionEvent,
   ExecutionRunRecord,
   ExecutionRunRequest,
   ExecutionRunStatus,
@@ -122,6 +123,15 @@ export async function listExecutionRuns(payload: {
   const response = await fetch(`${API_ROOT}/results${suffix ? `?${suffix}` : ""}`);
   const body = await parseResponse<{ runs: ExecutionRunRecord[] }>(response);
   return body.runs;
+}
+
+export async function listExecutionEvents(runId: string, limit = 200): Promise<ExecutionEvent[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const response = await fetch(
+    `${API_ROOT}/results/${encodeURIComponent(runId)}/logs?${params.toString()}`
+  );
+  const body = await parseResponse<{ events: ExecutionEvent[] }>(response);
+  return body.events;
 }
 
 export async function decideApproval(payload: {
