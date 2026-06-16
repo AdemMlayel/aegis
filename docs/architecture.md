@@ -26,8 +26,8 @@ The registry boundary lives in `backend/agents/base.py`,
 `backend/skills/base.py`, and `backend/tools/base.py`. It provides decorator
 registration, metadata listing, duplicate protection, and instance creation.
 Requirement analysis, coverage planning, test-case generation, test data
-resolution, automation generation, validation, and human approval are the first
-migrated slices:
+resolution, automation generation, validation, human approval, and reporting are
+the first migrated slices:
 
 - `RequirementAgent -> AnalyzeRequirementSkill -> LocalRequirementHeuristicTool`
 - `CoveragePlannerAgent -> PlanCoverageSkill -> LocalCoverageHeuristicTool`
@@ -36,6 +36,7 @@ migrated slices:
 - `AutomationGeneratorAgent -> GenerateAutomationSkill -> LocalRobotAutomationTool`
 - `ValidatorAgent -> ValidateAutomationSkill -> LocalRobotValidationTool`
 - `HumanApprovalAgent -> RequestHumanApprovalSkill -> LocalHumanApprovalPolicyTool`
+- `ReportGeneratorAgent -> GenerateReportSkill -> LocalReportGenerationTool`
 
 The automation milestone writes minimal Robot Framework files under
 `generated/robot/<ticket-id>/`. The validator node runs `robot --dryrun`,
@@ -56,11 +57,10 @@ workflow starts, and generated-file reads are also written to
 
 ## Next Boundary
 
-The next useful boundary is migrating deterministic graph-node logic behind
-the new Agent/Skill/Tool contracts:
+The executable workflow now routes its deterministic business nodes through the
+Agent/Skill/Tool contracts. The next useful boundary is deciding which
+integration surfaces should become connector-backed tools:
 
-- Move each current node implementation behind an agent class.
-- Introduce reusable skills for reporting.
 - Keep tools stateless and isolated before adding real Jira/Azure, database,
   filesystem, Robot, Vault, and LLM integrations.
 - Move file-backed context/audit storage to a database.

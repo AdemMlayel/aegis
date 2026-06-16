@@ -8,6 +8,7 @@ from backend.skills.base import (
 from backend.skills.automation import GenerateAutomationSkill
 from backend.skills.coverage import PlanCoverageSkill
 from backend.skills.human_approval import RequestHumanApprovalSkill
+from backend.skills.reporting import GenerateReportSkill
 from backend.skills.requirement import AnalyzeRequirementSkill
 from backend.skills.test_data import ResolveTestDataSkill
 from backend.skills.test_generation import GenerateTestCasesSkill
@@ -17,6 +18,7 @@ __all__ = [
     "AnalyzeRequirementSkill",
     "BaseSkill",
     "GenerateAutomationSkill",
+    "GenerateReportSkill",
     "GenerateTestCasesSkill",
     "PlanCoverageSkill",
     "RequestHumanApprovalSkill",
