@@ -8,12 +8,14 @@ from backend.tools.base import (
 from backend.tools.coverage_heuristics import LocalCoverageHeuristicTool
 from backend.tools.requirement_heuristics import LocalRequirementHeuristicTool
 from backend.tools.test_case_heuristics import LocalTestCaseHeuristicTool
+from backend.tools.test_data_heuristics import LocalTestDataHeuristicTool
 
 __all__ = [
     "BaseTool",
     "LocalCoverageHeuristicTool",
     "LocalRequirementHeuristicTool",
     "LocalTestCaseHeuristicTool",
+    "LocalTestDataHeuristicTool",
     "ToolRegistrationError",
     "ToolRegistry",
     "ToolSpec",

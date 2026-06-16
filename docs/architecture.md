@@ -25,11 +25,13 @@ evidence-based reporting.
 The registry boundary lives in `backend/agents/base.py`,
 `backend/skills/base.py`, and `backend/tools/base.py`. It provides decorator
 registration, metadata listing, duplicate protection, and instance creation.
-Requirement analysis, coverage planning, and test-case generation are the first
-migrated slices:
-`RequirementAgent -> AnalyzeRequirementSkill -> LocalRequirementHeuristicTool`
-`CoveragePlannerAgent -> PlanCoverageSkill -> LocalCoverageHeuristicTool`, and
-`TestCaseGeneratorAgent -> GenerateTestCasesSkill -> LocalTestCaseHeuristicTool`.
+Requirement analysis, coverage planning, test-case generation, and test data
+resolution are the first migrated slices:
+
+- `RequirementAgent -> AnalyzeRequirementSkill -> LocalRequirementHeuristicTool`
+- `CoveragePlannerAgent -> PlanCoverageSkill -> LocalCoverageHeuristicTool`
+- `TestCaseGeneratorAgent -> GenerateTestCasesSkill -> LocalTestCaseHeuristicTool`
+- `TestDataResolverAgent -> ResolveTestDataSkill -> LocalTestDataHeuristicTool`
 
 The automation milestone writes minimal Robot Framework files under
 `generated/robot/<ticket-id>/`. The validator node runs `robot --dryrun`,
