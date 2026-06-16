@@ -5,6 +5,7 @@ from backend.agents.base import (
     BaseAgent,
     agent_registry,
 )
+from backend.agents.automation_generator import AutomationGeneratorAgent
 from backend.agents.coverage_planner import CoveragePlannerAgent
 from backend.agents.requirement_agent import RequirementAgent
 from backend.agents.test_case_generator import TestCaseGeneratorAgent
@@ -14,6 +15,7 @@ __all__ = [
     "AgentRegistrationError",
     "AgentRegistry",
     "AgentSpec",
+    "AutomationGeneratorAgent",
     "BaseAgent",
     "CoveragePlannerAgent",
     "RequirementAgent",
