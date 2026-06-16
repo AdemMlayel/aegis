@@ -30,6 +30,7 @@ def test_ci_execute_endpoint_persists_results_and_artifacts() -> None:
         "/api/v1/execute",
         json={
             "suite": ticket_id,
+            "adapter": "mock",
             "branch": "feature/ci-boundary",
             "env": "staging",
             "tags": ["smoke", "generated"],
@@ -60,6 +61,7 @@ def test_ci_execute_endpoint_persists_results_and_artifacts() -> None:
     assert run["status"] == "failed"
     assert run["request"] == {
         "suite": ticket_id,
+        "adapter": "mock",
         "branch": "feature/ci-boundary",
         "env": "staging",
         "tags": ["smoke", "generated"],
@@ -167,6 +169,40 @@ def test_ci_execute_endpoint_returns_404_for_unknown_suite() -> None:
     )
 
     assert response.status_code == 404
+
+
+def test_ci_execute_endpoint_rejects_unknown_adapter() -> None:
+    client = TestClient(app)
+    ticket_id = f"CI-ADAPTER-{uuid4().hex[:8]}"
+
+    start_response = client.post(
+        "/api/v1/workflows/start",
+        json={
+            "created_by": "pytest",
+            "ticket": {
+                "id": ticket_id,
+                "title": "Unknown Adapter Boundary",
+                "description": "As a QA lead, I want invalid adapters rejected.",
+                "acceptance_criteria": ["Unknown adapters fail before queueing"],
+                "priority": "medium",
+                "labels": ["ci", "adapter"],
+            },
+        },
+    )
+    assert start_response.status_code == 202
+
+    response = client.post(
+        "/api/v1/execute",
+        json={
+            "suite": ticket_id,
+            "adapter": "missing-adapter",
+            "env": "staging",
+            "actor": "ci_runner",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "missing-adapter" in response.json()["detail"]
 
 
 def test_result_artifacts_return_404_for_unknown_run() -> None:

@@ -23,6 +23,7 @@ ExecutionRunStatus = Literal[
 
 class ExecutionRunRequest(StrictModel):
     suite: str = Field(min_length=1)
+    adapter: str = Field(default="mock", min_length=1)
     branch: str | None = None
     env: str = Field(default="staging", min_length=1)
     tags: list[str] = Field(default_factory=list)

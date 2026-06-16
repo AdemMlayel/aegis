@@ -136,6 +136,7 @@ export function App() {
   const [selectedRunId, setSelectedRunId] = useState("");
   const [resultsLoading, setResultsLoading] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [executionAdapter, setExecutionAdapter] = useState("mock");
   const [executionEnv, setExecutionEnv] = useState("staging");
   const [executionBranch, setExecutionBranch] = useState("");
   const [executionTags, setExecutionTags] = useState("smoke, generated");
@@ -495,6 +496,7 @@ export function App() {
     try {
       const run = await executeSuite({
         suite: context.context_id,
+        adapter: executionAdapter,
         branch: executionBranch.trim() || null,
         env: executionEnv.trim() || "staging",
         tags: splitLabels(executionTags),
@@ -924,6 +926,12 @@ export function App() {
 
             <div className="execution-config">
               <label>
+                Adapter
+                <select value={executionAdapter} onChange={(event) => setExecutionAdapter(event.target.value)}>
+                  <option value="mock">Mock local</option>
+                </select>
+              </label>
+              <label>
                 Env
                 <input value={executionEnv} onChange={(event) => setExecutionEnv(event.target.value)} />
               </label>
@@ -983,6 +991,7 @@ export function App() {
                           </span>
                         </div>
                         <div className="run-meta">
+                          <span>{run.request.adapter}</span>
                           <span>{run.request.env}</span>
                           <span>{run.request.branch || "No branch"}</span>
                           <span>{summary ? `${summary.passed}/${summary.total} passed` : "No summary"}</span>

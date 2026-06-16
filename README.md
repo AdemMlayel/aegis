@@ -11,6 +11,7 @@ real execution adapter.
 
 - Typed `TestContext` and related Pydantic models.
 - Base Agent, Skill, and Tool registries for the blueprint runtime boundary.
+- Base Execution Adapter registry with the deterministic `mock` adapter registered.
 - SQLite-backed mock ticket database seeded from `backend/mock_data/tickets.json`.
 - Stub workflow nodes:
   `load_ticket -> requirement_agent -> coverage_planner -> test_case_generator -> test_data_resolver -> automation_generator -> validator -> human_approval -> report_generator`.
@@ -144,6 +145,7 @@ Content-Type: application/json
 
 {
   "suite": "MOCK-101",
+  "adapter": "mock",
   "branch": "feature/generated-tests",
   "env": "staging",
   "tags": ["smoke", "generated"],

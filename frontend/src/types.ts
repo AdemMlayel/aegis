@@ -86,6 +86,7 @@ export type ExecutionBlock = {
 
 export type ExecutionRunRequest = {
   suite: string;
+  adapter: string;
   branch?: string | null;
   env: string;
   tags: string[];

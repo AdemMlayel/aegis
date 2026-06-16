@@ -659,7 +659,7 @@ select:focus {
 
 .execution-config {
   display: grid;
-  grid-template-columns: minmax(120px, 0.75fr) minmax(180px, 1fr) minmax(180px, 1fr) 118px;
+  grid-template-columns: minmax(120px, 0.72fr) minmax(120px, 0.72fr) minmax(170px, 1fr) minmax(170px, 1fr) 118px;
   gap: 10px;
   align-items: end;
   margin-bottom: 14px;
@@ -815,7 +815,7 @@ select:focus {
 
 .run-meta {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 

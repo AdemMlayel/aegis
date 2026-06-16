@@ -16,7 +16,7 @@ from fastapi import (
 )
 from pydantic import BaseModel
 
-from backend.graph.execution import run_mock_execution
+from backend.execution import execution_adapter_registry
 from backend.graph.state import ExecutionBlock, TestContext, utc_now
 from backend.storage.audit import append_audit_event
 from backend.storage.contexts import list_contexts, load_context, save_context
@@ -102,6 +102,12 @@ def execute_suite(
     request: ExecutionRunRequest,
     background_tasks: BackgroundTasks,
 ) -> ExecuteRunResponse:
+    if not execution_adapter_registry.has(request.adapter):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Execution adapter '{request.adapter}' is not registered",
+        )
+
     context = _load_context_for_suite(request.suite)
     if context is None:
         raise HTTPException(
@@ -122,6 +128,7 @@ def execute_suite(
         message="Execution run was queued.",
         metadata={
             "suite": request.suite,
+            "adapter": request.adapter,
             "env": request.env,
             "branch": request.branch,
             "tags": request.tags,
@@ -153,6 +160,7 @@ def process_execution_run(run_id: str) -> None:
         message="Execution worker started.",
         metadata={
             "suite": record.request.suite,
+            "adapter": record.request.adapter,
             "env": record.request.env,
             "branch": record.request.branch,
             "tags": record.request.tags,
@@ -180,6 +188,7 @@ def process_execution_run(run_id: str) -> None:
                 "run_id": record.run_id,
                 "context_id": record.context_id,
                 "suite": record.request.suite,
+                "adapter": record.request.adapter,
                 "env": record.request.env,
                 "branch": record.request.branch,
                 "tags": record.request.tags,
@@ -190,7 +199,14 @@ def process_execution_run(run_id: str) -> None:
         return
 
     try:
-        context = run_mock_execution(context, actor=record.request.actor)
+        adapter = execution_adapter_registry.create(record.request.adapter)
+        context = adapter.execute(
+            context,
+            actor=record.request.actor,
+            env=record.request.env,
+            branch=record.request.branch,
+            tags=record.request.tags,
+        )
     except ValueError as exc:
         record.status = "blocked"
         record.updated_at = utc_now()
@@ -202,7 +218,10 @@ def process_execution_run(run_id: str) -> None:
             level="error",
             status=record.status,
             message=str(exc),
-            metadata={"ticket_id": context.ticket.id if context.ticket else None},
+            metadata={
+                "adapter": record.request.adapter,
+                "ticket_id": context.ticket.id if context.ticket else None,
+            },
         )
         append_audit_event(
             actor=record.request.actor,
@@ -213,6 +232,7 @@ def process_execution_run(run_id: str) -> None:
                 "context_id": context.context_id,
                 "ticket_id": context.ticket.id if context.ticket else None,
                 "suite": record.request.suite,
+                "adapter": record.request.adapter,
                 "env": record.request.env,
                 "branch": record.request.branch,
                 "tags": record.request.tags,
@@ -291,6 +311,7 @@ def process_execution_run(run_id: str) -> None:
             "context_id": context.context_id,
             "ticket_id": context.ticket.id if context.ticket else None,
             "suite": record.request.suite,
+            "adapter": record.request.adapter,
             "env": record.request.env,
             "branch": record.request.branch,
             "tags": record.request.tags,
@@ -502,7 +523,7 @@ def render_html_report(record: ExecutionRunRecord) -> str:
 <body>
   <h1>AegisQA Execution {html_escape(record.run_id)}</h1>
   <p>Status: {html_escape(record.status)}</p>
-  <p>Suite: {html_escape(record.request.suite)} | Env: {html_escape(record.request.env)}</p>
+  <p>Suite: {html_escape(record.request.suite)} | Adapter: {html_escape(record.request.adapter)} | Env: {html_escape(record.request.env)}</p>
   <table>
     <thead>
       <tr><th>Case</th><th>Title</th><th>Status</th><th>Duration ms</th><th>Message</th></tr>
