@@ -1,4 +1,14 @@
-import type { ApprovalStatus, TestContext, TicketData, TicketStatus, WorkflowSummary } from "./types";
+import type {
+  ApprovalStatus,
+  ExecuteRunResponse,
+  ExecutionRunRecord,
+  ExecutionRunRequest,
+  ExecutionRunStatus,
+  TestContext,
+  TicketData,
+  TicketStatus,
+  WorkflowSummary
+} from "./types";
 
 const API_ROOT = "/api/v1";
 
@@ -88,6 +98,30 @@ export async function executeWorkflow(payload: {
   });
   const body = await parseResponse<{ context: TestContext }>(response);
   return body.context;
+}
+
+export async function executeSuite(payload: ExecutionRunRequest): Promise<ExecuteRunResponse> {
+  const response = await fetch(`${API_ROOT}/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  return parseResponse<ExecuteRunResponse>(response);
+}
+
+export async function listExecutionRuns(payload: {
+  contextId?: string;
+  status?: ExecutionRunStatus;
+  limit?: number;
+} = {}): Promise<ExecutionRunRecord[]> {
+  const params = new URLSearchParams();
+  if (payload.contextId) params.set("context_id", payload.contextId);
+  if (payload.status) params.set("status", payload.status);
+  if (payload.limit) params.set("limit", String(payload.limit));
+  const suffix = params.toString();
+  const response = await fetch(`${API_ROOT}/results${suffix ? `?${suffix}` : ""}`);
+  const body = await parseResponse<{ runs: ExecutionRunRecord[] }>(response);
+  return body.runs;
 }
 
 export async function decideApproval(payload: {

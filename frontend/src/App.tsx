@@ -19,9 +19,10 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import {
   decideApproval,
-  executeWorkflow,
+  executeSuite,
   getAutomationFile,
   getWorkflow,
+  listExecutionRuns,
   listMockTickets,
   listWorkflows,
   startWorkflow,
@@ -30,6 +31,7 @@ import {
 import type {
   ApprovalStatus,
   AutomationBlock,
+  ExecutionRunRecord,
   TestCase,
   TestContext,
   TicketData,
@@ -111,6 +113,11 @@ export function App() {
   const [workflowQuery, setWorkflowQuery] = useState("");
   const [approvalFilter, setApprovalFilter] = useState<ApprovalStatus | "all">("all");
   const [queueLoading, setQueueLoading] = useState(false);
+  const [executionRuns, setExecutionRuns] = useState<ExecutionRunRecord[]>([]);
+  const [resultsLoading, setResultsLoading] = useState(false);
+  const [executionEnv, setExecutionEnv] = useState("staging");
+  const [executionBranch, setExecutionBranch] = useState("");
+  const [executionTags, setExecutionTags] = useState("smoke, generated");
   const [context, setContext] = useState<TestContext | null>(null);
   const [loadId, setLoadId] = useState("");
   const [selectedTestId, setSelectedTestId] = useState<string>("");
@@ -161,6 +168,14 @@ export function App() {
     if (!context || selectedTestId) return;
     setSelectedTestId(context.test_cases[0]?.id ?? "");
   }, [context, selectedTestId]);
+
+  useEffect(() => {
+    if (!context) {
+      setExecutionRuns([]);
+      return;
+    }
+    void refreshExecutionRuns(context.context_id);
+  }, [context?.context_id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -235,6 +250,23 @@ export function App() {
       setError(err instanceof Error ? err.message : "Workflow queue failed to load");
     } finally {
       setQueueLoading(false);
+    }
+  }
+
+  async function refreshExecutionRuns(contextId = context?.context_id) {
+    if (!contextId) {
+      setExecutionRuns([]);
+      return;
+    }
+    setResultsLoading(true);
+    setError(null);
+    try {
+      const rows = await listExecutionRuns({ contextId, limit: 25 });
+      setExecutionRuns(rows);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Execution results failed to load");
+    } finally {
+      setResultsLoading(false);
     }
   }
 
@@ -342,14 +374,19 @@ export function App() {
     setBusy("execute");
     setError(null);
     try {
-      const next = await executeWorkflow({
-        contextId: context.context_id,
-        run_by: reviewer
+      const run = await executeSuite({
+        suite: context.context_id,
+        branch: executionBranch.trim() || null,
+        env: executionEnv.trim() || "staging",
+        tags: splitLabels(executionTags),
+        actor: reviewer
       });
+      const next = await getWorkflow(run.context_id);
       keepContext(next);
+      await refreshExecutionRuns(run.context_id);
       void refreshWorkflowQueue();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Mock execution failed");
+      setError(err instanceof Error ? err.message : "CI execution failed");
     } finally {
       setBusy(null);
     }
@@ -733,9 +770,19 @@ export function App() {
           </section>
 
           <section className="panel execution-panel">
-            <div className="section-title">
-              <Activity aria-hidden="true" />
-              <h2>Execution</h2>
+            <div className="execution-header">
+              <div className="section-title">
+                <Activity aria-hidden="true" />
+                <h2>Execution</h2>
+              </div>
+              <button
+                className="icon-button"
+                onClick={() => void refreshExecutionRuns()}
+                disabled={resultsLoading || !context}
+                title="Refresh execution results"
+              >
+                {resultsLoading ? <Loader2 className="spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
+              </button>
             </div>
             <div className="execution-topline">
               <div>
@@ -755,27 +802,94 @@ export function App() {
                 <strong>{executionCounts.skipped}</strong>
               </div>
             </div>
-            <button
-              className="primary-button"
-              onClick={() => void runExecution()}
-              disabled={busy !== null || !context || Object.keys(context.automation).length === 0}
-            >
-              {busy === "execute" ? <Loader2 className="spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
-              Run mock execution
-            </button>
-            <div className="execution-list">
-              {(execution?.results ?? []).map((result) => (
-                <article className="execution-result" key={result.test_case_id}>
-                  <span className={`result-status ${result.status}`}>{result.status}</span>
-                  <div>
-                    <strong>{result.test_case_id}</strong>
-                    <p>{result.title}</p>
-                    <em>{result.message}</em>
-                  </div>
-                  <span>{result.duration_ms} ms</span>
-                </article>
-              ))}
-              {!execution && <p className="empty-state">No execution results yet.</p>}
+
+            <div className="execution-config">
+              <label>
+                Env
+                <input value={executionEnv} onChange={(event) => setExecutionEnv(event.target.value)} />
+              </label>
+              <label>
+                Branch
+                <input value={executionBranch} onChange={(event) => setExecutionBranch(event.target.value)} />
+              </label>
+              <label>
+                Tags
+                <input value={executionTags} onChange={(event) => setExecutionTags(event.target.value)} />
+              </label>
+              <button
+                className="primary-button"
+                onClick={() => void runExecution()}
+                disabled={busy !== null || !context || Object.keys(context.automation).length === 0}
+              >
+                {busy === "execute" ? <Loader2 className="spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
+                Run CI
+              </button>
+            </div>
+
+            <div className="execution-layout">
+              <div className="execution-current">
+                <h3>Current result</h3>
+                <div className="execution-list">
+                  {(execution?.results ?? []).map((result) => (
+                    <article className="execution-result" key={result.test_case_id}>
+                      <span className={`result-status ${result.status}`}>{result.status}</span>
+                      <div>
+                        <strong>{result.test_case_id}</strong>
+                        <p>{result.title}</p>
+                        <em>{result.message}</em>
+                      </div>
+                      <span>{result.duration_ms} ms</span>
+                    </article>
+                  ))}
+                  {!execution && <p className="empty-state">No execution results yet.</p>}
+                </div>
+              </div>
+
+              <div className="run-history">
+                <h3>Run history</h3>
+                <div className="run-list">
+                  {executionRuns.map((run) => {
+                    const summary = run.execution?.summary;
+                    const statusUrl = `/api/v1/results/${encodeURIComponent(run.run_id)}`;
+                    return (
+                      <article className="run-row" key={run.run_id}>
+                        <div className="run-main">
+                          <StatusPill value={run.status} />
+                          <span>
+                            <strong>{run.run_id}</strong>
+                            {formatDate(run.updated_at)}
+                          </span>
+                        </div>
+                        <div className="run-meta">
+                          <span>{run.request.env}</span>
+                          <span>{run.request.branch || "No branch"}</span>
+                          <span>{summary ? `${summary.passed}/${summary.total} passed` : "No summary"}</span>
+                        </div>
+                        <div className="artifact-links">
+                          <a href={statusUrl} target="_blank" rel="noreferrer">
+                            JSON
+                            <ExternalLink aria-hidden="true" />
+                          </a>
+                          <a href={`${statusUrl}/junit.xml`} target="_blank" rel="noreferrer">
+                            JUnit
+                            <ExternalLink aria-hidden="true" />
+                          </a>
+                          <a href={`${statusUrl}/report.html`} target="_blank" rel="noreferrer">
+                            HTML
+                            <ExternalLink aria-hidden="true" />
+                          </a>
+                        </div>
+                      </article>
+                    );
+                  })}
+                  {!resultsLoading && executionRuns.length === 0 && (
+                    <p className="empty-state">No persisted execution runs yet.</p>
+                  )}
+                  {resultsLoading && (
+                    <p className="empty-state">Loading execution runs.</p>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
 

@@ -44,7 +44,7 @@ real execution adapter.
 - FastAPI endpoint: `GET /api/v1/results/{run_id}/junit.xml`.
 - FastAPI endpoint: `GET /api/v1/results/{run_id}/report.html`.
 - FastAPI endpoint: `GET /api/v1/automation/files/{ticket_id}/{file_name}`.
-- React review dashboard under `frontend/`.
+- React review dashboard under `frontend/`, including workflow queue and execution result history.
 - Unit tests for workflow state flow, architecture boundaries, persistence, and API endpoints.
 
 ## Run Tests
@@ -71,7 +71,8 @@ npm.cmd run dev
 
 Open `http://127.0.0.1:5173`. The dashboard proxies `/api` requests to the
 FastAPI server on `http://127.0.0.1:8000` and includes a mock-ticket browser
-for starting workflows without Jira/Azure access.
+for starting workflows without Jira/Azure access, plus persisted execution
+history with JSON, JUnit, and HTML result links.
 
 Then call:
 

@@ -3,6 +3,7 @@ export type TicketStatus = "backlog" | "ready" | "in_progress" | "blocked" | "do
 export type ApprovalStatus = "not_ready" | "pending_review" | "approved" | "changes_requested";
 export type ExecutionStatus = "passed" | "failed" | "skipped";
 export type ExecutionResultStatus = "passed" | "failed" | "skipped";
+export type ExecutionRunStatus = ExecutionStatus | "queued" | "running" | "blocked";
 
 export type MockTicketComment = {
   author: string;
@@ -81,6 +82,36 @@ export type ExecutionBlock = {
     message: string;
     logs: string[];
   }>;
+};
+
+export type ExecutionRunRequest = {
+  suite: string;
+  branch?: string | null;
+  env: string;
+  tags: string[];
+  actor: string;
+};
+
+export type ExecutionRunRecord = {
+  run_id: string;
+  context_id: string;
+  request: ExecutionRunRequest;
+  status: ExecutionRunStatus;
+  execution: ExecutionBlock | null;
+  junit_xml: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ExecuteRunResponse = {
+  run_id: string;
+  context_id: string;
+  status: ExecutionRunStatus;
+  status_url: string;
+  summary_url: string;
+  junit_url: string;
+  report_url: string;
+  websocket_url: string | null;
 };
 
 export type ApprovalBlock = {
