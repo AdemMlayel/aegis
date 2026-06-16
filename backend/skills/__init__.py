@@ -10,6 +10,7 @@ from backend.skills.coverage import PlanCoverageSkill
 from backend.skills.requirement import AnalyzeRequirementSkill
 from backend.skills.test_data import ResolveTestDataSkill
 from backend.skills.test_generation import GenerateTestCasesSkill
+from backend.skills.validation import ValidateAutomationSkill
 
 __all__ = [
     "AnalyzeRequirementSkill",
@@ -21,5 +22,6 @@ __all__ = [
     "SkillRegistrationError",
     "SkillRegistry",
     "SkillSpec",
+    "ValidateAutomationSkill",
     "skill_registry",
 ]
