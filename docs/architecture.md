@@ -42,18 +42,20 @@ The automation milestone writes minimal Robot Framework files under
 `generated/robot/<ticket-id>/`. The validator node runs `robot --dryrun`,
 checks generated artifacts, and stores the result in `TestContext.automation`.
 The human approval node creates a `pending_review` approval block. Workflow
-contexts are persisted under `generated/contexts/` so the API can later approve
-or request changes. A `request_changes` decision records reviewer feedback,
-regenerates Robot files, reruns validation, and returns the workflow to
-`pending_review` with a higher automation revision. On approval, AegisQA
+contexts, queue/history summaries, and global audit events are persisted in
+SQLite under `generated/storage/aegisqa.sqlite3` so the API can later approve or
+request changes. Legacy JSON context files under `generated/contexts/` are
+imported into SQLite on first read. A `request_changes` decision records
+reviewer feedback, regenerates Robot files, reruns validation, and returns the
+workflow to `pending_review` with a higher automation revision. On approval, AegisQA
 attempts real Git execution:
 create/switch to the `aegis/<ticket-id>` branch, stage the generated Robot
 files, commit them, and create a PR with `gh pr create` when the GitHub CLI is
 available. Every attempt writes a result payload under `generated/git_handoff/`.
 If the project is not inside a Git work tree, the approval remains recorded and
 Git status is marked blocked with the reason. Approval decisions, Git attempts,
-workflow starts, and generated-file reads are also written to
-`generated/audit/events.jsonl`.
+workflow starts, and generated-file reads are also written to the SQLite
+`audit_events` table.
 
 ## Next Boundary
 
@@ -63,4 +65,5 @@ integration surfaces should become connector-backed tools:
 
 - Keep tools stateless and isolated before adding real Jira/Azure, database,
   filesystem, Robot, Vault, and LLM integrations.
-- Move file-backed context/audit storage to a database.
+- Replace deterministic local tools with connector-backed integrations one
+  boundary at a time.

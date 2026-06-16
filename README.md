@@ -20,10 +20,10 @@ real execution adapter.
 - Mock execution results saved on workflow contexts.
 - Pending-review approval state with approve/request-changes decisions.
 - Automatic regeneration after `request_changes`, including reviewer feedback in regenerated Robot files.
-- File-backed workflow context persistence under `generated/contexts/`.
+- SQLite-backed workflow context persistence under `generated/storage/aegisqa.sqlite3`.
 - Git branch/commit/PR execution on approval when the project is inside a Git repo.
 - Git execution result payloads under `generated/git_handoff/`.
-- JSONL audit events under `generated/audit/events.jsonl`.
+- SQLite audit events under `generated/storage/aegisqa.sqlite3`.
 - FastAPI endpoint: `GET /api/v1/tickets/mock`.
 - FastAPI endpoint: `GET /api/v1/tickets/mock/{ticket_id}`.
 - FastAPI endpoint: `GET /api/v1/workflows`.

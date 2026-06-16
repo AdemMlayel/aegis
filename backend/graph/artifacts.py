@@ -9,6 +9,7 @@ GENERATED_ROBOT_ROOT = PROJECT_ROOT / "generated" / "robot"
 GENERATED_CONTEXT_ROOT = PROJECT_ROOT / "generated" / "contexts"
 GENERATED_GIT_HANDOFF_ROOT = PROJECT_ROOT / "generated" / "git_handoff"
 GENERATED_AUDIT_ROOT = PROJECT_ROOT / "generated" / "audit"
+GENERATED_STORAGE_ROOT = PROJECT_ROOT / "generated" / "storage"
 
 
 def slug(value: str) -> str:

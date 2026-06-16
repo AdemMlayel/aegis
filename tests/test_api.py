@@ -3,8 +3,8 @@ from uuid import uuid4
 
 from starlette.testclient import TestClient
 
-from backend.graph.artifacts import GENERATED_AUDIT_ROOT
 from backend.main import app
+from backend.storage.audit import list_audit_events
 
 
 def test_mock_ticket_endpoints_return_seed_data() -> None:
@@ -242,11 +242,14 @@ def test_start_workflow_endpoint_returns_completed_context(monkeypatch) -> None:
     saved_response = client.get(f"/api/v1/workflows/{context_id}")
     assert saved_response.status_code == 200
     assert saved_response.json()["context"]["approval"]["status"] == "approved"
-    audit_file = GENERATED_AUDIT_ROOT / "events.jsonl"
-    assert audit_file.is_file()
-    audit_text = audit_file.read_text(encoding="utf-8")
-    assert "automation_file_read" in audit_text
-    assert "approval_decision" in audit_text
+    context_audit_events = list_audit_events(context_id=context_id, limit=20)
+    assert any(
+        event.event_type == "approval_decision" for event in context_audit_events
+    )
+    assert any(
+        event.event_type == "automation_file_read"
+        for event in list_audit_events(limit=20)
+    )
 
 
 def test_automation_file_endpoint_rejects_non_robot_file() -> None:
