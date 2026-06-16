@@ -90,6 +90,18 @@ function isFinalRunStatus(status: string): boolean {
   return !["queued", "running"].includes(status);
 }
 
+function upsertExecutionRun(runs: ExecutionRunRecord[], run: ExecutionRunRecord): ExecutionRunRecord[] {
+  return [run, ...runs.filter((item) => item.run_id !== run.run_id)].sort(
+    (left, right) => new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime()
+  );
+}
+
+function toWebSocketUrl(path: string): string {
+  const url = new URL(path, window.location.origin);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return url.toString();
+}
+
 function StatusPill({ value }: { value: string }) {
   return <span className={`status-pill ${statusTone(value)}`}>{value.replaceAll("_", " ")}</span>;
 }
@@ -274,7 +286,53 @@ export function App() {
     }
   }
 
-  async function waitForExecutionRun(runId: string, contextId: string) {
+  async function waitForExecutionRunSocket(runId: string, websocketPath: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      let settled = false;
+      let socket: WebSocket | null = null;
+      const timeout = window.setTimeout(() => finish(false), 8000);
+
+      function finish(value: boolean) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        socket?.close();
+        resolve(value);
+      }
+
+      try {
+        socket = new WebSocket(toWebSocketUrl(websocketPath));
+      } catch {
+        finish(false);
+        return;
+      }
+
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data) as { run?: ExecutionRunRecord };
+          if (!payload.run || payload.run.run_id !== runId) return;
+          setExecutionRuns((current) => upsertExecutionRun(current, payload.run as ExecutionRunRecord));
+          if (isFinalRunStatus(payload.run.status)) {
+            finish(true);
+          }
+        } catch {
+          finish(false);
+        }
+      };
+      socket.onerror = () => finish(false);
+      socket.onclose = () => finish(false);
+    });
+  }
+
+  async function waitForExecutionRun(runId: string, contextId: string, websocketPath?: string | null) {
+    if (websocketPath) {
+      const completedFromSocket = await waitForExecutionRunSocket(runId, websocketPath);
+      if (completedFromSocket) {
+        keepContext(await getWorkflow(contextId));
+        return;
+      }
+    }
+
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const rows = await listExecutionRuns({ contextId, limit: 25 });
       setExecutionRuns(rows);
@@ -400,7 +458,7 @@ export function App() {
         actor: reviewer
       });
       await refreshExecutionRuns(run.context_id);
-      await waitForExecutionRun(run.run_id, run.context_id);
+      await waitForExecutionRun(run.run_id, run.context_id, run.websocket_url);
       void refreshWorkflowQueue();
     } catch (err) {
       setError(err instanceof Error ? err.message : "CI execution failed");

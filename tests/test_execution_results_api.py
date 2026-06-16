@@ -46,11 +46,13 @@ def test_ci_execute_endpoint_persists_results_and_artifacts() -> None:
     assert body["summary_url"] == f"/api/v1/results/{run_id}/summary.json"
     assert body["junit_url"] == f"/api/v1/results/{run_id}/junit.xml"
     assert body["report_url"] == f"/api/v1/results/{run_id}/report.html"
-    assert body["websocket_url"] is None
+    assert body["websocket_url"] == f"/api/v1/ws/exec/{run_id}"
 
     result_response = client.get(body["status_url"])
     assert result_response.status_code == 200
-    run = result_response.json()["run"]
+    result_body = result_response.json()
+    assert result_body["websocket_url"] == f"/api/v1/ws/exec/{run_id}"
+    run = result_body["run"]
     assert run["run_id"] == run_id
     assert run["context_id"] == context_id
     assert run["status"] == "failed"
@@ -94,6 +96,45 @@ def test_ci_execute_endpoint_persists_results_and_artifacts() -> None:
     saved_context = saved_context_response.json()["context"]
     assert saved_context["execution"]["status"] == "failed"
     assert saved_context["workflow_status"] == "mock_execution_failed"
+
+
+def test_execution_websocket_streams_run_status() -> None:
+    client = TestClient(app)
+    ticket_id = f"CI-WS-{uuid4().hex[:8]}"
+
+    start_response = client.post(
+        "/api/v1/workflows/start",
+        json={
+            "created_by": "pytest",
+            "ticket": {
+                "id": ticket_id,
+                "title": "CI Websocket Boundary",
+                "description": "As a QA lead, I want live execution status.",
+                "acceptance_criteria": ["Execution status is streamed"],
+                "priority": "high",
+                "labels": ["ci", "websocket"],
+            },
+        },
+    )
+    assert start_response.status_code == 202
+
+    execute_response = client.post(
+        "/api/v1/execute",
+        json={
+            "suite": ticket_id,
+            "env": "staging",
+            "actor": "ci_runner",
+        },
+    )
+    assert execute_response.status_code == 202
+    websocket_url = execute_response.json()["websocket_url"]
+
+    with client.websocket_connect(websocket_url) as websocket:
+        payload = websocket.receive_json()
+
+    assert payload["run"]["run_id"] == execute_response.json()["run_id"]
+    assert payload["run"]["status"] == "failed"
+    assert payload["websocket_url"] == websocket_url
 
 
 def test_ci_execute_endpoint_returns_404_for_unknown_suite() -> None:

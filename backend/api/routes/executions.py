@@ -1,9 +1,19 @@
 from __future__ import annotations
 
+import asyncio
 from html import escape as html_escape
 from xml.sax.saxutils import escape as xml_escape
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    HTTPException,
+    Query,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from pydantic import BaseModel
 
 from backend.graph.execution import run_mock_execution
@@ -22,6 +32,7 @@ from backend.storage.execution_runs import (
 
 
 router = APIRouter(tags=["executions"])
+FINAL_EXECUTION_STATUSES = {"passed", "failed", "skipped", "blocked"}
 
 
 class ExecuteRunResponse(BaseModel):
@@ -54,6 +65,7 @@ def _run_urls(run_id: str) -> dict[str, str]:
         "summary_url": f"/api/v1/results/{run_id}/summary.json",
         "junit_url": f"/api/v1/results/{run_id}/junit.xml",
         "report_url": f"/api/v1/results/{run_id}/report.html",
+        "websocket_url": f"/api/v1/ws/exec/{run_id}",
     }
 
 
@@ -238,6 +250,39 @@ def get_result_report(run_id: str) -> Response:
     )
 
 
+@router.websocket("/ws/exec/{run_id}")
+async def stream_execution_run(websocket: WebSocket, run_id: str) -> None:
+    await websocket.accept()
+    last_status: str | None = None
+    try:
+        for _ in range(120):
+            record = load_execution_run(run_id)
+            if record is None:
+                await websocket.send_json(
+                    {
+                        "run_id": run_id,
+                        "status": "not_found",
+                        "error": "Execution run was not found",
+                    }
+                )
+                await websocket.close(code=1008)
+                return
+
+            if record.status != last_status or record.status in FINAL_EXECUTION_STATUSES:
+                await websocket.send_json(_run_stream_payload(record))
+                last_status = record.status
+
+            if record.status in FINAL_EXECUTION_STATUSES:
+                await websocket.close(code=1000)
+                return
+
+            await asyncio.sleep(0.5)
+    except WebSocketDisconnect:
+        return
+
+    await websocket.close(code=1000)
+
+
 def _load_run_or_404(run_id: str) -> ExecutionRunRecord:
     record = load_execution_run(run_id)
     if record is None:
@@ -246,6 +291,13 @@ def _load_run_or_404(run_id: str) -> ExecutionRunRecord:
             detail="Execution run was not found",
         )
     return record
+
+
+def _run_stream_payload(record: ExecutionRunRecord) -> dict[str, object]:
+    return {
+        "run": record.model_dump(mode="json"),
+        **_run_urls(record.run_id),
+    }
 
 
 def render_junit_xml(run_id: str, execution: ExecutionBlock) -> str:

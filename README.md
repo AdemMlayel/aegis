@@ -43,6 +43,7 @@ real execution adapter.
 - FastAPI endpoint: `GET /api/v1/results/{run_id}/summary.json`.
 - FastAPI endpoint: `GET /api/v1/results/{run_id}/junit.xml`.
 - FastAPI endpoint: `GET /api/v1/results/{run_id}/report.html`.
+- FastAPI websocket: `/api/v1/ws/exec/{run_id}`.
 - FastAPI endpoint: `GET /api/v1/automation/files/{ticket_id}/{file_name}`.
 - React review dashboard under `frontend/`, including workflow queue and execution result history.
 - Unit tests for workflow state flow, architecture boundaries, persistence, and API endpoints.
@@ -160,6 +161,12 @@ GET http://127.0.0.1:8000/api/v1/results/{run_id}
 GET http://127.0.0.1:8000/api/v1/results/{run_id}/summary.json
 GET http://127.0.0.1:8000/api/v1/results/{run_id}/junit.xml
 GET http://127.0.0.1:8000/api/v1/results/{run_id}/report.html
+```
+
+For live status while a run is queued or running, connect to:
+
+```text
+ws://127.0.0.1:8000/api/v1/ws/exec/{run_id}
 ```
 
 Or start from an inline ticket:
