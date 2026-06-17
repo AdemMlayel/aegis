@@ -18,6 +18,7 @@ Implemented and test-covered locally:
 - SQLite-backed mock ticket database seeded from `backend/mock_data/tickets.json`.
 - Versioned SQLite migration runner for the local schema and future Postgres path.
 - Service-layer boundary for workflow, execution, integration, and intelligence orchestration.
+- Durable execution worker boundary with local background fallback and optional Celery/Redis dispatch.
 - Jira-shaped mock connector: `jira_mock`, plus generic connector start/search endpoints.
 - Workflow lifecycle:
   `load_ticket -> requirement_agent -> coverage_planner -> test_case_generator -> test_data_resolver -> automation_generator -> validator -> human_approval -> execution_dispatcher -> investigation_coordinator -> memory_archiver -> report_generator`.
@@ -28,12 +29,13 @@ Implemented and test-covered locally:
 - Mock execution adapter and CI-style execution result APIs.
 - Real local Robot execution adapter behind the execution adapter interface.
 - Execution result history, event logs, JSON, JUnit XML, HTML report, and WebSocket stream.
+- Docker Compose stack for API, frontend, Redis, Postgres, and worker services.
 - Investigation and local memory archive placeholders in the workflow graph.
 - Local filesystem artifact store: `local_fs`.
 - Mock Vault-compatible secret provider: `mock_vault`, returning references only.
 - Provider catalog endpoints that show selected local/mock providers and keep external connectors disabled.
 - React review dashboard under `frontend/`, including provider catalog and intelligence metadata panels.
-- 78 passing Python tests.
+- 83 passing Python tests.
 
 ## What Is Deliberately Mocked
 
@@ -44,8 +46,8 @@ The following remain mocked or local-only until company access and security appr
 - Vault/secret store.
 - Real CI runners.
 - Browser/device farms.
-- Vector memory and production database.
-- LLM/RAG providers.
+- External vector database and production database adapter.
+- External LLM/RAG providers.
 
 ## Install and Test
 
@@ -280,6 +282,28 @@ Live status stream:
 ws://127.0.0.1:8000/api/v1/ws/exec/{run_id}
 ```
 
+Worker dispatch defaults to the local FastAPI background fallback:
+
+```bash
+AEGISQA_EXECUTION_WORKER_BACKEND=local
+```
+
+Celery-compatible dispatch can be enabled with Redis:
+
+```bash
+python -m pip install -e ".[worker]"
+AEGISQA_EXECUTION_WORKER_BACKEND=celery
+AEGISQA_CELERY_BROKER_URL=redis://127.0.0.1:6379/0
+AEGISQA_CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/1
+celery -A backend.workers.celery_app.celery_app worker --loglevel=info
+```
+
+For a broker-free durable local worker process:
+
+```bash
+python -m backend.worker
+```
+
 ## Integration Provider Catalog
 
 Milestone 3 Lite keeps company/external APIs disabled and proves the swappable boundaries locally.
@@ -313,6 +337,24 @@ npm run dev
 
 Open `http://127.0.0.1:5173`.
 
+## Docker Compose
+
+The compose stack starts API, frontend, Redis, Postgres, and a Celery worker:
+
+```bash
+docker compose up --build
+```
+
+Then open:
+
+```text
+API: http://127.0.0.1:8000
+Dashboard: http://127.0.0.1:5173
+```
+
+Postgres is provisioned for the production database path, while the current
+storage implementation remains the local SQLite-backed architecture proof.
+
 ## Clean Package
 
 The source package should not include local runtime artifacts, virtual
@@ -326,7 +368,7 @@ The generated clean copy excludes `.venv/`, `.tools/`, `.pytest_cache/`, `.git/`
 `node_modules/`, `frontend/dist/`, `generated/`, `__pycache__/`, `*.pyc`, and
 `aegisqa.egg-info/`.
 
-## Milestone 4 — Local AI/RAG/Memory Intelligence Layer
+## Milestone 4 - Local AI/RAG/Memory Intelligence Layer
 
 Milestone 4 adds the blueprint's AI-native architecture while keeping the project fully local and mock-data driven. No company Jira, Azure DevOps, Confluence, Vault, LLM API, or internal execution environment is required.
 
@@ -336,6 +378,10 @@ Implemented local intelligence boundaries:
 - Prompt registry and versioned prompt templates.
 - `local_knowledge`: seeded local knowledge/RAG store.
 - `local_episodic_memory`: seeded local previous-failure memory store.
+- `local_hash_embedding`: deterministic local embedding model.
+- `local_in_memory_vector`: local vector index for knowledge and memory retrieval.
+- `local_hybrid_reranker`: deterministic vector, lexical, and tag reranker.
+- Retention/invalidation controls on local episodic memory and knowledge stores.
 - Intelligence trace on `TestContext` with knowledge refs, memory refs, prompt versions, and mock LLM usage.
 - RequirementAgent enrichment with local RAG + memory context.
 - CoveragePlanner enrichment with memory-backed regression hints.
@@ -347,6 +393,7 @@ Useful local endpoints:
 ```text
 GET /api/v1/intelligence/prompts
 GET /api/v1/intelligence/llm-providers
+GET /api/v1/intelligence/retrieval-profile
 GET /api/v1/intelligence/knowledge/search?query=banking%20transfer%20risk
 GET /api/v1/intelligence/memory/search?query=transfer%20balance%20regression
 GET /api/v1/integrations/providers
@@ -358,6 +405,9 @@ Default local AI profile:
 llm_provider: mock_llm
 knowledge_store: local_knowledge
 memory_store: local_episodic_memory
+embedding_model: local_hash_embedding
+vector_store: local_in_memory_vector
+reranker: local_hybrid_reranker
 external_connectors_enabled: false
 ```
 

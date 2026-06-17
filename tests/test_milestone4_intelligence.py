@@ -1,9 +1,12 @@
 from starlette.testclient import TestClient
+from datetime import UTC, datetime, timedelta
 
 from backend.graph.state import TestContext as WorkflowContext, TicketData
 from backend.graph.workflow import run_workflow
+from backend.knowledge.base import KnowledgeChunk, KnowledgeStore
 from backend.knowledge import get_local_knowledge_store
 from backend.llm import llm_provider_registry
+from backend.memory.base import EpisodicMemoryEntry, EpisodicMemoryStore
 from backend.main import app
 from backend.memory import get_local_memory_store
 from backend.prompts import prompt_registry
@@ -74,10 +77,18 @@ def test_intelligence_api_exposes_local_mock_providers_and_search() -> None:
     knowledge = client.get("/api/v1/intelligence/knowledge/search", params={"query": "banking transfer risk"})
     assert knowledge.status_code == 200
     assert any(item["ref_id"] == "KB-BANK-001" for item in knowledge.json())
+    assert knowledge.json()[0]["rerank_score"] >= 0
 
     memory = client.get("/api/v1/intelligence/memory/search", params={"query": "transfer balance regression"})
     assert memory.status_code == 200
     assert any(item["ref_id"] == "MEM-BANK-TRANSFER-001" for item in memory.json())
+    assert memory.json()[0]["vector_score"] >= 0
+
+    profile = client.get("/api/v1/intelligence/retrieval-profile")
+    assert profile.status_code == 200
+    assert profile.json()["embedding_model"]["name"] == "local_hash_embedding"
+    assert profile.json()["vector_store"]["name"] == "local_in_memory_vector"
+    assert profile.json()["reranker"]["name"] == "local_hybrid_reranker"
 
 
 def test_provider_catalog_includes_milestone4_local_intelligence_boundaries() -> None:
@@ -91,3 +102,62 @@ def test_provider_catalog_includes_milestone4_local_intelligence_boundaries() ->
     assert ("llm_provider", "mock_llm") in provider_keys
     assert ("knowledge_store", "local_knowledge") in provider_keys
     assert ("memory_store", "local_episodic_memory") in provider_keys
+    assert ("embedding_model", "local_hash_embedding") in provider_keys
+    assert ("vector_store", "local_in_memory_vector") in provider_keys
+    assert ("reranker", "local_hybrid_reranker") in provider_keys
+
+
+def test_knowledge_vector_store_supports_rerank_and_invalidation() -> None:
+    store = KnowledgeStore(
+        [
+            KnowledgeChunk(
+                chunk_id="KB-A",
+                title="Transfer risk",
+                source="local://kb/a",
+                text="Money transfer balance consistency and duplicate submission risk.",
+                tags=("banking", "transfer"),
+            ),
+            KnowledgeChunk(
+                chunk_id="KB-B",
+                title="Profile settings",
+                source="local://kb/b",
+                text="Profile color preferences and avatar settings.",
+                tags=("profile",),
+            ),
+        ]
+    )
+
+    results = store.search(query="transfer balance risk", limit=2)
+
+    assert results[0].chunk.chunk_id == "KB-A"
+    assert results[0].vector_score >= 0
+    assert results[0].rerank_score == results[0].score
+    assert store.invalidate("KB-A") is True
+    assert all(result.chunk.chunk_id != "KB-A" for result in store.search(query="transfer balance risk", limit=2))
+
+
+def test_memory_vector_store_prunes_expired_entries() -> None:
+    expired_at = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+    store = EpisodicMemoryStore(
+        [
+            EpisodicMemoryEntry(
+                memory_id="MEM-EXPIRED",
+                title="Expired transfer lesson",
+                summary="Old transfer balance lesson.",
+                tags=("transfer",),
+                expires_at=expired_at,
+            ),
+            EpisodicMemoryEntry(
+                memory_id="MEM-ACTIVE",
+                title="Active transfer lesson",
+                summary="Current transfer balance lesson.",
+                tags=("transfer", "balance"),
+            ),
+        ]
+    )
+
+    assert store.prune_expired() == ["MEM-EXPIRED"]
+    results = store.search(query="transfer balance", limit=5)
+
+    assert [result.entry.memory_id for result in results] == ["MEM-ACTIVE"]
+    assert store.retrieval_profile()["active_entry_count"] == 1

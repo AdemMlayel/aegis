@@ -28,6 +28,9 @@ class ProviderKind(StrEnum):
     LLM_PROVIDER = "llm_provider"
     KNOWLEDGE_STORE = "knowledge_store"
     MEMORY_STORE = "memory_store"
+    EMBEDDING_MODEL = "embedding_model"
+    VECTOR_STORE = "vector_store"
+    RERANKER = "reranker"
 
 
 class ProviderMode(StrEnum):
@@ -207,6 +210,48 @@ def build_provider_catalog() -> ProviderCatalog:
             enabled=True,
             selected=settings.default_memory_store == "local_episodic_memory",
             config_key="AEGISQA_DEFAULT_MEMORY_STORE",
+        )
+    )
+
+    entries.append(
+        ProviderCatalogEntry(
+            kind=ProviderKind.EMBEDDING_MODEL,
+            name="local_hash_embedding",
+            mode=ProviderMode.LOCAL,
+            description="Deterministic local hashing embedding model for RAG architecture proofs.",
+            version="0.1.0",
+            requires_external_api=False,
+            enabled=True,
+            selected=settings.default_embedding_model == "local_hash_embedding",
+            config_key="AEGISQA_DEFAULT_EMBEDDING_MODEL",
+        )
+    )
+
+    entries.append(
+        ProviderCatalogEntry(
+            kind=ProviderKind.VECTOR_STORE,
+            name="local_in_memory_vector",
+            mode=ProviderMode.LOCAL,
+            description="Local in-memory vector index for deterministic knowledge and memory search.",
+            version="0.1.0",
+            requires_external_api=False,
+            enabled=True,
+            selected=settings.default_vector_store == "local_in_memory_vector",
+            config_key="AEGISQA_DEFAULT_VECTOR_STORE",
+        )
+    )
+
+    entries.append(
+        ProviderCatalogEntry(
+            kind=ProviderKind.RERANKER,
+            name="local_hybrid_reranker",
+            mode=ProviderMode.LOCAL,
+            description="Local hybrid reranker combining vector similarity, lexical overlap, and tag matches.",
+            version="0.1.0",
+            requires_external_api=False,
+            enabled=True,
+            selected=settings.default_reranker == "local_hybrid_reranker",
+            config_key="AEGISQA_DEFAULT_RERANKER",
         )
     )
 

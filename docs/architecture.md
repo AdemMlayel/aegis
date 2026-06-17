@@ -39,7 +39,9 @@ The core runtime still uses the blueprint separation:
 - Tool boundary: `backend/tools/base.py`
 - Workflow context: `backend/graph/state.py`
 - Workflow graph: `backend/graph/workflow.py`
+- Service orchestration: `backend/services/`
 - Execution adapters: `backend/execution/base.py`
+- Execution workers: `backend/workers/`
 - Ticket connectors: `backend/tickets/base.py`
 - Local security/RBAC: `backend/security/rbac.py`
 
@@ -115,11 +117,32 @@ Framework installation and stores artifacts under `generated/execution/`.
 When Robot is unavailable, the validator falls back to deterministic structural
 validation so tests and local architecture demos remain reproducible.
 
+Execution dispatch now goes through `backend/workers/`.  The default backend is
+`local`, which preserves the FastAPI background-task fallback.  The `celery`
+backend dispatches the same persisted execution run id to a Redis/Celery worker
+when `AEGISQA_EXECUTION_WORKER_BACKEND=celery`.
+
+## Intelligence Retrieval
+
+Local RAG and episodic memory now use deterministic retrieval infrastructure:
+
+- Embedding model: `local_hash_embedding`
+- Vector store: `local_in_memory_vector`
+- Reranker: `local_hybrid_reranker`
+- Retention/invalidation: exposed on local knowledge and memory stores
+
+This proves the vector retrieval shape while keeping local tests independent of
+external embedding APIs or a production vector database.
+
 ## Persistence
 
 Local SQLite persistence remains under `generated/storage/aegisqa.sqlite3`.
 Generated runtime artifacts remain under `generated/` and are excluded from clean
 packages.
+
+`docker-compose.yml` provisions Postgres for the production database path, plus
+Redis for Celery-compatible execution dispatch.  The current storage adapter is
+still SQLite-backed until the Postgres adapter is implemented.
 
 ## Packaging Rule
 

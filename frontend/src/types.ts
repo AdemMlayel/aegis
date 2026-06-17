@@ -12,7 +12,10 @@ export type ProviderKind =
   | "git_handoff"
   | "llm_provider"
   | "knowledge_store"
-  | "memory_store";
+  | "memory_store"
+  | "embedding_model"
+  | "vector_store"
+  | "reranker";
 export type ProviderMode = "mock" | "local" | "external";
 
 export type MockTicketComment = {
@@ -247,6 +250,9 @@ export type KnowledgeSearchItem = {
   title: string;
   source: string;
   score: number;
+  vector_score: number;
+  rerank_score: number;
+  retention_status: string;
   excerpt: string;
   matched_terms: string[];
 };
@@ -255,6 +261,9 @@ export type MemorySearchItem = {
   ref_id: string;
   title: string;
   score: number;
+  vector_score: number;
+  rerank_score: number;
+  retention_status: string;
   summary: string;
   tags: string[];
   source_refs: string[];

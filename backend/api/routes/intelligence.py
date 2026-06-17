@@ -9,6 +9,7 @@ from backend.security import Capability, Principal, require_capability
 from backend.services.intelligence import (
     list_llm_providers as list_llm_providers_service,
     list_prompt_templates as list_prompt_templates_service,
+    read_retrieval_profile as read_retrieval_profile_service,
     search_knowledge as search_knowledge_service,
     search_memory as search_memory_service,
 )
@@ -35,6 +36,9 @@ class KnowledgeSearchItem(BaseModel):
     title: str
     source: str
     score: float
+    vector_score: float = 0.0
+    rerank_score: float = 0.0
+    retention_status: str = "active"
     excerpt: str
     matched_terms: list[str]
 
@@ -43,10 +47,21 @@ class MemorySearchItem(BaseModel):
     ref_id: str
     title: str
     score: float
+    vector_score: float = 0.0
+    rerank_score: float = 0.0
+    retention_status: str = "active"
     summary: str
     tags: list[str]
     source_refs: list[str]
     matched_terms: list[str]
+
+
+class RetrievalProfileResponse(BaseModel):
+    embedding_model: dict[str, object]
+    vector_store: dict[str, object]
+    reranker: dict[str, object]
+    knowledge_store: dict[str, object]
+    memory_store: dict[str, object]
 
 
 @router.get("/intelligence/prompts", response_model=list[PromptTemplateResponse])
@@ -91,3 +106,10 @@ def search_memory(
         MemorySearchItem(**result)
         for result in search_memory_service(query=query, limit=limit)
     ]
+
+
+@router.get("/intelligence/retrieval-profile", response_model=RetrievalProfileResponse)
+def read_retrieval_profile(
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> RetrievalProfileResponse:
+    return RetrievalProfileResponse(**read_retrieval_profile_service())

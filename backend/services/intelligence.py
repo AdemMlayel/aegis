@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from backend.knowledge import get_local_knowledge_store
+from backend.intelligence.vector import retrieval_profile
 from backend.llm import llm_provider_registry
 from backend.memory import get_local_memory_store
 from backend.prompts import prompt_registry
@@ -37,6 +38,9 @@ def search_knowledge(*, query: str, limit: int = 3) -> list[dict[str, object]]:
             "title": result.chunk.title,
             "source": result.chunk.source,
             "score": result.score,
+            "vector_score": result.vector_score,
+            "rerank_score": result.rerank_score,
+            "retention_status": result.retention_status,
             "excerpt": result.excerpt,
             "matched_terms": list(result.matched_terms),
         }
@@ -50,6 +54,9 @@ def search_memory(*, query: str, limit: int = 3) -> list[dict[str, object]]:
             "ref_id": result.entry.memory_id,
             "title": result.entry.title,
             "score": result.score,
+            "vector_score": result.vector_score,
+            "rerank_score": result.rerank_score,
+            "retention_status": result.retention_status,
             "summary": result.entry.summary,
             "tags": list(result.entry.tags),
             "source_refs": list(result.entry.source_refs),
@@ -57,3 +64,11 @@ def search_memory(*, query: str, limit: int = 3) -> list[dict[str, object]]:
         }
         for result in get_local_memory_store().search(query=query, limit=limit)
     ]
+
+
+def read_retrieval_profile() -> dict[str, object]:
+    return {
+        **retrieval_profile(),
+        "knowledge_store": get_local_knowledge_store().retrieval_profile(),
+        "memory_store": get_local_memory_store().retrieval_profile(),
+    }

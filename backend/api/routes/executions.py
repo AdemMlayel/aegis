@@ -37,6 +37,7 @@ from backend.storage.execution_runs import (
     ExecutionRunStatus,
     load_execution_run,
 )
+from backend.workers import dispatch_execution_run
 
 
 router = APIRouter(tags=["executions"])
@@ -52,6 +53,10 @@ class ExecuteRunResponse(BaseModel):
     report_url: str
     logs_url: str
     websocket_url: str | None = None
+    worker_backend: str
+    worker_task_id: str | None = None
+    worker_fallback_used: bool = False
+    worker_message: str = ""
 
 
 class ExecutionRunDetailResponse(BaseModel):
@@ -95,11 +100,18 @@ def execute_suite(
             detail=str(exc),
         ) from exc
 
-    background_tasks.add_task(process_execution_run, record.run_id)
+    dispatch = dispatch_execution_run(
+        record.run_id,
+        local_enqueue=lambda run_id: background_tasks.add_task(process_execution_run, run_id),
+    )
     return ExecuteRunResponse(
         run_id=record.run_id,
         context_id=record.context_id,
         status=record.status,
+        worker_backend=dispatch.backend,
+        worker_task_id=dispatch.task_id,
+        worker_fallback_used=dispatch.fallback_used,
+        worker_message=dispatch.message,
         **run_urls(record.run_id),
     )
 
