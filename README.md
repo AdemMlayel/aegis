@@ -35,7 +35,7 @@ Implemented and test-covered locally:
 - Mock Vault-compatible secret provider: `mock_vault`, returning references only.
 - Provider catalog endpoints that show selected local/mock providers and keep external connectors disabled.
 - React review dashboard under `frontend/`, including provider catalog and intelligence metadata panels.
-- 83 passing Python tests.
+- 86 passing Python tests.
 
 ## What Is Deliberately Mocked
 
@@ -397,6 +397,43 @@ GET /api/v1/intelligence/retrieval-profile
 GET /api/v1/intelligence/knowledge/search?query=banking%20transfer%20risk
 GET /api/v1/intelligence/memory/search?query=transfer%20balance%20regression
 GET /api/v1/integrations/providers
+```
+
+## Real LLM Providers
+
+The default is still deterministic and safe:
+
+```bash
+AEGISQA_DEFAULT_LLM_PROVIDER=mock_llm
+```
+
+Use an OpenAI-compatible chat completions API:
+
+```bash
+AEGISQA_EXTERNAL_CONNECTORS_ENABLED=true
+AEGISQA_DEFAULT_LLM_PROVIDER=openai_compatible
+AEGISQA_OPENAI_COMPATIBLE_BASE_URL=https://api.openai.com/v1
+AEGISQA_OPENAI_COMPATIBLE_API_KEY=replace-with-your-key
+AEGISQA_OPENAI_COMPATIBLE_MODEL=gpt-4o-mini
+AEGISQA_OPENAI_COMPATIBLE_TEMPERATURE=0.2
+```
+
+Use a local Ollama model:
+
+```bash
+AEGISQA_DEFAULT_LLM_PROVIDER=ollama
+AEGISQA_OLLAMA_BASE_URL=http://127.0.0.1:11434
+AEGISQA_OLLAMA_MODEL=llama3.1
+AEGISQA_OLLAMA_TEMPERATURE=0.2
+```
+
+Both providers use the same prompt registry and write the selected provider,
+model, prompt version, and response summary into `TestContext.intelligence_trace`.
+Provider configuration status is visible through:
+
+```text
+GET /api/v1/intelligence/llm-providers
+GET /api/v1/integrations/providers?include_external=true
 ```
 
 Default local AI profile:

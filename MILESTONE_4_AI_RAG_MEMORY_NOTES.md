@@ -83,7 +83,7 @@ The following are intentionally deferred because the project currently lacks com
 
 ```bash
 python -m pytest -q
-# 83 passed
+# 86 passed
 ```
 
 Frontend build was also verified with:

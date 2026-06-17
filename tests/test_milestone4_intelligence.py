@@ -1,5 +1,7 @@
-from starlette.testclient import TestClient
 from datetime import UTC, datetime, timedelta
+
+import pytest
+from starlette.testclient import TestClient
 
 from backend.graph.state import TestContext as WorkflowContext, TicketData
 from backend.graph.workflow import run_workflow
@@ -14,6 +16,8 @@ from backend.prompts import prompt_registry
 
 def test_milestone4_intelligence_components_are_registered() -> None:
     assert llm_provider_registry.has("mock_llm") is True
+    assert llm_provider_registry.has("openai_compatible") is True
+    assert llm_provider_registry.has("ollama") is True
     assert prompt_registry.has("requirement_analysis_v1") is True
     assert prompt_registry.has("coverage_planning_v1") is True
     assert prompt_registry.has("test_case_generation_v1") is True
@@ -71,8 +75,14 @@ def test_intelligence_api_exposes_local_mock_providers_and_search() -> None:
 
     providers = client.get("/api/v1/intelligence/llm-providers")
     assert providers.status_code == 200
-    assert providers.json()[0]["name"] == "mock_llm"
-    assert providers.json()[0]["requires_external_api"] is False
+    provider_map = {provider["name"]: provider for provider in providers.json()}
+    assert provider_map["mock_llm"]["requires_external_api"] is False
+    assert provider_map["openai_compatible"]["requires_external_api"] is True
+    assert provider_map["openai_compatible"]["configuration_status"] in {
+        "configured",
+        "missing_api_key",
+    }
+    assert provider_map["ollama"]["mode"] == "local"
 
     knowledge = client.get("/api/v1/intelligence/knowledge/search", params={"query": "banking transfer risk"})
     assert knowledge.status_code == 200
@@ -100,11 +110,96 @@ def test_provider_catalog_includes_milestone4_local_intelligence_boundaries() ->
     provider_keys = {(provider["kind"], provider["name"]) for provider in providers}
 
     assert ("llm_provider", "mock_llm") in provider_keys
+    assert ("llm_provider", "ollama") in provider_keys
     assert ("knowledge_store", "local_knowledge") in provider_keys
     assert ("memory_store", "local_episodic_memory") in provider_keys
     assert ("embedding_model", "local_hash_embedding") in provider_keys
     assert ("vector_store", "local_in_memory_vector") in provider_keys
     assert ("reranker", "local_hybrid_reranker") in provider_keys
+
+
+def test_openai_compatible_provider_builds_chat_completion_request(monkeypatch) -> None:
+    import backend.llm.openai_compatible as provider_module
+    from backend.llm.openai_compatible import OpenAICompatibleLLMProvider, settings
+
+    captured: dict[str, object] = {}
+
+    def fake_post_json(**kwargs):
+        captured.update(kwargs)
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": "Real-model style requirement analysis.",
+                    }
+                }
+            ]
+        }
+
+    monkeypatch.setattr(settings, "openai_compatible_api_key", "test-key")
+    monkeypatch.setattr(settings, "openai_compatible_base_url", "https://llm.example/v1")
+    monkeypatch.setattr(settings, "openai_compatible_model", "real-model")
+    monkeypatch.setattr(provider_module, "post_json", fake_post_json)
+
+    response = OpenAICompatibleLLMProvider().complete(
+        prompt_name="requirement_analysis_v1",
+        prompt_version="1.0.0",
+        rendered_prompt="Ticket: Configure real model",
+    )
+
+    assert response.provider == "openai_compatible"
+    assert response.model == "real-model"
+    assert response.deterministic is False
+    assert response.text == "Real-model style requirement analysis."
+    assert captured["url"] == "https://llm.example/v1/chat/completions"
+    assert captured["headers"] == {"Authorization": "Bearer test-key"}
+    payload = captured["payload"]
+    assert payload["model"] == "real-model"
+    assert payload["messages"][-1]["content"] == "Ticket: Configure real model"
+
+
+def test_openai_compatible_provider_requires_api_key(monkeypatch) -> None:
+    from backend.llm.openai_compatible import OpenAICompatibleLLMProvider, settings
+
+    monkeypatch.setattr(settings, "openai_compatible_api_key", None)
+
+    with pytest.raises(RuntimeError, match="AEGISQA_OPENAI_COMPATIBLE_API_KEY"):
+        OpenAICompatibleLLMProvider().complete(
+            prompt_name="requirement_analysis_v1",
+            prompt_version="1.0.0",
+            rendered_prompt="Ticket: Missing key",
+        )
+
+
+def test_ollama_provider_builds_local_chat_request(monkeypatch) -> None:
+    import backend.llm.ollama as provider_module
+    from backend.llm.ollama import OllamaLLMProvider, settings
+
+    captured: dict[str, object] = {}
+
+    def fake_post_json(**kwargs):
+        captured.update(kwargs)
+        return {"message": {"content": "Local model analysis."}}
+
+    monkeypatch.setattr(settings, "ollama_base_url", "http://ollama.local:11434")
+    monkeypatch.setattr(settings, "ollama_model", "llama-local")
+    monkeypatch.setattr(provider_module, "post_json", fake_post_json)
+
+    response = OllamaLLMProvider().complete(
+        prompt_name="coverage_planning_v1",
+        prompt_version="1.0.0",
+        rendered_prompt="Plan coverage",
+        system_instruction="QA system",
+    )
+
+    assert response.provider == "ollama"
+    assert response.model == "llama-local"
+    assert response.text == "Local model analysis."
+    assert captured["url"] == "http://ollama.local:11434/api/chat"
+    payload = captured["payload"]
+    assert payload["model"] == "llama-local"
+    assert payload["messages"][0] == {"role": "system", "content": "QA system"}
+    assert payload["messages"][1] == {"role": "user", "content": "Plan coverage"}
 
 
 def test_knowledge_vector_store_supports_rerank_and_invalidation() -> None:

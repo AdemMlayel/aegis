@@ -96,8 +96,8 @@ function formatDate(value?: string | null): string {
 }
 
 function statusTone(status: string): "good" | "warn" | "bad" | "info" {
-  if (status.includes("complete") || status === "approved" || status === "passed") return "good";
-  if (status.includes("blocked") || status.includes("failed")) return "bad";
+  if (status.includes("complete") || status === "approved" || status === "passed" || status === "configured") return "good";
+  if (status.includes("blocked") || status.includes("failed") || status.includes("missing") || status === "disabled") return "bad";
   if (status.includes("pending") || status.includes("review") || status === "skipped") return "warn";
   return "info";
 }
@@ -877,7 +877,7 @@ export function App() {
                       </span>
                       <div className="provider-badges">
                         <StatusPill value={provider.mode} />
-                        <StatusPill value={provider.enabled ? "ready" : "disabled"} />
+                        <StatusPill value={provider.configuration_status ?? (provider.enabled ? "ready" : "disabled")} />
                       </div>
                     </div>
                     <p>{provider.description}</p>

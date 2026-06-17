@@ -58,6 +58,8 @@ class ProviderCatalogEntry:
     enabled: bool = True
     selected: bool = False
     config_key: str | None = None
+    configuration_status: str = "ready"
+    configuration_keys: tuple[str, ...] = ()
 
 
 class ProviderCatalog:
@@ -179,9 +181,11 @@ def build_provider_catalog() -> ProviderCatalog:
                 description=spec.description,
                 version="0.1.0",
                 requires_external_api=spec.requires_external_api,
-                enabled=_enabled(spec.requires_external_api),
+                enabled=_enabled(spec.requires_external_api) and spec.configuration_status != "missing_api_key",
                 selected=spec.name == settings.default_llm_provider,
                 config_key="AEGISQA_DEFAULT_LLM_PROVIDER",
+                configuration_status=spec.configuration_status,
+                configuration_keys=spec.configuration_keys,
             )
         )
 

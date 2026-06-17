@@ -193,6 +193,8 @@ export type ProviderCatalogEntry = {
   enabled: boolean;
   selected: boolean;
   config_key: string | null;
+  configuration_status?: string;
+  configuration_keys?: string[];
 };
 
 export type ProviderSelection = {
@@ -243,6 +245,8 @@ export type LLMProvider = {
   model: string;
   requires_external_api: boolean;
   description: string;
+  configuration_status?: string;
+  configuration_keys?: string[];
 };
 
 export type KnowledgeSearchItem = {

@@ -12,4 +12,5 @@ generated/
 
 .env
 .env.*
+!.env.example
 *.log

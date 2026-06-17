@@ -26,6 +26,8 @@ def list_llm_providers() -> list[dict[str, object]]:
             "model": spec.model,
             "requires_external_api": spec.requires_external_api,
             "description": spec.description,
+            "configuration_status": spec.configuration_status,
+            "configuration_keys": list(spec.configuration_keys),
         }
         for spec in llm_provider_registry.list_specs()
     ]

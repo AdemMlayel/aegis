@@ -12,6 +12,8 @@ class LLMProviderSpec:
     model: str = "deterministic-mock"
     requires_external_api: bool = False
     description: str = ""
+    configuration_status: str = "ready"
+    configuration_keys: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,8 @@ class LLMProviderRegistry:
         model: str = "deterministic-mock",
         requires_external_api: bool = False,
         description: str = "",
+        configuration_status: str = "ready",
+        configuration_keys: tuple[str, ...] = (),
     ):
         normalized_name = _require_name(name)
         spec = LLMProviderSpec(
@@ -59,6 +63,8 @@ class LLMProviderRegistry:
             model=model,
             requires_external_api=requires_external_api,
             description=description,
+            configuration_status=configuration_status,
+            configuration_keys=configuration_keys,
         )
 
         def decorator(provider_cls: type[BaseLLMProvider]) -> type[BaseLLMProvider]:

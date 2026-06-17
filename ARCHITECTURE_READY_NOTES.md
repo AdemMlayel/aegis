@@ -10,7 +10,7 @@ mock Jira connector backed by local mock tickets.
 
 - Clean packaging support through `scripts/package_clean.py`.
 - Reproducibility cleanup: removed invalid `httpx2` dev dependency.
-- Python tests green: `83 passed`.
+- Python tests green: `86 passed`.
 - Frontend build verified after fresh `npm ci`.
 - Local RBAC/auth scaffold added with permissive and strict modes.
 - Workflow graph extended with execution dispatch, investigation, and memory archive stages.
@@ -35,7 +35,7 @@ Commands run successfully:
 
 ```bash
 python -m pytest -q
-# 83 passed
+# 86 passed
 
 cd frontend
 npm ci

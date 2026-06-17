@@ -29,6 +29,8 @@ class LLMProviderResponse(BaseModel):
     model: str
     requires_external_api: bool
     description: str
+    configuration_status: str = "ready"
+    configuration_keys: list[str] = []
 
 
 class KnowledgeSearchItem(BaseModel):

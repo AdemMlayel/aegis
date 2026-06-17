@@ -40,7 +40,7 @@ Add the next runtime boundary after the service-layer milestone: durable executi
 
 ```bash
 python -m pytest -q
-# 83 passed
+# 86 passed
 ```
 
 ```bash

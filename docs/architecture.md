@@ -134,6 +134,19 @@ Local RAG and episodic memory now use deterministic retrieval infrastructure:
 This proves the vector retrieval shape while keeping local tests independent of
 external embedding APIs or a production vector database.
 
+## LLM Providers
+
+`mock_llm` remains the default for deterministic tests.  Two real provider
+boundaries are registered behind the same `BaseLLMProvider` contract:
+
+- `openai_compatible`: external OpenAI-style `/v1/chat/completions` endpoint.
+- `ollama`: local Ollama `/api/chat` endpoint.
+
+Switching providers is configuration-driven through `AEGISQA_DEFAULT_LLM_PROVIDER`.
+The OpenAI-compatible provider also requires `AEGISQA_EXTERNAL_CONNECTORS_ENABLED=true`
+and `AEGISQA_OPENAI_COMPATIBLE_API_KEY`.  Provider configuration status is exposed
+through `/api/v1/intelligence/llm-providers` and the provider catalog.
+
 ## Persistence
 
 Local SQLite persistence remains under `generated/storage/aegisqa.sqlite3`.

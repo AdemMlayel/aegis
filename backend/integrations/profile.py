@@ -30,6 +30,8 @@ def _to_ref(entry: ProviderCatalogEntry | None) -> IntegrationProviderRef | None
         notes.append("Provider requires external API configuration and is disabled in local mode.")
     if entry.mode in {ProviderMode.MOCK, ProviderMode.LOCAL}:
         notes.append("Provider is safe for local architecture proofs.")
+    if entry.configuration_status not in {"ready", "configured"}:
+        notes.append(f"Provider configuration status: {entry.configuration_status}.")
     return IntegrationProviderRef(
         kind=entry.kind.value,
         name=entry.name,
