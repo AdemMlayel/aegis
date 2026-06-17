@@ -140,12 +140,15 @@ external embedding APIs or a production vector database.
 boundaries are registered behind the same `BaseLLMProvider` contract:
 
 - `openai_compatible`: external OpenAI-style `/v1/chat/completions` endpoint.
-- `ollama`: local Ollama `/api/chat` endpoint.
+- `ollama`: local Ollama `/api/chat` endpoint with role-based model routing
+  for RAG, coding, and reasoning prompts.
 
 Switching providers is configuration-driven through `AEGISQA_DEFAULT_LLM_PROVIDER`.
 The OpenAI-compatible provider also requires `AEGISQA_EXTERNAL_CONNECTORS_ENABLED=true`
 and `AEGISQA_OPENAI_COMPATIBLE_API_KEY`.  Provider configuration status is exposed
 through `/api/v1/intelligence/llm-providers` and the provider catalog.
+Local Ollama model availability and smoke tests are exposed through
+`/api/v1/intelligence/ollama/models`.
 
 ## Persistence
 

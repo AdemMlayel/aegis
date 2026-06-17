@@ -35,7 +35,7 @@ Implemented and test-covered locally:
 - Mock Vault-compatible secret provider: `mock_vault`, returning references only.
 - Provider catalog endpoints that show selected local/mock providers and keep external connectors disabled.
 - React review dashboard under `frontend/`, including provider catalog and intelligence metadata panels.
-- 86 passing Python tests.
+- 90 passing Python tests.
 
 ## What Is Deliberately Mocked
 
@@ -423,9 +423,45 @@ Use a local Ollama model:
 ```bash
 AEGISQA_DEFAULT_LLM_PROVIDER=ollama
 AEGISQA_OLLAMA_BASE_URL=http://127.0.0.1:11434
-AEGISQA_OLLAMA_MODEL=llama3.1
+AEGISQA_OLLAMA_MODEL=qwen3:3b
 AEGISQA_OLLAMA_TEMPERATURE=0.2
 ```
+
+Role-based local model profile:
+
+```bash
+AEGISQA_OLLAMA_MAIN_MODEL=qwen3:3b
+AEGISQA_OLLAMA_RAG_MODEL=qwen3:3b
+AEGISQA_OLLAMA_BASELINE_MODEL=llama3.1:8b
+AEGISQA_OLLAMA_CODING_MODEL=qwen3-coder:latest
+AEGISQA_OLLAMA_FAST_MODEL=phi4-mini:latest
+AEGISQA_OLLAMA_FAST_FALLBACK_MODEL=gemma3:4b
+AEGISQA_OLLAMA_REASONING_MODEL=deepseek-r1:7b
+AEGISQA_OLLAMA_REASONING_FALLBACK_MODEL=deepseek-r1:8b
+AEGISQA_OLLAMA_EMBEDDING_MODEL=qwen3-embedding:0.6b
+AEGISQA_OLLAMA_EMBEDDING_FALLBACK_MODEL=nomic-embed-text
+```
+
+Install local models with Ollama, adjusting tags to match `ollama list` if a
+model uses a different local name:
+
+```bash
+ollama pull qwen3:3b
+ollama pull llama3.1:8b
+ollama pull qwen3-coder:latest
+ollama pull phi4-mini:latest
+ollama pull gemma3:4b
+ollama pull deepseek-r1:7b
+ollama pull deepseek-r1:8b
+ollama pull qwen3-embedding:0.6b
+ollama pull nomic-embed-text
+```
+
+The workflow routes requirement/report prompts to the RAG model, coverage
+planning to the reasoning model, and test-case generation to the coding model.
+Use `AEGISQA_DEFAULT_EMBEDDING_MODEL=ollama_embedding` to switch local
+knowledge and memory retrieval from deterministic hash embeddings to the
+configured Ollama embedding model.
 
 Both providers use the same prompt registry and write the selected provider,
 model, prompt version, and response summary into `TestContext.intelligence_trace`.
@@ -433,6 +469,8 @@ Provider configuration status is visible through:
 
 ```text
 GET /api/v1/intelligence/llm-providers
+GET /api/v1/intelligence/ollama/models
+POST /api/v1/intelligence/ollama/models/smoke-test
 GET /api/v1/integrations/providers?include_external=true
 ```
 

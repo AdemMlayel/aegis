@@ -3,15 +3,17 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.security import Capability, Principal, require_capability
 from backend.services.intelligence import (
     list_llm_providers as list_llm_providers_service,
     list_prompt_templates as list_prompt_templates_service,
+    read_ollama_model_profiles as read_ollama_model_profiles_service,
     read_retrieval_profile as read_retrieval_profile_service,
     search_knowledge as search_knowledge_service,
     search_memory as search_memory_service,
+    smoke_test_ollama_model_profiles as smoke_test_ollama_model_profiles_service,
 )
 
 router = APIRouter(tags=["intelligence"])
@@ -66,6 +68,46 @@ class RetrievalProfileResponse(BaseModel):
     memory_store: dict[str, object]
 
 
+class OllamaModelProfileResponse(BaseModel):
+    role: str
+    model: str
+    kind: str
+    purpose: str
+    env_key: str
+    fallback_model: str | None = None
+    installed: bool
+    fallback_installed: bool = False
+    pull_command: str
+    fallback_pull_command: str | None = None
+
+
+class OllamaModelCatalogResponse(BaseModel):
+    base_url: str
+    service_available: bool
+    service_error: str | None = None
+    installed_models: list[str]
+    profiles: list[OllamaModelProfileResponse]
+
+
+class OllamaSmokeTestRequest(BaseModel):
+    roles: list[str] | None = None
+    prompt: str = Field(default="Return only OK if this model is ready for AegisQA.", min_length=1)
+
+
+class OllamaSmokeTestItem(BaseModel):
+    role: str
+    model: str
+    kind: str
+    available: bool
+    ok: bool
+    response_excerpt: str = ""
+    error: str | None = None
+
+
+class OllamaSmokeTestResponse(BaseModel):
+    results: list[OllamaSmokeTestItem]
+
+
 @router.get("/intelligence/prompts", response_model=list[PromptTemplateResponse])
 def list_prompt_templates(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
@@ -115,3 +157,26 @@ def read_retrieval_profile(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
 ) -> RetrievalProfileResponse:
     return RetrievalProfileResponse(**read_retrieval_profile_service())
+
+
+@router.get("/intelligence/ollama/models", response_model=OllamaModelCatalogResponse)
+def read_ollama_model_profiles(
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> OllamaModelCatalogResponse:
+    return OllamaModelCatalogResponse(**read_ollama_model_profiles_service())
+
+
+@router.post("/intelligence/ollama/models/smoke-test", response_model=OllamaSmokeTestResponse)
+def smoke_test_ollama_model_profiles(
+    payload: OllamaSmokeTestRequest,
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> OllamaSmokeTestResponse:
+    return OllamaSmokeTestResponse(
+        results=[
+            OllamaSmokeTestItem(**result)
+            for result in smoke_test_ollama_model_profiles_service(
+                roles=payload.roles,
+                prompt=payload.prompt,
+            )
+        ]
+    )

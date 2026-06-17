@@ -603,6 +603,113 @@ select:focus {
   overflow-wrap: anywhere;
 }
 
+.ollama-model-area {
+  border-top: 1px solid #e2e9f1;
+  padding-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.ollama-model-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ollama-model-header h3 {
+  margin: 0 0 4px;
+  color: #41556b;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.ollama-model-header span,
+.ollama-model-card em,
+.ollama-model-card small {
+  color: #647489;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ollama-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ollama-actions .secondary-button {
+  min-width: 132px;
+}
+
+.ollama-model-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.ollama-model-card {
+  min-height: 168px;
+  border: 1px solid #dbe4ee;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 11px;
+  display: grid;
+  gap: 7px;
+}
+
+.ollama-model-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.ollama-model-title span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: #647489;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ollama-model-title strong {
+  color: #15202b;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.ollama-model-card p {
+  margin: 0;
+  color: #41556b;
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.ollama-model-card code {
+  border-radius: 6px;
+  color: #17324d;
+  background: #edf3f8;
+  padding: 7px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.ollama-model-card .smoke-ok {
+  color: #116041;
+}
+
+.ollama-model-card .smoke-error {
+  color: #9a2d36;
+}
+
 .queue-panel {
   display: grid;
   gap: 12px;
@@ -1285,6 +1392,8 @@ select:focus {
   .approval-actions,
   .queue-header,
   .provider-header,
+  .ollama-model-header,
+  .ollama-actions,
   .intelligence-toolbar,
   .provider-controls {
     align-items: stretch;
@@ -1305,6 +1414,9 @@ select:focus {
   .provider-summary,
   .provider-layout,
   .provider-catalog-list,
+  .ollama-model-header,
+  .ollama-actions,
+  .ollama-model-list,
   .profile-facts,
   .intelligence-search,
   .intelligence-grid,

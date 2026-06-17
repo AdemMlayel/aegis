@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 
 from backend.intelligence.vector import (
     InMemoryVectorStore,
-    LocalHashEmbeddingModel,
     LocalHybridReranker,
     VectorDocument,
+    create_embedding_model,
 )
 
 
@@ -44,7 +44,7 @@ class KnowledgeSearchResult:
 class KnowledgeStore:
     def __init__(self, chunks: list[KnowledgeChunk]) -> None:
         self._chunks = chunks
-        self._embedding_model = LocalHashEmbeddingModel()
+        self._embedding_model = create_embedding_model()
         self._vector_store = InMemoryVectorStore()
         self._reranker = LocalHybridReranker()
         self._chunks_by_id = {chunk.chunk_id: chunk for chunk in chunks}

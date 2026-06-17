@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from backend.knowledge import get_local_knowledge_store
 from backend.intelligence.vector import retrieval_profile
 from backend.llm import llm_provider_registry
+from backend.llm.ollama_profiles import model_profile_status, smoke_test_profiles
 from backend.memory import get_local_memory_store
 from backend.prompts import prompt_registry
 
@@ -74,3 +77,18 @@ def read_retrieval_profile() -> dict[str, object]:
         "knowledge_store": get_local_knowledge_store().retrieval_profile(),
         "memory_store": get_local_memory_store().retrieval_profile(),
     }
+
+
+def read_ollama_model_profiles() -> dict[str, object]:
+    return model_profile_status()
+
+
+def smoke_test_ollama_model_profiles(
+    *,
+    roles: list[str] | None = None,
+    prompt: str = "Return only OK if this model is ready for AegisQA.",
+) -> list[dict[str, object]]:
+    return [
+        asdict(result)
+        for result in smoke_test_profiles(roles=roles, prompt=prompt)
+    ]

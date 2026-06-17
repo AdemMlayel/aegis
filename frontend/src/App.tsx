@@ -24,6 +24,7 @@ import {
   executeSuite,
   getAutomationFile,
   getIntegrationProfile,
+  getOllamaModelCatalog,
   getProviderCatalog,
   getWorkflow,
   listLlmProviders,
@@ -34,6 +35,7 @@ import {
   listWorkflows,
   searchKnowledge,
   searchMemory,
+  smokeTestOllamaModels,
   startWorkflow,
   startWorkflowFromMockTicket
 } from "./api";
@@ -46,6 +48,8 @@ import type {
   KnowledgeSearchItem,
   LLMProvider,
   MemorySearchItem,
+  OllamaModelCatalog,
+  OllamaSmokeTestResult,
   PromptTemplate,
   ProviderCatalog,
   TestCase,
@@ -96,9 +100,23 @@ function formatDate(value?: string | null): string {
 }
 
 function statusTone(status: string): "good" | "warn" | "bad" | "info" {
-  if (status.includes("complete") || status === "approved" || status === "passed" || status === "configured") return "good";
-  if (status.includes("blocked") || status.includes("failed") || status.includes("missing") || status === "disabled") return "bad";
-  if (status.includes("pending") || status.includes("review") || status === "skipped") return "warn";
+  if (
+    status.includes("complete") ||
+    status === "approved" ||
+    status === "passed" ||
+    status === "configured" ||
+    status === "installed" ||
+    status === "available" ||
+    status === "ok"
+  ) return "good";
+  if (
+    status.includes("blocked") ||
+    status.includes("failed") ||
+    status.includes("missing") ||
+    status === "disabled" ||
+    status === "offline"
+  ) return "bad";
+  if (status.includes("pending") || status.includes("review") || status === "skipped" || status === "fallback") return "warn";
   return "info";
 }
 
@@ -158,9 +176,12 @@ export function App() {
   const [integrationProfile, setIntegrationProfile] = useState<IntegrationProfile | null>(null);
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
   const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
+  const [ollamaCatalog, setOllamaCatalog] = useState<OllamaModelCatalog | null>(null);
+  const [ollamaSmokeResults, setOllamaSmokeResults] = useState<OllamaSmokeTestResult[]>([]);
   const [knowledgeResults, setKnowledgeResults] = useState<KnowledgeSearchItem[]>([]);
   const [memoryResults, setMemoryResults] = useState<MemorySearchItem[]>([]);
   const [providersLoading, setProvidersLoading] = useState(false);
+  const [ollamaTesting, setOllamaTesting] = useState(false);
   const [includeExternalProviders, setIncludeExternalProviders] = useState(false);
   const [intelligenceQuery, setIntelligenceQuery] = useState("banking transfer risk");
   const [executionAdapter, setExecutionAdapter] = useState("mock");
@@ -188,6 +209,10 @@ export function App() {
     providerCatalog?.providers.filter((provider) => provider.kind === "execution_adapter" && provider.enabled) ?? [];
   const selectedProviderNames = new Set(
     providerCatalog?.selected.map((provider) => `${provider.kind}:${provider.selected}`) ?? []
+  );
+  const ollamaSmokeByRole = useMemo(
+    () => new Map(ollamaSmokeResults.map((result) => [result.role, result])),
+    [ollamaSmokeResults]
   );
 
   const validationCounts = useMemo(() => {
@@ -364,11 +389,12 @@ export function App() {
     setProvidersLoading(true);
     setError(null);
     try {
-      const [catalog, profile, prompts, llms, knowledge, memory] = await Promise.all([
+      const [catalog, profile, prompts, llms, ollamaModels, knowledge, memory] = await Promise.all([
         getProviderCatalog({ includeExternal: includeExternalProviders }),
         getIntegrationProfile(),
         listPromptTemplates(),
         listLlmProviders(),
+        getOllamaModelCatalog(),
         searchKnowledge(searchText, 3),
         searchMemory(searchText, 3)
       ]);
@@ -376,12 +402,26 @@ export function App() {
       setIntegrationProfile(profile);
       setPromptTemplates(prompts);
       setLlmProviders(llms);
+      setOllamaCatalog(ollamaModels);
       setKnowledgeResults(knowledge);
       setMemoryResults(memory);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Provider metadata failed to load");
     } finally {
       setProvidersLoading(false);
+    }
+  }
+
+  async function runOllamaSmokeTest() {
+    setOllamaTesting(true);
+    setError(null);
+    try {
+      setOllamaSmokeResults(await smokeTestOllamaModels());
+      setOllamaCatalog(await getOllamaModelCatalog());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ollama smoke test failed");
+    } finally {
+      setOllamaTesting(false);
     }
   }
 
@@ -968,6 +1008,62 @@ export function App() {
                     <p>{result.summary}</p>
                   </article>
                 ))}
+              </div>
+            </div>
+
+            <div className="ollama-model-area">
+              <div className="ollama-model-header">
+                <div>
+                  <h3>Local model profiles</h3>
+                  <span>{ollamaCatalog?.base_url ?? "http://127.0.0.1:11434"}</span>
+                </div>
+                <div className="ollama-actions">
+                  <StatusPill value={ollamaCatalog?.service_available ? "available" : "offline"} />
+                  <button
+                    className="secondary-button"
+                    onClick={() => void runOllamaSmokeTest()}
+                    disabled={ollamaTesting || providersLoading}
+                  >
+                    {ollamaTesting ? <Loader2 className="spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
+                    Smoke test
+                  </button>
+                </div>
+              </div>
+              {ollamaCatalog?.service_error && (
+                <p className="empty-state">{ollamaCatalog.service_error}</p>
+              )}
+              <div className="ollama-model-list">
+                {(ollamaCatalog?.profiles ?? []).map((profile) => {
+                  const smoke = ollamaSmokeByRole.get(profile.role);
+                  const installStatus = profile.installed
+                    ? "installed"
+                    : profile.fallback_installed
+                      ? "fallback"
+                      : "missing";
+                  return (
+                    <article className="ollama-model-card" key={profile.role}>
+                      <div className="ollama-model-title">
+                        <span>
+                          <strong>{profile.role.replaceAll("_", " ")}</strong>
+                          {profile.kind}
+                        </span>
+                        <StatusPill value={smoke ? (smoke.ok ? "ok" : "failed") : installStatus} />
+                      </div>
+                      <p>{profile.model}</p>
+                      <em>{profile.env_key}</em>
+                      {profile.fallback_model && (
+                        <small>Fallback: {profile.fallback_model}</small>
+                      )}
+                      <code>{profile.installed ? "ready" : profile.pull_command}</code>
+                      {smoke && (
+                        <p className={smoke.ok ? "smoke-ok" : "smoke-error"}>
+                          {smoke.ok ? smoke.response_excerpt || "OK" : smoke.error}
+                        </p>
+                      )}
+                    </article>
+                  );
+                })}
+                {providersLoading && <p className="empty-state">Loading local model profiles.</p>}
               </div>
             </div>
           </div>

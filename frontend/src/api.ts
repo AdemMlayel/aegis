@@ -9,6 +9,8 @@ import type {
   KnowledgeSearchItem,
   LLMProvider,
   MemorySearchItem,
+  OllamaModelCatalog,
+  OllamaSmokeTestResult,
   PromptTemplate,
   ProviderCatalog,
   TestContext,
@@ -195,6 +197,24 @@ export async function listPromptTemplates(): Promise<PromptTemplate[]> {
 export async function listLlmProviders(): Promise<LLMProvider[]> {
   const response = await fetch(`${API_ROOT}/intelligence/llm-providers`);
   return parseResponse<LLMProvider[]>(response);
+}
+
+export async function getOllamaModelCatalog(): Promise<OllamaModelCatalog> {
+  const response = await fetch(`${API_ROOT}/intelligence/ollama/models`);
+  return parseResponse<OllamaModelCatalog>(response);
+}
+
+export async function smokeTestOllamaModels(payload: {
+  roles?: string[];
+  prompt?: string;
+} = {}): Promise<OllamaSmokeTestResult[]> {
+  const response = await fetch(`${API_ROOT}/intelligence/ollama/models/smoke-test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const body = await parseResponse<{ results: OllamaSmokeTestResult[] }>(response);
+  return body.results;
 }
 
 export async function searchKnowledge(query: string, limit = 3): Promise<KnowledgeSearchItem[]> {

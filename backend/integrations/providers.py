@@ -233,6 +233,22 @@ def build_provider_catalog() -> ProviderCatalog:
 
     entries.append(
         ProviderCatalogEntry(
+            kind=ProviderKind.EMBEDDING_MODEL,
+            name="ollama_embedding",
+            mode=ProviderMode.LOCAL,
+            description="Local Ollama embedding model for RAG and memory retrieval.",
+            version="0.1.0",
+            requires_external_api=False,
+            enabled=True,
+            selected=settings.default_embedding_model == "ollama_embedding",
+            config_key="AEGISQA_DEFAULT_EMBEDDING_MODEL",
+            configuration_status="configured",
+            configuration_keys=("AEGISQA_OLLAMA_EMBEDDING_MODEL", "AEGISQA_OLLAMA_EMBEDDING_FALLBACK_MODEL"),
+        )
+    )
+
+    entries.append(
+        ProviderCatalogEntry(
             kind=ProviderKind.VECTOR_STORE,
             name="local_in_memory_vector",
             mode=ProviderMode.LOCAL,

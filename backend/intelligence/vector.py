@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from backend.config.settings import settings
+
 
 def tokenize(text: str) -> set[str]:
     return {term for term in re.findall(r"[a-zA-Z0-9_]+", text.lower()) if len(term) > 2}
@@ -34,6 +36,28 @@ class LocalHashEmbeddingModel:
         if length == 0:
             return tuple(values)
         return tuple(round(value / length, 6) for value in values)
+
+
+class OllamaEmbeddingModel:
+    def __init__(self, model: str | None = None) -> None:
+        self.model = model or settings.ollama_embedding_model
+        self.spec = EmbeddingSpec(
+            name="ollama_embedding",
+            dimension=0,
+            deterministic=False,
+            description=f"Local Ollama embeddings via {self.model}.",
+        )
+
+    def embed(self, text: str) -> tuple[float, ...]:
+        from backend.llm.ollama_profiles import embed_with_ollama
+
+        return embed_with_ollama(model=self.model, text=text)
+
+
+def create_embedding_model() -> LocalHashEmbeddingModel | OllamaEmbeddingModel:
+    if settings.default_embedding_model == "ollama_embedding":
+        return OllamaEmbeddingModel()
+    return LocalHashEmbeddingModel()
 
 
 @dataclass(frozen=True)
@@ -184,7 +208,7 @@ class LocalHybridReranker:
 
 
 def retrieval_profile() -> dict[str, object]:
-    embedding = LocalHashEmbeddingModel.spec
+    embedding = create_embedding_model().spec
     return {
         "embedding_model": {
             "name": embedding.name,

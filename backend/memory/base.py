@@ -9,9 +9,9 @@ from uuid import uuid4
 from backend.config.settings import settings
 from backend.intelligence.vector import (
     InMemoryVectorStore,
-    LocalHashEmbeddingModel,
     LocalHybridReranker,
     VectorDocument,
+    create_embedding_model,
 )
 
 
@@ -44,7 +44,7 @@ class EpisodicMemorySearchResult:
 class EpisodicMemoryStore:
     def __init__(self, entries: list[EpisodicMemoryEntry] | None = None) -> None:
         self._entries = entries or []
-        self._embedding_model = LocalHashEmbeddingModel()
+        self._embedding_model = create_embedding_model()
         self._vector_store = InMemoryVectorStore()
         self._reranker = LocalHybridReranker()
         self._entries_by_id: dict[str, EpisodicMemoryEntry] = {}

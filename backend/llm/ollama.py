@@ -12,9 +12,15 @@ from backend.llm.http_json import post_json
     mode="local",
     model=settings.ollama_model,
     requires_external_api=False,
-    description="Local Ollama chat provider. Configure base URL and model through environment variables.",
+    description="Local Ollama chat provider with role-based model routing.",
     configuration_status="configured",
-    configuration_keys=("AEGISQA_OLLAMA_BASE_URL", "AEGISQA_OLLAMA_MODEL"),
+    configuration_keys=(
+        "AEGISQA_OLLAMA_BASE_URL",
+        "AEGISQA_OLLAMA_MODEL",
+        "AEGISQA_OLLAMA_RAG_MODEL",
+        "AEGISQA_OLLAMA_CODING_MODEL",
+        "AEGISQA_OLLAMA_REASONING_MODEL",
+    ),
 )
 class OllamaLLMProvider(BaseLLMProvider):
     def complete(
@@ -30,7 +36,7 @@ class OllamaLLMProvider(BaseLLMProvider):
             messages.append({"role": "system", "content": system_instruction})
         messages.append({"role": "user", "content": rendered_prompt})
         payload: dict[str, Any] = {
-            "model": settings.ollama_model,
+            "model": select_ollama_chat_model(prompt_name),
             "messages": messages,
             "stream": False,
             "options": {"temperature": settings.ollama_temperature},
@@ -43,7 +49,7 @@ class OllamaLLMProvider(BaseLLMProvider):
         text = _extract_ollama_text(response)
         return LLMResponse(
             provider=self.spec.name,
-            model=settings.ollama_model,
+            model=select_ollama_chat_model(prompt_name),
             prompt_name=prompt_name,
             prompt_version=prompt_version,
             text=text,
@@ -61,3 +67,13 @@ def _extract_ollama_text(response: dict[str, Any]) -> str:
     if isinstance(response_text, str) and response_text.strip():
         return response_text.strip()
     raise RuntimeError("Ollama response did not include message content.")
+
+
+def select_ollama_chat_model(prompt_name: str) -> str:
+    if prompt_name in {"requirement_analysis_v1", "report_generation_v1"}:
+        return settings.ollama_rag_model
+    if prompt_name == "coverage_planning_v1":
+        return settings.ollama_reasoning_model
+    if prompt_name == "test_case_generation_v1":
+        return settings.ollama_coding_model
+    return settings.ollama_model
