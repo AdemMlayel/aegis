@@ -20,7 +20,7 @@ Implemented and verified locally:
 - Deterministic mock LLM provider.
 - Optional Ollama local LLM provider.
 - Deterministic local hash embedding provider.
-- Optional Ollama `nomic-embed-text` embedding provider.
+- Optional Ollama embedding provider with Qwen/Nomic local model profiles.
 - Local seeded knowledge store for RAG.
 - Local seeded episodic memory store.
 - Mock and local Robot execution adapters.
@@ -32,7 +32,7 @@ Verification result during hardening:
 
 ```bash
 python -m pytest -q
-# 84 passed
+# 86 passed
 
 cd frontend
 npm install
@@ -166,7 +166,14 @@ AEGISQA_DEFAULT_EMBEDDING_PROVIDER=local_hash_embeddings
 Optional Ollama mode:
 
 ```bash
+ollama pull qwen3:3b
 ollama pull llama3.1:8b
+ollama pull qwen3-coder
+ollama pull phi4-mini
+ollama pull gemma3:4b
+ollama pull deepseek-r1:8b
+ollama pull deepseek-r1:7b
+ollama pull qwen3-embedding:0.6b
 ollama pull nomic-embed-text
 ```
 
@@ -176,14 +183,24 @@ Then configure:
 AEGISQA_DEFAULT_LLM_PROVIDER=ollama
 AEGISQA_DEFAULT_EMBEDDING_PROVIDER=ollama_nomic_embed_text
 AEGISQA_OLLAMA_BASE_URL=http://127.0.0.1:11434
-AEGISQA_OLLAMA_CHAT_MODEL=llama3.1:8b
-AEGISQA_OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+AEGISQA_OLLAMA_CHAT_MODEL=qwen3:3b
+AEGISQA_OLLAMA_RAG_MODEL=qwen3:3b
+AEGISQA_OLLAMA_BASELINE_MODEL=llama3.1:8b
+AEGISQA_OLLAMA_CODING_MODEL=qwen3-coder
+AEGISQA_OLLAMA_FAST_MODEL=phi4-mini
+AEGISQA_OLLAMA_FAST_FALLBACK_MODEL=gemma3:4b
+AEGISQA_OLLAMA_REASONING_MODEL=deepseek-r1:8b
+AEGISQA_OLLAMA_REASONING_FALLBACK_MODEL=deepseek-r1:7b
+AEGISQA_OLLAMA_EMBEDDING_MODEL=qwen3-embedding:0.6b
+AEGISQA_OLLAMA_EMBEDDING_FALLBACK_MODEL=nomic-embed-text
 ```
 
 Ollama health endpoint:
 
 ```text
 GET /api/v1/intelligence/ollama/health
+GET /api/v1/intelligence/ollama/profiles
+POST /api/v1/intelligence/ollama/profiles/smoke-test
 ```
 
 If Ollama is not running or the selected model is missing, the API returns a clear status message. Workflow generation and RAG/memory retrieval use deterministic fallbacks so PM demos do not fail silently.
@@ -198,8 +215,8 @@ global environment defaults:
   "intelligence": {
     "llm_provider": "ollama",
     "embedding_provider": "ollama_nomic_embed_text",
-    "llm_model": "llama3.1:8b",
-    "embedding_model": "nomic-embed-text"
+    "llm_model": "qwen3:3b",
+    "embedding_model": "qwen3-embedding:0.6b"
   }
 }
 ```

@@ -296,6 +296,37 @@ export type OllamaHealth = {
   message: string;
 };
 
+export type OllamaModelProfile = {
+  role: string;
+  model: string;
+  kind: "chat" | "embedding";
+  purpose: string;
+  env_key: string;
+  fallback_model: string | null;
+  installed: boolean;
+  fallback_installed: boolean;
+  pull_command: string;
+  fallback_pull_command: string | null;
+};
+
+export type OllamaModelProfiles = {
+  base_url: string;
+  service_available: boolean;
+  service_error: string | null;
+  installed_models: string[];
+  profiles: OllamaModelProfile[];
+};
+
+export type OllamaSmokeTestResult = {
+  role: string;
+  model: string;
+  kind: "chat" | "embedding";
+  available: boolean;
+  ok: boolean;
+  response_excerpt: string;
+  error: string | null;
+};
+
 export type ExecutionRunRequest = {
   suite: string;
   adapter: string;

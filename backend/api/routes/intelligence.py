@@ -12,6 +12,10 @@ from backend.llm.ollama import ollama_health
 from backend.memory import get_local_memory_store
 from backend.prompts import prompt_registry
 from backend.security import Capability, Principal, require_capability
+from backend.services.intelligence import (
+    read_ollama_model_profiles,
+    smoke_test_ollama_model_profiles,
+)
 
 router = APIRouter(tags=["intelligence"])
 
@@ -48,6 +52,46 @@ class OllamaHealthResponse(BaseModel):
     chat_model_ready: bool
     embedding_model_ready: bool
     message: str
+
+
+class OllamaModelProfileResponse(BaseModel):
+    role: str
+    model: str
+    kind: str
+    purpose: str
+    env_key: str
+    fallback_model: str | None
+    installed: bool
+    fallback_installed: bool
+    pull_command: str
+    fallback_pull_command: str | None
+
+
+class OllamaModelProfilesResponse(BaseModel):
+    base_url: str
+    service_available: bool
+    service_error: str | None
+    installed_models: list[str]
+    profiles: list[OllamaModelProfileResponse]
+
+
+class OllamaSmokeTestRequest(BaseModel):
+    roles: list[str] | None = None
+    prompt: str = "Return only OK if this model is ready for AegisQA."
+
+
+class OllamaSmokeTestItem(BaseModel):
+    role: str
+    model: str
+    kind: str
+    available: bool
+    ok: bool
+    response_excerpt: str = ""
+    error: str | None = None
+
+
+class OllamaSmokeTestResponse(BaseModel):
+    results: list[OllamaSmokeTestItem]
 
 
 class KnowledgeSearchItem(BaseModel):
@@ -123,6 +167,27 @@ def get_ollama_health(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
 ) -> OllamaHealthResponse:
     return OllamaHealthResponse(**ollama_health())
+
+
+@router.get("/intelligence/ollama/profiles", response_model=OllamaModelProfilesResponse)
+def get_ollama_model_profiles(
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> OllamaModelProfilesResponse:
+    return OllamaModelProfilesResponse(**read_ollama_model_profiles())
+
+
+@router.post("/intelligence/ollama/profiles/smoke-test", response_model=OllamaSmokeTestResponse)
+def smoke_test_ollama_profiles(
+    request: OllamaSmokeTestRequest,
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> OllamaSmokeTestResponse:
+    return OllamaSmokeTestResponse(
+        results=smoke_test_ollama_model_profiles(
+            roles=request.roles,
+            prompt=request.prompt,
+        )
+    )
+
 
 @router.get("/intelligence/knowledge/search", response_model=list[KnowledgeSearchItem])
 def search_knowledge(

@@ -11,7 +11,7 @@ from backend.llm.ollama import OllamaUnavailableError, _post_json
     model=settings.ollama_embedding_model,
     dimensions=768,
     requires_external_api=False,
-    description="Local Ollama embedding provider using nomic-embed-text or another configured embedding model.",
+    description="Local Ollama embedding provider using Qwen, Nomic, or another configured embedding model.",
 )
 class OllamaEmbeddingProvider(BaseEmbeddingProvider):
     def embed(self, text: str) -> EmbeddingResponse:
@@ -23,7 +23,7 @@ class OllamaEmbeddingProvider(BaseEmbeddingProvider):
             )
         except OllamaUnavailableError as exc:
             raise OllamaUnavailableError(
-                "Ollama embeddings are not available. Start Ollama, pull nomic-embed-text, "
+                "Ollama embeddings are not available. Start Ollama, pull the configured embedding model, "
                 "or set AEGISQA_DEFAULT_EMBEDDING_PROVIDER=local_hash_embeddings. "
                 f"Details: {exc}"
             ) from exc

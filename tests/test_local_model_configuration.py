@@ -10,6 +10,7 @@ from backend.graph.state import (
     TicketData,
 )
 from backend.graph.workflow import run_workflow
+from backend.llm.ollama_profiles import list_ollama_profiles
 from backend.llm import llm_provider_registry
 from backend.main import app
 
@@ -53,6 +54,71 @@ def test_intelligence_model_endpoints_are_demo_safe() -> None:
     assert "message" in body
     assert "chat_model" in body
     assert "embedding_model" in body
+
+
+def test_ollama_role_profiles_match_planned_local_stack() -> None:
+    profiles = {profile.role: profile for profile in list_ollama_profiles()}
+
+    assert profiles["main_rag"].model == "qwen3:3b"
+    assert profiles["stable_baseline"].model == "llama3.1:8b"
+    assert profiles["coding_repo_analysis"].model == "qwen3-coder"
+    assert profiles["fast_testing"].model == "phi4-mini"
+    assert profiles["fast_testing"].fallback_model == "gemma3:4b"
+    assert profiles["reasoning"].model == "deepseek-r1:8b"
+    assert profiles["reasoning"].fallback_model == "deepseek-r1:7b"
+    assert profiles["rag_embedding"].model == "qwen3-embedding:0.6b"
+    assert profiles["rag_embedding"].fallback_model == "nomic-embed-text"
+
+
+def test_ollama_profile_endpoints_are_demo_safe(monkeypatch) -> None:
+    client = TestClient(app)
+
+    monkeypatch.setattr(
+        "backend.llm.ollama_profiles.list_installed_ollama_models",
+        lambda: (
+            True,
+            ["qwen3:3b", "llama3.1:8b", "qwen3-embedding:0.6b"],
+            None,
+        ),
+    )
+
+    profiles_response = client.get("/api/v1/intelligence/ollama/profiles")
+    assert profiles_response.status_code == 200
+    profiles_body = profiles_response.json()
+    assert profiles_body["service_available"] is True
+    assert {profile["role"] for profile in profiles_body["profiles"]} >= {
+        "main_rag",
+        "stable_baseline",
+        "coding_repo_analysis",
+        "fast_testing",
+        "reasoning",
+        "rag_embedding",
+    }
+    assert any(
+        profile["role"] == "main_rag" and profile["installed"] is True
+        for profile in profiles_body["profiles"]
+    )
+
+    monkeypatch.setattr(
+        "backend.api.routes.intelligence.smoke_test_ollama_model_profiles",
+        lambda roles=None, prompt="": [
+            {
+                "role": "main_rag",
+                "model": "qwen3:3b",
+                "kind": "chat",
+                "available": True,
+                "ok": True,
+                "response_excerpt": "OK",
+                "error": None,
+            }
+        ],
+    )
+    smoke_response = client.post(
+        "/api/v1/intelligence/ollama/profiles/smoke-test",
+        json={"roles": ["main_rag"]},
+    )
+    assert smoke_response.status_code == 200
+    assert smoke_response.json()["results"][0]["ok"] is True
 
 
 def test_workflow_uses_selected_embedding_provider_with_local_fallback(monkeypatch) -> None:

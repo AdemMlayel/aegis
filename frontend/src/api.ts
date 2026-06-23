@@ -8,6 +8,8 @@ import type {
   ExecutionRunStatus,
   LLMProvider,
   OllamaHealth,
+  OllamaModelProfiles,
+  OllamaSmokeTestResult,
   ProviderCatalog,
   TestContext,
   TicketData,
@@ -51,6 +53,27 @@ export async function getEmbeddingProviders(): Promise<EmbeddingProvider[]> {
 export async function getOllamaHealth(): Promise<OllamaHealth> {
   const response = await fetch(`${API_ROOT}/intelligence/ollama/health`);
   return parseResponse<OllamaHealth>(response);
+}
+
+export async function getOllamaProfiles(): Promise<OllamaModelProfiles> {
+  const response = await fetch(`${API_ROOT}/intelligence/ollama/profiles`);
+  return parseResponse<OllamaModelProfiles>(response);
+}
+
+export async function smokeTestOllamaProfiles(payload: {
+  roles?: string[] | null;
+  prompt?: string;
+} = {}): Promise<OllamaSmokeTestResult[]> {
+  const response = await fetch(`${API_ROOT}/intelligence/ollama/profiles/smoke-test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      roles: payload.roles ?? null,
+      prompt: payload.prompt ?? "Return only OK if this model is ready for AegisQA."
+    })
+  });
+  const body = await parseResponse<{ results: OllamaSmokeTestResult[] }>(response);
+  return body.results;
 }
 
 export async function listMockTickets(payload: {

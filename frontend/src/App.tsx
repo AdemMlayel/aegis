@@ -25,11 +25,13 @@ import {
   getEmbeddingProviders,
   getLLMProviders,
   getOllamaHealth,
+  getOllamaProfiles,
   getProviderCatalog,
   listExecutionEvents,
   listExecutionRuns,
   listMockTickets,
   listWorkflows,
+  smokeTestOllamaProfiles,
   startWorkflowFromMockTicket
 } from "./api";
 import type {
@@ -39,6 +41,9 @@ import type {
   ExecutionRunRecord,
   LLMProvider,
   OllamaHealth,
+  OllamaModelProfile,
+  OllamaModelProfiles,
+  OllamaSmokeTestResult,
   ProviderCatalog,
   TestCase,
   TestContext,
@@ -63,6 +68,8 @@ export default function App() {
   const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
   const [embeddingProviders, setEmbeddingProviders] = useState<EmbeddingProvider[]>([]);
   const [ollamaHealth, setOllamaHealth] = useState<OllamaHealth | null>(null);
+  const [ollamaProfiles, setOllamaProfiles] = useState<OllamaModelProfiles | null>(null);
+  const [smokeResults, setSmokeResults] = useState<OllamaSmokeTestResult[]>([]);
   const [selectedLlmProvider, setSelectedLlmProvider] = useState("mock_llm");
   const [selectedEmbeddingProvider, setSelectedEmbeddingProvider] = useState("local_hash_embeddings");
   const [llmModelOverride, setLlmModelOverride] = useState("");
@@ -128,13 +135,14 @@ export default function App() {
 
   async function refreshAll() {
     await runAction("refresh", async () => {
-      const [ticketList, queue, catalog, llms, embeddings, health] = await Promise.all([
+      const [ticketList, queue, catalog, llms, embeddings, health, profiles] = await Promise.all([
         listMockTickets(),
         listWorkflows({ limit: 8 }),
         getProviderCatalog(),
         getLLMProviders(),
         getEmbeddingProviders(),
-        getOllamaHealth()
+        getOllamaHealth(),
+        getOllamaProfiles()
       ]);
       setTickets(ticketList);
       setWorkflows(queue);
@@ -142,6 +150,7 @@ export default function App() {
       setLlmProviders(llms);
       setEmbeddingProviders(embeddings);
       setOllamaHealth(health);
+      setOllamaProfiles(profiles);
       setSelectedLlmProvider((current) => current || llms[0]?.name || "mock_llm");
       setSelectedEmbeddingProvider((current) => current || embeddings[0]?.name || "local_hash_embeddings");
       const stored = localStorage.getItem("aegisqa:lastContextId");
@@ -224,6 +233,24 @@ export default function App() {
     if (response && context) await refreshExecutionRuns(context.context_id);
   }
 
+  async function runOllamaSmokeTest() {
+    const roles = ollamaProfiles?.profiles.map((profile) => profile.role) ?? null;
+    const results = await runAction("smoke", () => smokeTestOllamaProfiles({ roles }));
+    if (results) setSmokeResults(results);
+    const profiles = await getOllamaProfiles().catch(() => null);
+    if (profiles) setOllamaProfiles(profiles);
+  }
+
+  function useOllamaProfile(profile: OllamaModelProfile) {
+    if (profile.kind === "embedding") {
+      setSelectedEmbeddingProvider("ollama_nomic_embed_text");
+      setEmbeddingModelOverride(profile.model);
+      return;
+    }
+    setSelectedLlmProvider("ollama");
+    setLlmModelOverride(profile.model);
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -294,6 +321,14 @@ export default function App() {
             </>
           ) : null}
           <ProviderLine label="Ollama" value={ollamaHealth?.message ?? "Not checked"} tone={ollamaHealth?.available ? "good" : "warn"} />
+          <ModelProfileList
+            profiles={ollamaProfiles?.profiles ?? []}
+            smokeResults={smokeResults}
+            onUse={useOllamaProfile}
+          />
+          <button className="secondary-button full-width" onClick={runOllamaSmokeTest} disabled={busy !== null}>
+            {busy === "smoke" ? <Loader2 className="spin" /> : <Activity />} Smoke test roles
+          </button>
           <details>
             <summary>Available model providers</summary>
             <ul className="compact-list">
@@ -494,6 +529,48 @@ function TicketPreview({ ticket }: { ticket: TicketData }) {
 
 function ProviderLine({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "good" | "warn" }) {
   return <div className={`provider-line ${tone}`}><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function ModelProfileList({
+  profiles,
+  smokeResults,
+  onUse
+}: {
+  profiles: OllamaModelProfile[];
+  smokeResults: OllamaSmokeTestResult[];
+  onUse: (profile: OllamaModelProfile) => void;
+}) {
+  const resultByRole = new Map(smokeResults.map((result) => [result.role, result]));
+  if (!profiles.length) return <Empty text="No Ollama model roles loaded." />;
+
+  return (
+    <div className="model-profile-list">
+      {profiles.map((profile) => {
+        const result = resultByRole.get(profile.role);
+        const ready = profile.installed || profile.fallback_installed;
+        const tone = result ? (result.ok ? "good" : "warn") : ready ? "good" : "warn";
+        const status = result
+          ? result.ok ? "smoke ok" : "smoke failed"
+          : profile.installed ? "installed"
+          : profile.fallback_installed ? "fallback ready"
+          : "missing";
+        return (
+          <div className={`model-profile ${tone}`} key={profile.role}>
+            <div>
+              <strong>{profile.role.replaceAll("_", " ")}</strong>
+              <span>{profile.model}</span>
+            </div>
+            <div className="model-profile-actions">
+              <span>{status}</span>
+              <button className="mini-button" onClick={() => onUse(profile)} type="button">
+                <CheckCircle2 /> Use
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

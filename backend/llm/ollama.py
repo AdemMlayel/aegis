@@ -93,6 +93,18 @@ def _health_message(models: list[str], chat_model: str, embedding_model: str) ->
     return "Ollama is reachable and configured models are available."
 
 
+def _extract_ollama_text(payload: dict[str, object]) -> str:
+    message = payload.get("message")
+    if isinstance(message, dict):
+        content = message.get("content")
+        if isinstance(content, str) and content.strip():
+            return content.strip()
+    response = payload.get("response")
+    if isinstance(response, str) and response.strip():
+        return response.strip()
+    raise OllamaUnavailableError("Ollama returned an empty text response.")
+
+
 def _post_json(path: str, payload: dict[str, object], *, timeout: int) -> dict[str, object]:
     url = f"{settings.ollama_base_url.rstrip('/')}{path}"
     request = urllib.request.Request(
