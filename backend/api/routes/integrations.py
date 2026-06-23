@@ -5,12 +5,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
-from backend.artifacts import ArtifactRecord, artifact_store_registry
-from backend.config.settings import settings
-from backend.integrations.profile import build_integration_profile
-from backend.integrations.providers import build_provider_catalog
-from backend.secrets import SecretReference, secret_provider_registry
 from backend.security import Capability, Principal, require_capability
+from backend.artifacts import ArtifactRecord
+from backend.secrets import SecretReference
+from backend.services.integrations import (
+    IntegrationConfigurationError,
+    list_local_artifacts as service_list_local_artifacts,
+    read_integration_profile as service_read_integration_profile,
+    read_provider_catalog as service_read_provider_catalog,
+    read_secret_references as service_read_secret_references,
+)
 
 
 router = APIRouter(tags=["integrations"])
@@ -42,7 +46,7 @@ def read_provider_catalog(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
     include_external: bool = Query(default=False),
 ) -> ProviderCatalogResponse:
-    catalog = build_provider_catalog().as_dict(include_external=include_external)
+    catalog = service_read_provider_catalog(include_external=include_external)
     return ProviderCatalogResponse(**catalog)
 
 
@@ -50,22 +54,23 @@ def read_provider_catalog(
 def read_integration_profile(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
 ) -> IntegrationProfileResponse:
-    return IntegrationProfileResponse(profile=build_integration_profile().model_dump(mode="json"))
+    return IntegrationProfileResponse(profile=service_read_integration_profile())
 
 
 @router.get("/integrations/secrets/references", response_model=SecretReferencesResponse)
 def read_secret_references(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_AUDIT))],
 ) -> SecretReferencesResponse:
-    if not secret_provider_registry.has(settings.default_secret_provider):
+    try:
+        provider_name, references = service_read_secret_references()
+    except IntegrationConfigurationError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Secret provider '{settings.default_secret_provider}' is not registered",
-        )
-    provider = secret_provider_registry.create(settings.default_secret_provider)
+            detail=str(exc),
+        ) from exc
     return SecretReferencesResponse(
-        provider=settings.default_secret_provider,
-        references=provider.list_references(),
+        provider=provider_name,
+        references=references,
     )
 
 
@@ -74,13 +79,14 @@ def list_local_artifacts(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_ARTIFACTS))],
     context_id: str | None = None,
 ) -> ArtifactListResponse:
-    if not artifact_store_registry.has(settings.default_artifact_store):
+    try:
+        store_name, artifacts = service_list_local_artifacts(context_id=context_id)
+    except IntegrationConfigurationError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Artifact store '{settings.default_artifact_store}' is not registered",
-        )
-    store = artifact_store_registry.create(settings.default_artifact_store)
+            detail=str(exc),
+        ) from exc
     return ArtifactListResponse(
-        store=settings.default_artifact_store,
-        artifacts=store.list(context_id=context_id),
+        store=store_name,
+        artifacts=artifacts,
     )
