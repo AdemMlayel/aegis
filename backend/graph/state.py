@@ -61,10 +61,21 @@ class LLMUsageRef(StrictModel):
 
 class IntelligenceTraceBlock(StrictModel):
     llm_provider: str = "mock_llm"
+    configured_llm_provider: str = Field(default_factory=lambda: settings.default_llm_provider)
+    configured_embedding_provider: str = Field(default_factory=lambda: settings.default_embedding_provider)
+    configured_llm_model: str | None = None
+    configured_embedding_model: str | None = None
     knowledge_refs: list[IntelligenceEvidenceRef] = Field(default_factory=list)
     memory_refs: list[IntelligenceEvidenceRef] = Field(default_factory=list)
     prompt_versions: list[PromptUsageRef] = Field(default_factory=list)
     llm_calls: list[LLMUsageRef] = Field(default_factory=list)
+
+
+class IntelligenceConfigBlock(StrictModel):
+    llm_provider: str = Field(default_factory=lambda: settings.default_llm_provider)
+    embedding_provider: str = Field(default_factory=lambda: settings.default_embedding_provider)
+    llm_model: str | None = None
+    embedding_model: str | None = None
 
 
 class CompletenessChecklist(StrictModel):
@@ -294,7 +305,7 @@ class WorkflowTraceEvent(StrictModel):
 
 
 class IntegrationProviderRef(StrictModel):
-    kind: Literal["ticket_connector", "execution_adapter", "artifact_store", "secret_provider", "git_handoff", "llm_provider", "knowledge_store", "memory_store"]
+    kind: Literal["ticket_connector", "execution_adapter", "artifact_store", "secret_provider", "git_handoff", "llm_provider", "knowledge_store", "memory_store", "embedding_provider"]
     name: str
     mode: Literal["mock", "local", "external"] = "local"
     requires_external_api: bool = False
@@ -311,6 +322,7 @@ class IntegrationProfileBlock(StrictModel):
     llm_provider: IntegrationProviderRef | None = None
     knowledge_store: IntegrationProviderRef | None = None
     memory_store: IntegrationProviderRef | None = None
+    embedding_provider: IntegrationProviderRef | None = None
     policy: Literal["mock_only", "local_only", "external_allowed"] = "mock_only"
     external_connectors_enabled: bool = False
 
@@ -329,6 +341,7 @@ class TestContext(StrictModel):
     workflow_trace: list[WorkflowTraceEvent] = Field(default_factory=list)
 
     integration_profile: IntegrationProfileBlock | None = None
+    intelligence_config: IntelligenceConfigBlock = Field(default_factory=IntelligenceConfigBlock)
     intelligence_trace: IntelligenceTraceBlock = Field(default_factory=IntelligenceTraceBlock)
 
     ticket: TicketData | None = None
@@ -346,6 +359,12 @@ class TestContext(StrictModel):
     review_feedback: list[ReviewFeedback] = Field(default_factory=list)
     audit_log: list[AuditEvent] = Field(default_factory=list)
     reports: ReportBlock | None = None
+
+    def sync_intelligence_trace_config(self) -> None:
+        self.intelligence_trace.configured_llm_provider = self.intelligence_config.llm_provider
+        self.intelligence_trace.configured_embedding_provider = self.intelligence_config.embedding_provider
+        self.intelligence_trace.configured_llm_model = self.intelligence_config.llm_model
+        self.intelligence_trace.configured_embedding_model = self.intelligence_config.embedding_model
 
     def mark(self, status: str) -> None:
         self.workflow_status = status

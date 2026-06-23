@@ -21,7 +21,6 @@ from backend.storage.execution_events import (
     append_execution_event,
     list_execution_events,
 )
-from backend.storage.migrations import list_applied_migrations
 
 
 def _workflow_context(ticket_id: str) -> WorkflowContext:
@@ -56,40 +55,6 @@ def test_save_and_load_context_uses_sqlite() -> None:
     assert loaded.ticket is not None
     assert loaded.ticket.id == ticket_id
     assert loaded.workflow_status == "report_generated"
-
-
-def test_initialize_database_records_idempotent_migrations() -> None:
-    db_path = SQLITE_DB_PATH.parent / f"migration-test-{uuid4().hex}.sqlite3"
-
-    initialize_database(db_path)
-    initialize_database(db_path)
-
-    with sqlite3.connect(db_path) as connection:
-        migrations = list_applied_migrations(connection)
-        tables = {
-            row[0]
-            for row in connection.execute(
-                """
-                SELECT name
-                FROM sqlite_master
-                WHERE type = 'table'
-                """
-            ).fetchall()
-        }
-
-    assert len(migrations) == 1
-    version, name, applied_at = migrations[0]
-    assert version == 1
-    assert name == "initial_local_schema"
-    assert applied_at
-    assert {
-        "schema_migrations",
-        "workflow_contexts",
-        "audit_events",
-        "mock_tickets",
-        "execution_runs",
-        "execution_events",
-    } <= tables
 
 
 def test_workflow_queue_history_is_backed_by_sqlite_summary_columns() -> None:

@@ -1,26 +1,23 @@
 from __future__ import annotations
 
-from typing import Any
+import json
+import urllib.error
+import urllib.request
 
 from backend.config.settings import settings
 from backend.llm.base import BaseLLMProvider, LLMResponse, llm_provider_registry
-from backend.llm.http_json import post_json
+
+
+class OllamaUnavailableError(RuntimeError):
+    pass
 
 
 @llm_provider_registry.register(
     name="ollama",
     mode="local",
-    model=settings.ollama_model,
+    model=settings.ollama_chat_model,
     requires_external_api=False,
-    description="Local Ollama chat provider with role-based model routing.",
-    configuration_status="configured",
-    configuration_keys=(
-        "AEGISQA_OLLAMA_BASE_URL",
-        "AEGISQA_OLLAMA_MODEL",
-        "AEGISQA_OLLAMA_RAG_MODEL",
-        "AEGISQA_OLLAMA_CODING_MODEL",
-        "AEGISQA_OLLAMA_REASONING_MODEL",
-    ),
+    description="Local Ollama chat provider for developer/PM demos. Requires Ollama running locally and the configured model pulled.",
 )
 class OllamaLLMProvider(BaseLLMProvider):
     def complete(
@@ -30,26 +27,31 @@ class OllamaLLMProvider(BaseLLMProvider):
         prompt_version: str,
         rendered_prompt: str,
         system_instruction: str | None = None,
+        model_override: str | None = None,
     ) -> LLMResponse:
-        messages: list[dict[str, str]] = []
-        if system_instruction:
-            messages.append({"role": "system", "content": system_instruction})
-        messages.append({"role": "user", "content": rendered_prompt})
-        payload: dict[str, Any] = {
-            "model": select_ollama_chat_model(prompt_name),
-            "messages": messages,
+        model = model_override or settings.ollama_chat_model
+        prompt = rendered_prompt if not system_instruction else f"{system_instruction}\n\n{rendered_prompt}"
+        payload = {
+            "model": model,
+            "prompt": prompt,
             "stream": False,
-            "options": {"temperature": settings.ollama_temperature},
+            "options": {"temperature": 0.1},
         }
-        response = post_json(
-            url=f"{settings.ollama_base_url.rstrip('/')}/api/chat",
-            payload=payload,
-            timeout_seconds=settings.llm_http_timeout_seconds,
-        )
-        text = _extract_ollama_text(response)
+        try:
+            raw = _post_json("/api/generate", payload, timeout=settings.ollama_timeout_seconds)
+        except OllamaUnavailableError as exc:
+            raise OllamaUnavailableError(
+                "Ollama is not available. Start Ollama, pull the configured chat model, "
+                f"or set AEGISQA_DEFAULT_LLM_PROVIDER=mock_llm. Details: {exc}"
+            ) from exc
+        text = str(raw.get("response") or "").strip()
+        if not text:
+            raise OllamaUnavailableError(
+                f"Ollama returned an empty response for model {model!r}."
+            )
         return LLMResponse(
             provider=self.spec.name,
-            model=select_ollama_chat_model(prompt_name),
+            model=model,
             prompt_name=prompt_name,
             prompt_version=prompt_version,
             text=text,
@@ -57,23 +59,59 @@ class OllamaLLMProvider(BaseLLMProvider):
         )
 
 
-def _extract_ollama_text(response: dict[str, Any]) -> str:
-    message = response.get("message")
-    if isinstance(message, dict):
-        content = message.get("content")
-        if isinstance(content, str) and content.strip():
-            return content.strip()
-    response_text = response.get("response")
-    if isinstance(response_text, str) and response_text.strip():
-        return response_text.strip()
-    raise RuntimeError("Ollama response did not include message content.")
+def list_ollama_models() -> list[str]:
+    try:
+        raw = _get_json("/api/tags", timeout=5)
+    except OllamaUnavailableError:
+        return []
+    models = raw.get("models", [])
+    return sorted(str(item.get("name")) for item in models if item.get("name"))
 
 
-def select_ollama_chat_model(prompt_name: str) -> str:
-    if prompt_name in {"requirement_analysis_v1", "report_generation_v1"}:
-        return settings.ollama_rag_model
-    if prompt_name == "coverage_planning_v1":
-        return settings.ollama_reasoning_model
-    if prompt_name == "test_case_generation_v1":
-        return settings.ollama_coding_model
-    return settings.ollama_model
+def ollama_health() -> dict[str, object]:
+    models = list_ollama_models()
+    chat_model = settings.ollama_chat_model
+    embedding_model = settings.ollama_embedding_model
+    return {
+        "available": bool(models),
+        "base_url": settings.ollama_base_url,
+        "chat_model": chat_model,
+        "embedding_model": embedding_model,
+        "installed_models": models,
+        "chat_model_ready": chat_model in models,
+        "embedding_model_ready": embedding_model in models,
+        "message": _health_message(models, chat_model, embedding_model),
+    }
+
+
+def _health_message(models: list[str], chat_model: str, embedding_model: str) -> str:
+    if not models:
+        return "Ollama is not reachable. Start Ollama or keep using mock_llm/local_hash_embeddings."
+    missing = [model for model in (chat_model, embedding_model) if model not in models]
+    if missing:
+        return "Ollama is reachable, but missing model(s): " + ", ".join(missing)
+    return "Ollama is reachable and configured models are available."
+
+
+def _post_json(path: str, payload: dict[str, object], *, timeout: int) -> dict[str, object]:
+    url = f"{settings.ollama_base_url.rstrip('/')}{path}"
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310 - local configurable dev endpoint.
+            return json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise OllamaUnavailableError(str(exc)) from exc
+
+
+def _get_json(path: str, *, timeout: int) -> dict[str, object]:
+    url = f"{settings.ollama_base_url.rstrip('/')}{path}"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310 - local configurable dev endpoint.
+            return json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise OllamaUnavailableError(str(exc)) from exc

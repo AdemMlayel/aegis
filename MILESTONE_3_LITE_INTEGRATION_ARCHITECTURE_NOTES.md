@@ -69,5 +69,5 @@ External providers should later be registered with `requires_external_api=True` 
 
 ```bash
 python -m pytest -q
-# 86 passed
+# 72 passed
 ```

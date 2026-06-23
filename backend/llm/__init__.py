@@ -1,19 +1,10 @@
-from __future__ import annotations
-
-import backend.llm.mock  # Registers mock_llm.
-import backend.llm.ollama  # Registers ollama.
-import backend.llm.openai_compatible  # Registers openai_compatible.
-from backend.llm.base import (
-    BaseLLMProvider,
-    LLMProviderRegistry,
-    LLMProviderSpec,
-    LLMResponse,
-    llm_provider_registry,
-)
+from backend.llm.base import BaseLLMProvider, LLMProviderSpec, LLMResponse, llm_provider_registry
+import backend.llm.mock  # noqa: F401
+import backend.llm.ollama  # noqa: F401
+import backend.llm.openai_compatible  # noqa: F401
 
 __all__ = [
     "BaseLLMProvider",
-    "LLMProviderRegistry",
     "LLMProviderSpec",
     "LLMResponse",
     "llm_provider_registry",

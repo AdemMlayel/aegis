@@ -4,9 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 
 from backend.config.settings import settings
+from backend.api.routes.workflows import (
+    IntelligenceConfigRequest,
+    StartWorkflowResponse,
+    run_and_persist_workflow_start,
+)
 from backend.graph.state import TestContext, TicketData
 from backend.security import Capability, Principal, require_capability
-from backend.services.workflows import start_workflow as start_workflow_service
 from backend.tickets import ticket_connector_registry
 from backend.storage.mock_tickets import (
     MockTicketRecord,
@@ -35,9 +39,6 @@ class MockTicketResponse(BaseModel):
     ticket: MockTicketRecord
 
 
-class StartWorkflowResponse(BaseModel):
-    context: TestContext
-
 
 
 class TicketConnectorSpecsResponse(BaseModel):
@@ -61,11 +62,13 @@ class StartConnectorTicketWorkflowRequest(BaseModel):
     created_by: str = Field(default="local-user", min_length=1)
     ticket_id: str = Field(min_length=1)
     connector: str = Field(default_factory=lambda: settings.default_ticket_connector, min_length=1)
+    intelligence: IntelligenceConfigRequest | None = None
 
 
 class StartMockTicketWorkflowRequest(BaseModel):
     created_by: str = Field(default="local-user", min_length=1)
     ticket_id: str = Field(min_length=1)
+    intelligence: IntelligenceConfigRequest | None = None
 
 
 
@@ -268,9 +271,10 @@ def start_workflow_from_ticket_connector(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Connector ticket was not found",
         )
-    context: TestContext = start_workflow_service(
+    context: TestContext = run_and_persist_workflow_start(
         created_by=request.created_by,
         ticket=ticket,
+        intelligence=request.intelligence,
     )
     return StartWorkflowResponse(context=context)
 
@@ -290,8 +294,9 @@ def start_workflow_from_mock_ticket(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Mock ticket was not found",
         )
-    context: TestContext = start_workflow_service(
+    context: TestContext = run_and_persist_workflow_start(
         created_by=request.created_by,
         ticket=ticket,
+        intelligence=request.intelligence,
     )
     return StartWorkflowResponse(context=context)

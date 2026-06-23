@@ -2,16 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.config.settings import settings
-from backend.graph.state import CoveragePlan, RequirementAnalysis, TicketData
+from backend.graph.state import CoveragePlan, RequirementAnalysis, TestContext, TicketData
 from backend.intelligence.context import (
     format_knowledge_context,
     format_memory_context,
+    complete_with_configured_llm,
     prompt_version_ref,
     search_knowledge_for_ticket,
     search_memory_for_ticket,
 )
-from backend.llm import llm_provider_registry
 from backend.prompts import prompt_registry
 from backend.tools.base import BaseTool, tool_registry
 
@@ -25,16 +24,24 @@ class LocalCoverageHeuristicTool(BaseTool):
     def invoke(self, **kwargs: Any) -> CoveragePlan:
         ticket = kwargs.get("ticket")
         analysis = kwargs.get("requirement_analysis")
+        context = kwargs.get("context")
         if not isinstance(ticket, TicketData):
             raise TypeError("LocalCoverageHeuristicTool requires a TicketData ticket")
         if not isinstance(analysis, RequirementAnalysis):
             raise TypeError(
                 "LocalCoverageHeuristicTool requires RequirementAnalysis"
             )
-        return plan_coverage(ticket=ticket, analysis=analysis)
+        if context is not None and not isinstance(context, TestContext):
+            raise TypeError("LocalCoverageHeuristicTool requires TestContext or None")
+        return plan_coverage(ticket=ticket, analysis=analysis, context=context)
 
 
-def plan_coverage(*, ticket: TicketData, analysis: RequirementAnalysis) -> CoveragePlan:
+def plan_coverage(
+    *,
+    ticket: TicketData,
+    analysis: RequirementAnalysis,
+    context: TestContext | None = None,
+) -> CoveragePlan:
     if ticket.priority == "critical":
         risk_level = "critical"
         criticality = 10
@@ -65,11 +72,12 @@ def plan_coverage(*, ticket: TicketData, analysis: RequirementAnalysis) -> Cover
         knowledge_context=format_knowledge_context(knowledge_results),
         memory_context=format_memory_context(memory_results),
     )
-    llm_provider_registry.create(settings.default_llm_provider).complete(
+    complete_with_configured_llm(
         prompt_name=prompt.name,
         prompt_version=prompt.version,
         rendered_prompt=rendered_prompt,
         system_instruction="You are a QA coverage planner operating in deterministic local mode.",
+        context=context,
     )
 
     knowledge_refs = [result.chunk.chunk_id for result in knowledge_results]

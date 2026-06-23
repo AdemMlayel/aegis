@@ -9,11 +9,13 @@ import backend.execution  # Registers local execution adapters.
 import backend.secrets  # Registers mock Vault provider.
 import backend.tickets  # Registers local ticket connectors.
 import backend.llm  # Registers local LLM providers.
+import backend.embeddings  # Registers local embedding providers.
 import backend.tools.git_handoff  # Registers local Git handoff tool.
 from backend.artifacts import artifact_store_registry
 from backend.config.settings import settings
 from backend.execution import execution_adapter_registry
 from backend.llm import llm_provider_registry
+from backend.embeddings import embedding_provider_registry
 from backend.secrets import secret_provider_registry
 from backend.tickets import ticket_connector_registry
 from backend.tools import tool_registry
@@ -28,9 +30,7 @@ class ProviderKind(StrEnum):
     LLM_PROVIDER = "llm_provider"
     KNOWLEDGE_STORE = "knowledge_store"
     MEMORY_STORE = "memory_store"
-    EMBEDDING_MODEL = "embedding_model"
-    VECTOR_STORE = "vector_store"
-    RERANKER = "reranker"
+    EMBEDDING_PROVIDER = "embedding_provider"
 
 
 class ProviderMode(StrEnum):
@@ -58,8 +58,6 @@ class ProviderCatalogEntry:
     enabled: bool = True
     selected: bool = False
     config_key: str | None = None
-    configuration_status: str = "ready"
-    configuration_keys: tuple[str, ...] = ()
 
 
 class ProviderCatalog:
@@ -181,11 +179,25 @@ def build_provider_catalog() -> ProviderCatalog:
                 description=spec.description,
                 version="0.1.0",
                 requires_external_api=spec.requires_external_api,
-                enabled=_enabled(spec.requires_external_api) and spec.configuration_status != "missing_api_key",
+                enabled=_enabled(spec.requires_external_api),
                 selected=spec.name == settings.default_llm_provider,
                 config_key="AEGISQA_DEFAULT_LLM_PROVIDER",
-                configuration_status=spec.configuration_status,
-                configuration_keys=spec.configuration_keys,
+            )
+        )
+
+
+    for spec in embedding_provider_registry.list_specs():
+        entries.append(
+            ProviderCatalogEntry(
+                kind=ProviderKind.EMBEDDING_PROVIDER,
+                name=spec.name,
+                mode=ProviderMode(spec.mode),
+                description=spec.description,
+                version="0.1.0",
+                requires_external_api=spec.requires_external_api,
+                enabled=_enabled(spec.requires_external_api),
+                selected=spec.name == settings.default_embedding_provider,
+                config_key="AEGISQA_DEFAULT_EMBEDDING_PROVIDER",
             )
         )
 
@@ -214,64 +226,6 @@ def build_provider_catalog() -> ProviderCatalog:
             enabled=True,
             selected=settings.default_memory_store == "local_episodic_memory",
             config_key="AEGISQA_DEFAULT_MEMORY_STORE",
-        )
-    )
-
-    entries.append(
-        ProviderCatalogEntry(
-            kind=ProviderKind.EMBEDDING_MODEL,
-            name="local_hash_embedding",
-            mode=ProviderMode.LOCAL,
-            description="Deterministic local hashing embedding model for RAG architecture proofs.",
-            version="0.1.0",
-            requires_external_api=False,
-            enabled=True,
-            selected=settings.default_embedding_model == "local_hash_embedding",
-            config_key="AEGISQA_DEFAULT_EMBEDDING_MODEL",
-        )
-    )
-
-    entries.append(
-        ProviderCatalogEntry(
-            kind=ProviderKind.EMBEDDING_MODEL,
-            name="ollama_embedding",
-            mode=ProviderMode.LOCAL,
-            description="Local Ollama embedding model for RAG and memory retrieval.",
-            version="0.1.0",
-            requires_external_api=False,
-            enabled=True,
-            selected=settings.default_embedding_model == "ollama_embedding",
-            config_key="AEGISQA_DEFAULT_EMBEDDING_MODEL",
-            configuration_status="configured",
-            configuration_keys=("AEGISQA_OLLAMA_EMBEDDING_MODEL", "AEGISQA_OLLAMA_EMBEDDING_FALLBACK_MODEL"),
-        )
-    )
-
-    entries.append(
-        ProviderCatalogEntry(
-            kind=ProviderKind.VECTOR_STORE,
-            name="local_in_memory_vector",
-            mode=ProviderMode.LOCAL,
-            description="Local in-memory vector index for deterministic knowledge and memory search.",
-            version="0.1.0",
-            requires_external_api=False,
-            enabled=True,
-            selected=settings.default_vector_store == "local_in_memory_vector",
-            config_key="AEGISQA_DEFAULT_VECTOR_STORE",
-        )
-    )
-
-    entries.append(
-        ProviderCatalogEntry(
-            kind=ProviderKind.RERANKER,
-            name="local_hybrid_reranker",
-            mode=ProviderMode.LOCAL,
-            description="Local hybrid reranker combining vector similarity, lexical overlap, and tag matches.",
-            version="0.1.0",
-            requires_external_api=False,
-            enabled=True,
-            selected=settings.default_reranker == "local_hybrid_reranker",
-            config_key="AEGISQA_DEFAULT_RERANKER",
         )
     )
 

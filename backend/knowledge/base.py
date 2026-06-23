@@ -3,13 +3,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from backend.intelligence.vector import (
-    InMemoryVectorStore,
-    LocalHybridReranker,
-    VectorDocument,
-    create_embedding_model,
-)
-
 
 @dataclass(frozen=True)
 class KnowledgeChunk:
@@ -18,8 +11,6 @@ class KnowledgeChunk:
     source: str
     text: str
     tags: tuple[str, ...] = ()
-    created_at: str | None = None
-    expires_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -27,9 +18,6 @@ class KnowledgeSearchResult:
     chunk: KnowledgeChunk
     score: float
     matched_terms: tuple[str, ...] = ()
-    vector_score: float = 0.0
-    rerank_score: float = 0.0
-    retention_status: str = "active"
 
     @property
     def ref(self) -> str:
@@ -44,66 +32,30 @@ class KnowledgeSearchResult:
 class KnowledgeStore:
     def __init__(self, chunks: list[KnowledgeChunk]) -> None:
         self._chunks = chunks
-        self._embedding_model = create_embedding_model()
-        self._vector_store = InMemoryVectorStore()
-        self._reranker = LocalHybridReranker()
-        self._chunks_by_id = {chunk.chunk_id: chunk for chunk in chunks}
-        for chunk in chunks:
-            self._vector_store.upsert(
-                document=VectorDocument(
-                    document_id=chunk.chunk_id,
-                    namespace="knowledge",
-                    text=" ".join([chunk.title, chunk.text]),
-                    tags=chunk.tags,
-                    expires_at=chunk.expires_at,
-                    metadata={
-                        "title": chunk.title,
-                        "source": chunk.source,
-                        "created_at": chunk.created_at,
-                    },
-                ),
-                embedding=self._embedding_model.embed(" ".join([chunk.title, chunk.text, " ".join(chunk.tags)])),
-            )
 
     def search(self, *, query: str, tags: list[str] | None = None, limit: int = 3) -> list[KnowledgeSearchResult]:
+        query_terms = _tokenize(query)
+        tag_terms = {tag.lower() for tag in (tags or [])}
         results: list[KnowledgeSearchResult] = []
-        hits = self._vector_store.search(
-            query_embedding=self._embedding_model.embed(query),
-            namespace="knowledge",
-            limit=max(limit * 4, limit),
-        )
-        reranked_hits = self._reranker.rerank(query=query, hits=hits, tags=tags, limit=limit)
-        for hit in reranked_hits:
-            chunk = self._chunks_by_id.get(hit.document.document_id)
-            if chunk is None:
+        for chunk in self._chunks:
+            chunk_terms = _tokenize(" ".join([chunk.title, chunk.text, " ".join(chunk.tags)]))
+            matched_terms = tuple(sorted(query_terms & chunk_terms))
+            tag_matches = tag_terms & {tag.lower() for tag in chunk.tags}
+            if not matched_terms and not tag_matches:
                 continue
+            score = len(matched_terms) + (1.5 * len(tag_matches))
+            score = score / max(len(query_terms) or 1, 1)
             results.append(
                 KnowledgeSearchResult(
                     chunk=chunk,
-                    score=hit.rerank_score,
-                    matched_terms=hit.matched_terms,
-                    vector_score=hit.vector_score,
-                    rerank_score=hit.rerank_score,
-                    retention_status=hit.retention_status,
+                    score=round(min(score, 1.0), 3),
+                    matched_terms=matched_terms,
                 )
             )
-        return results
+        return sorted(results, key=lambda result: (-result.score, result.chunk.chunk_id))[:limit]
 
     def list_chunks(self) -> list[KnowledgeChunk]:
-        active_ids = {document.document_id for document in self._vector_store.list_documents()}
-        return [chunk for chunk in self._chunks if chunk.chunk_id in active_ids]
-
-    def invalidate(self, chunk_id: str) -> bool:
-        return self._vector_store.invalidate(chunk_id)
-
-    def retrieval_profile(self) -> dict[str, object]:
-        return {
-            "chunk_count": len(self._chunks),
-            "active_chunk_count": len(self.list_chunks()),
-            "embedding_model": self._embedding_model.spec.name,
-            "vector_store": self._vector_store.spec["name"],
-            "reranker": self._reranker.spec["name"],
-        }
+        return list(self._chunks)
 
 
 def _tokenize(text: str) -> set[str]:

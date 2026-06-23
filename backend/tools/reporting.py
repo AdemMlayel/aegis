@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.config.settings import settings
 from backend.graph.state import (
     ApprovalBlock,
     AutomationBlock,
@@ -12,10 +11,11 @@ from backend.graph.state import (
     InvestigationBlock,
     MemoryArchiveBlock,
     ReportBlock,
+    TestContext,
     TestCase,
     TicketData,
 )
-from backend.llm import llm_provider_registry
+from backend.intelligence.context import complete_with_configured_llm
 from backend.prompts import prompt_registry
 from backend.tools.base import BaseTool, tool_registry
 
@@ -36,6 +36,7 @@ class LocalReportGenerationTool(BaseTool):
         investigation = kwargs.get("investigation")
         memory_archive = kwargs.get("memory_archive")
         intelligence_trace = kwargs.get("intelligence_trace")
+        context = kwargs.get("context")
 
         if not isinstance(coverage_plan, CoveragePlan):
             raise TypeError("LocalReportGenerationTool requires CoveragePlan")
@@ -61,6 +62,8 @@ class LocalReportGenerationTool(BaseTool):
             raise TypeError("LocalReportGenerationTool requires MemoryArchiveBlock or None")
         if intelligence_trace is not None and not isinstance(intelligence_trace, IntelligenceTraceBlock):
             raise TypeError("LocalReportGenerationTool requires IntelligenceTraceBlock or None")
+        if context is not None and not isinstance(context, TestContext):
+            raise TypeError("LocalReportGenerationTool requires TestContext or None")
 
         return generate_report(
             coverage_plan=coverage_plan,
@@ -72,6 +75,7 @@ class LocalReportGenerationTool(BaseTool):
             investigation=investigation,
             memory_archive=memory_archive,
             intelligence_trace=intelligence_trace,
+            context=context,
         )
 
 
@@ -86,6 +90,7 @@ def generate_report(
     investigation: InvestigationBlock | None = None,
     memory_archive: MemoryArchiveBlock | None = None,
     intelligence_trace: IntelligenceTraceBlock | None = None,
+    context: TestContext | None = None,
 ) -> ReportBlock:
     automation_count = len(automation)
     validated_count = sum(
@@ -113,11 +118,12 @@ def generate_report(
             knowledge_refs=knowledge_refs,
             memory_refs=memory_refs,
         )
-        llm_provider_registry.create(settings.default_llm_provider).complete(
+        complete_with_configured_llm(
             prompt_name=prompt.name,
             prompt_version=prompt.version,
             rendered_prompt=rendered_prompt,
             system_instruction="You are a QA report generator operating in deterministic local mode.",
+            context=context,
         )
         if "report_generation_v1@1.0.0" not in prompt_refs:
             prompt_refs.append("report_generation_v1@1.0.0")

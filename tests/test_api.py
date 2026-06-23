@@ -50,6 +50,41 @@ def test_start_workflow_from_mock_ticket_endpoint(monkeypatch) -> None:
     assert context["automation"]["TC001"]["validation"]["artifact_exists"] is True
 
 
+def test_start_workflow_from_mock_ticket_accepts_intelligence_config(monkeypatch) -> None:
+    monkeypatch.setattr("backend.integrations.git_handoff._is_git_repo", lambda: False)
+
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/workflows/start-from-mock-ticket",
+        json={
+            "created_by": "pytest",
+            "ticket_id": "MOCK-101",
+            "intelligence": {
+                "llm_provider": "mock_llm",
+                "embedding_provider": "local_hash_embeddings",
+                "llm_model": "pytest-model-override",
+            },
+        },
+    )
+
+    assert response.status_code == 202
+    context = response.json()["context"]
+    assert context["intelligence_config"]["llm_provider"] == "mock_llm"
+    assert context["intelligence_config"]["embedding_provider"] == "local_hash_embeddings"
+    assert context["intelligence_config"]["llm_model"] == "pytest-model-override"
+    assert context["intelligence_trace"]["configured_llm_provider"] == "mock_llm"
+    assert context["intelligence_trace"]["configured_embedding_provider"] == "local_hash_embeddings"
+    assert context["intelligence_trace"]["configured_llm_model"] == "pytest-model-override"
+    assert context["intelligence_trace"]["llm_calls"]
+    assert all(
+        call["model"] == "pytest-model-override"
+        for call in context["intelligence_trace"]["llm_calls"]
+    )
+    assert context["integration_profile"]["llm_provider"]["name"] == "mock_llm"
+    assert context["integration_profile"]["embedding_provider"]["name"] == "local_hash_embeddings"
+
+
 def test_start_workflow_from_missing_mock_ticket_returns_404() -> None:
     client = TestClient(app)
 

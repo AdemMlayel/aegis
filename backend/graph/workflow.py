@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from backend.graph import nodes
-from backend.graph.state import ExecutionRequestBlock, TestContext, TicketData
+from backend.graph.state import ExecutionRequestBlock, IntelligenceConfigBlock, TestContext, TicketData
 
 try:
     from langgraph.graph import END, StateGraph
@@ -171,9 +171,18 @@ def build_workflow() -> Any:
 
 
 def create_initial_context(
-    *, created_by: str = "local-user", ticket: TicketData | None = None
+    *,
+    created_by: str = "local-user",
+    ticket: TicketData | None = None,
+    intelligence_config: IntelligenceConfigBlock | None = None,
 ) -> TestContext:
-    return TestContext(created_by=created_by, ticket=ticket)
+    context = TestContext(
+        created_by=created_by,
+        ticket=ticket,
+        intelligence_config=intelligence_config or IntelligenceConfigBlock(),
+    )
+    context.sync_intelligence_trace_config()
+    return context
 
 
 def run_workflow(context: TestContext) -> TestContext:

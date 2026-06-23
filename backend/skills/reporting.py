@@ -33,6 +33,7 @@ class GenerateReportSkill(BaseSkill):
             investigation=context.investigation,
             memory_archive=context.memory_archive,
             intelligence_trace=context.intelligence_trace,
+            context=context,
         )
         report = result.value
         if not isinstance(report, ReportBlock):

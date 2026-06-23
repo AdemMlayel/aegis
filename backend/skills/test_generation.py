@@ -29,6 +29,7 @@ class GenerateTestCasesSkill(BaseSkill):
             requirement_analysis=context.requirement_analysis,
             coverage_plan=context.coverage_plan,
             ticket=context.ticket,
+            context=context,
         )
         test_cases = result.value
         if not isinstance(test_cases, list) or not all(

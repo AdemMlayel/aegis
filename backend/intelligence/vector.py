@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from backend.config.settings import settings
+from backend.embeddings import embedding_provider_registry
 
 
 def tokenize(text: str) -> set[str]:
@@ -38,25 +39,28 @@ class LocalHashEmbeddingModel:
         return tuple(round(value / length, 6) for value in values)
 
 
-class OllamaEmbeddingModel:
-    def __init__(self, model: str | None = None) -> None:
-        self.model = model or settings.ollama_embedding_model
+class EmbeddingProviderModel:
+    def __init__(self, provider_name: str) -> None:
+        self.provider_name = provider_name
+        self.provider = embedding_provider_registry.create(provider_name)
+        provider_spec = self.provider.spec
         self.spec = EmbeddingSpec(
-            name="ollama_embedding",
-            dimension=0,
-            deterministic=False,
-            description=f"Local Ollama embeddings via {self.model}.",
+            name=provider_spec.name,
+            dimension=provider_spec.dimensions,
+            deterministic=provider_spec.name == "local_hash_embeddings",
+            description=provider_spec.description,
         )
 
     def embed(self, text: str) -> tuple[float, ...]:
-        from backend.llm.ollama_profiles import embed_with_ollama
-
-        return embed_with_ollama(model=self.model, text=text)
+        return self.provider.embed(text).vector
 
 
-def create_embedding_model() -> LocalHashEmbeddingModel | OllamaEmbeddingModel:
-    if settings.default_embedding_model == "ollama_embedding":
-        return OllamaEmbeddingModel()
+def create_embedding_model(
+    provider_name: str | None = None,
+) -> LocalHashEmbeddingModel | EmbeddingProviderModel:
+    selected_provider = provider_name or settings.default_embedding_provider
+    if embedding_provider_registry.has(selected_provider):
+        return EmbeddingProviderModel(selected_provider)
     return LocalHashEmbeddingModel()
 
 

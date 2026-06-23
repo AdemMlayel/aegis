@@ -28,6 +28,7 @@ class PlanCoverageSkill(BaseSkill):
             audit_sink=context.record_event,
             ticket=context.ticket,
             requirement_analysis=context.requirement_analysis,
+            context=context,
         )
         coverage_plan = result.value
         if not isinstance(coverage_plan, CoveragePlan):

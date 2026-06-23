@@ -2,15 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.config.settings import settings
-from backend.graph.state import CoveragePlan, RequirementAnalysis, TestCase, TicketData
+from backend.graph.state import CoveragePlan, RequirementAnalysis, TestCase, TestContext, TicketData
 from backend.intelligence.context import (
     format_knowledge_context,
     format_memory_context,
+    complete_with_configured_llm,
     search_knowledge_for_ticket,
     search_memory_for_ticket,
 )
-from backend.llm import llm_provider_registry
 from backend.prompts import prompt_registry
 from backend.tools.base import BaseTool, tool_registry
 
@@ -25,6 +24,7 @@ class LocalTestCaseHeuristicTool(BaseTool):
         analysis = kwargs.get("requirement_analysis")
         coverage_plan = kwargs.get("coverage_plan")
         ticket = kwargs.get("ticket")
+        context = kwargs.get("context")
         if not isinstance(analysis, RequirementAnalysis):
             raise TypeError(
                 "LocalTestCaseHeuristicTool requires RequirementAnalysis"
@@ -33,7 +33,14 @@ class LocalTestCaseHeuristicTool(BaseTool):
             raise TypeError("LocalTestCaseHeuristicTool requires CoveragePlan")
         if ticket is not None and not isinstance(ticket, TicketData):
             raise TypeError("LocalTestCaseHeuristicTool requires TicketData or None")
-        return generate_test_cases(analysis=analysis, coverage_plan=coverage_plan, ticket=ticket)
+        if context is not None and not isinstance(context, TestContext):
+            raise TypeError("LocalTestCaseHeuristicTool requires TestContext or None")
+        return generate_test_cases(
+            analysis=analysis,
+            coverage_plan=coverage_plan,
+            ticket=ticket,
+            context=context,
+        )
 
 
 def generate_test_cases(
@@ -41,6 +48,7 @@ def generate_test_cases(
     analysis: RequirementAnalysis,
     coverage_plan: CoveragePlan,
     ticket: TicketData | None = None,
+    context: TestContext | None = None,
 ) -> list[TestCase]:
     evidence_refs = list(coverage_plan.knowledge_refs_used or analysis.knowledge_refs_used)
     memory_refs = list(coverage_plan.memory_refs_used or analysis.memory_refs_used)
@@ -55,11 +63,12 @@ def generate_test_cases(
             knowledge_context=format_knowledge_context(knowledge_results),
             memory_context=format_memory_context(memory_results),
         )
-        llm_provider_registry.create(settings.default_llm_provider).complete(
+        complete_with_configured_llm(
             prompt_name=prompt.name,
             prompt_version=prompt.version,
             rendered_prompt=rendered_prompt,
             system_instruction="You are a QA test case generator operating in deterministic local mode.",
+            context=context,
         )
 
     test_cases = [

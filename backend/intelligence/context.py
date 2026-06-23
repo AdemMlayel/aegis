@@ -122,3 +122,56 @@ def record_memory_refs(context: TestContext, results: list[EpisodicMemorySearchR
 def prompt_version_ref(prompt_name: str) -> str:
     prompt = prompt_registry.get(prompt_name)
     return f"{prompt.name}@{prompt.version}"
+
+
+def complete_with_configured_llm(
+    *,
+    prompt_name: str,
+    prompt_version: str,
+    rendered_prompt: str,
+    system_instruction: str | None = None,
+    context: TestContext | None = None,
+) -> LLMResponse:
+    """Call the selected LLM provider with a safe deterministic fallback.
+
+    Local demos should not fail just because Ollama is not running. When a
+    selected local/cloud provider is unavailable, the response explicitly states
+    the fallback reason so the UI and report remain honest.
+    """
+    from backend.config.settings import settings
+    from backend.llm import llm_provider_registry
+
+    provider_name = context.intelligence_config.llm_provider if context else settings.default_llm_provider
+    model_override = context.intelligence_config.llm_model if context else None
+    try:
+        response = llm_provider_registry.create(provider_name).complete(
+            prompt_name=prompt_name,
+            prompt_version=prompt_version,
+            rendered_prompt=rendered_prompt,
+            system_instruction=system_instruction,
+            model_override=model_override,
+        )
+    except Exception as exc:  # noqa: BLE001 - provider boundary must degrade gracefully in local demos.
+        fallback = llm_provider_registry.create("mock_llm").complete(
+            prompt_name=prompt_name,
+            prompt_version=prompt_version,
+            rendered_prompt=rendered_prompt,
+            system_instruction=system_instruction,
+            model_override=model_override if provider_name == "mock_llm" else None,
+        )
+        response = LLMResponse(
+            provider="mock_llm",
+            model=f"{fallback.model} (fallback from {provider_name})",
+            prompt_name=prompt_name,
+            prompt_version=prompt_version,
+            text=(
+                f"{fallback.text} Selected provider {provider_name!r} was unavailable: "
+                f"{type(exc).__name__}: {exc}"
+            ),
+            deterministic=True,
+        )
+    if context is not None:
+        context.sync_intelligence_trace_config()
+        record_prompt_usage(context, name=prompt_name, version=prompt_version)
+        record_llm_usage(context, response)
+    return response

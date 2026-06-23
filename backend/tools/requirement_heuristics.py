@@ -2,16 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.config.settings import settings
-from backend.graph.state import CompletenessChecklist, RequirementAnalysis, TicketData
+from backend.graph.state import CompletenessChecklist, RequirementAnalysis, TestContext, TicketData
 from backend.intelligence.context import (
     format_knowledge_context,
     format_memory_context,
+    complete_with_configured_llm,
     prompt_version_ref,
     search_knowledge_for_ticket,
     search_memory_for_ticket,
 )
-from backend.llm import llm_provider_registry
 from backend.prompts import prompt_registry
 from backend.tools.base import BaseTool, tool_registry
 
@@ -24,12 +23,15 @@ from backend.tools.base import BaseTool, tool_registry
 class LocalRequirementHeuristicTool(BaseTool):
     def invoke(self, **kwargs: Any) -> RequirementAnalysis:
         ticket = kwargs.get("ticket")
+        context = kwargs.get("context")
         if not isinstance(ticket, TicketData):
             raise TypeError("LocalRequirementHeuristicTool requires a TicketData ticket")
-        return analyze_ticket(ticket)
+        if context is not None and not isinstance(context, TestContext):
+            raise TypeError("LocalRequirementHeuristicTool requires TestContext or None")
+        return analyze_ticket(ticket, context=context)
 
 
-def analyze_ticket(ticket: TicketData) -> RequirementAnalysis:
+def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) -> RequirementAnalysis:
     actor = _infer_actor(ticket.description)
     domain = _infer_domain(ticket.labels, ticket.title, ticket.description)
     has_acceptance_criteria = bool(ticket.acceptance_criteria)
@@ -79,11 +81,12 @@ def analyze_ticket(ticket: TicketData) -> RequirementAnalysis:
         knowledge_context=format_knowledge_context(knowledge_results),
         memory_context=format_memory_context(memory_results),
     )
-    llm_response = llm_provider_registry.create(settings.default_llm_provider).complete(
+    llm_response = complete_with_configured_llm(
         prompt_name=prompt.name,
         prompt_version=prompt.version,
         rendered_prompt=rendered_prompt,
         system_instruction="You are a QA requirement analysis assistant operating in deterministic local mode.",
+        context=context,
     )
 
     knowledge_refs = [result.chunk.chunk_id for result in knowledge_results]

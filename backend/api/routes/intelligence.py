@@ -3,18 +3,15 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
+from backend.knowledge import get_local_knowledge_store
+from backend.llm import llm_provider_registry
+from backend.embeddings import embedding_provider_registry
+from backend.llm.ollama import ollama_health
+from backend.memory import get_local_memory_store
+from backend.prompts import prompt_registry
 from backend.security import Capability, Principal, require_capability
-from backend.services.intelligence import (
-    list_llm_providers as list_llm_providers_service,
-    list_prompt_templates as list_prompt_templates_service,
-    read_ollama_model_profiles as read_ollama_model_profiles_service,
-    read_retrieval_profile as read_retrieval_profile_service,
-    search_knowledge as search_knowledge_service,
-    search_memory as search_memory_service,
-    smoke_test_ollama_model_profiles as smoke_test_ollama_model_profiles_service,
-)
 
 router = APIRouter(tags=["intelligence"])
 
@@ -31,8 +28,26 @@ class LLMProviderResponse(BaseModel):
     model: str
     requires_external_api: bool
     description: str
-    configuration_status: str = "ready"
-    configuration_keys: list[str] = []
+
+
+class EmbeddingProviderResponse(BaseModel):
+    name: str
+    mode: str
+    model: str
+    dimensions: int
+    requires_external_api: bool
+    description: str
+
+
+class OllamaHealthResponse(BaseModel):
+    available: bool
+    base_url: str
+    chat_model: str
+    embedding_model: str
+    installed_models: list[str]
+    chat_model_ready: bool
+    embedding_model_ready: bool
+    message: str
 
 
 class KnowledgeSearchItem(BaseModel):
@@ -40,9 +55,6 @@ class KnowledgeSearchItem(BaseModel):
     title: str
     source: str
     score: float
-    vector_score: float = 0.0
-    rerank_score: float = 0.0
-    retention_status: str = "active"
     excerpt: str
     matched_terms: list[str]
 
@@ -51,61 +63,10 @@ class MemorySearchItem(BaseModel):
     ref_id: str
     title: str
     score: float
-    vector_score: float = 0.0
-    rerank_score: float = 0.0
-    retention_status: str = "active"
     summary: str
     tags: list[str]
     source_refs: list[str]
     matched_terms: list[str]
-
-
-class RetrievalProfileResponse(BaseModel):
-    embedding_model: dict[str, object]
-    vector_store: dict[str, object]
-    reranker: dict[str, object]
-    knowledge_store: dict[str, object]
-    memory_store: dict[str, object]
-
-
-class OllamaModelProfileResponse(BaseModel):
-    role: str
-    model: str
-    kind: str
-    purpose: str
-    env_key: str
-    fallback_model: str | None = None
-    installed: bool
-    fallback_installed: bool = False
-    pull_command: str
-    fallback_pull_command: str | None = None
-
-
-class OllamaModelCatalogResponse(BaseModel):
-    base_url: str
-    service_available: bool
-    service_error: str | None = None
-    installed_models: list[str]
-    profiles: list[OllamaModelProfileResponse]
-
-
-class OllamaSmokeTestRequest(BaseModel):
-    roles: list[str] | None = None
-    prompt: str = Field(default="Return only OK if this model is ready for AegisQA.", min_length=1)
-
-
-class OllamaSmokeTestItem(BaseModel):
-    role: str
-    model: str
-    kind: str
-    available: bool
-    ok: bool
-    response_excerpt: str = ""
-    error: str | None = None
-
-
-class OllamaSmokeTestResponse(BaseModel):
-    results: list[OllamaSmokeTestItem]
 
 
 @router.get("/intelligence/prompts", response_model=list[PromptTemplateResponse])
@@ -113,8 +74,12 @@ def list_prompt_templates(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
 ) -> list[PromptTemplateResponse]:
     return [
-        PromptTemplateResponse(**prompt)
-        for prompt in list_prompt_templates_service()
+        PromptTemplateResponse(
+            name=prompt.name,
+            version=prompt.version,
+            description=prompt.description,
+        )
+        for prompt in prompt_registry.list_specs()
     ]
 
 
@@ -123,10 +88,41 @@ def list_llm_providers(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
 ) -> list[LLMProviderResponse]:
     return [
-        LLMProviderResponse(**provider)
-        for provider in list_llm_providers_service()
+        LLMProviderResponse(
+            name=spec.name,
+            mode=spec.mode,
+            model=spec.model,
+            requires_external_api=spec.requires_external_api,
+            description=spec.description,
+        )
+        for spec in llm_provider_registry.list_specs()
     ]
 
+
+
+
+@router.get("/intelligence/embedding-providers", response_model=list[EmbeddingProviderResponse])
+def list_embedding_providers(
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> list[EmbeddingProviderResponse]:
+    return [
+        EmbeddingProviderResponse(
+            name=spec.name,
+            mode=spec.mode,
+            model=spec.model,
+            dimensions=spec.dimensions,
+            requires_external_api=spec.requires_external_api,
+            description=spec.description,
+        )
+        for spec in embedding_provider_registry.list_specs()
+    ]
+
+
+@router.get("/intelligence/ollama/health", response_model=OllamaHealthResponse)
+def get_ollama_health(
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> OllamaHealthResponse:
+    return OllamaHealthResponse(**ollama_health())
 
 @router.get("/intelligence/knowledge/search", response_model=list[KnowledgeSearchItem])
 def search_knowledge(
@@ -135,8 +131,15 @@ def search_knowledge(
     limit: int = Query(default=3, ge=1, le=10),
 ) -> list[KnowledgeSearchItem]:
     return [
-        KnowledgeSearchItem(**result)
-        for result in search_knowledge_service(query=query, limit=limit)
+        KnowledgeSearchItem(
+            ref_id=result.chunk.chunk_id,
+            title=result.chunk.title,
+            source=result.chunk.source,
+            score=result.score,
+            excerpt=result.excerpt,
+            matched_terms=list(result.matched_terms),
+        )
+        for result in get_local_knowledge_store().search(query=query, limit=limit)
     ]
 
 
@@ -147,36 +150,14 @@ def search_memory(
     limit: int = Query(default=3, ge=1, le=10),
 ) -> list[MemorySearchItem]:
     return [
-        MemorySearchItem(**result)
-        for result in search_memory_service(query=query, limit=limit)
+        MemorySearchItem(
+            ref_id=result.entry.memory_id,
+            title=result.entry.title,
+            score=result.score,
+            summary=result.entry.summary,
+            tags=list(result.entry.tags),
+            source_refs=list(result.entry.source_refs),
+            matched_terms=list(result.matched_terms),
+        )
+        for result in get_local_memory_store().search(query=query, limit=limit)
     ]
-
-
-@router.get("/intelligence/retrieval-profile", response_model=RetrievalProfileResponse)
-def read_retrieval_profile(
-    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
-) -> RetrievalProfileResponse:
-    return RetrievalProfileResponse(**read_retrieval_profile_service())
-
-
-@router.get("/intelligence/ollama/models", response_model=OllamaModelCatalogResponse)
-def read_ollama_model_profiles(
-    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
-) -> OllamaModelCatalogResponse:
-    return OllamaModelCatalogResponse(**read_ollama_model_profiles_service())
-
-
-@router.post("/intelligence/ollama/models/smoke-test", response_model=OllamaSmokeTestResponse)
-def smoke_test_ollama_model_profiles(
-    payload: OllamaSmokeTestRequest,
-    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
-) -> OllamaSmokeTestResponse:
-    return OllamaSmokeTestResponse(
-        results=[
-            OllamaSmokeTestItem(**result)
-            for result in smoke_test_ollama_model_profiles_service(
-                roles=payload.roles,
-                prompt=payload.prompt,
-            )
-        ]
-    )

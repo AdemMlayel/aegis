@@ -1,4 +1,4 @@
-# Milestone 4 - Local AI/RAG/Memory Intelligence Layer
+# Milestone 4 — Local AI/RAG/Memory Intelligence Layer
 
 ## Goal
 
@@ -28,16 +28,14 @@ The implementation remains local/mock-first and architecture-focused. It proves 
 
 - Added `backend/knowledge/base.py`.
 - Added local seeded knowledge chunks in `backend/knowledge/local.py`.
-- Search uses deterministic local embeddings, an in-memory vector index, lexical/tag matching, and a hybrid reranker for reproducible tests.
-- Knowledge entries support invalidation and retention-aware active listing.
+- Search is deterministic keyword/tag retrieval for reproducible tests.
 - No external document store is required.
 
 ### Episodic memory store
 
 - Added `backend/memory/base.py`.
 - Added local seeded memory in `backend/memory/local.py`.
-- Memory search supports previous-failure/regression retrieval through the same local embedding/vector/reranker path.
-- Memory archive supports retention windows and invalidation.
+- Memory search supports previous-failure/regression retrieval.
 - The memory archiver now indexes workflow snapshots into the local memory store.
 
 ### TestContext extension
@@ -64,7 +62,6 @@ Added local intelligence endpoints:
 ```text
 GET /api/v1/intelligence/prompts
 GET /api/v1/intelligence/llm-providers
-GET /api/v1/intelligence/retrieval-profile
 GET /api/v1/intelligence/knowledge/search
 GET /api/v1/intelligence/memory/search
 ```
@@ -76,14 +73,14 @@ The following are intentionally deferred because the project currently lacks com
 - Real company Jira/Azure/Confluence retrieval.
 - Real internal LLM gateway.
 - Real vector database such as pgvector or Qdrant.
-- Production-grade memory access-control policies.
+- Production-grade memory retention and access-control policies.
 - Real prompt-evaluation pipeline.
 
 ## Verification
 
 ```bash
 python -m pytest -q
-# 86 passed
+# 76 passed
 ```
 
 Frontend build was also verified with:

@@ -39,9 +39,7 @@ The core runtime still uses the blueprint separation:
 - Tool boundary: `backend/tools/base.py`
 - Workflow context: `backend/graph/state.py`
 - Workflow graph: `backend/graph/workflow.py`
-- Service orchestration: `backend/services/`
 - Execution adapters: `backend/execution/base.py`
-- Execution workers: `backend/workers/`
 - Ticket connectors: `backend/tickets/base.py`
 - Local security/RBAC: `backend/security/rbac.py`
 
@@ -117,48 +115,11 @@ Framework installation and stores artifacts under `generated/execution/`.
 When Robot is unavailable, the validator falls back to deterministic structural
 validation so tests and local architecture demos remain reproducible.
 
-Execution dispatch now goes through `backend/workers/`.  The default backend is
-`local`, which preserves the FastAPI background-task fallback.  The `celery`
-backend dispatches the same persisted execution run id to a Redis/Celery worker
-when `AEGISQA_EXECUTION_WORKER_BACKEND=celery`.
-
-## Intelligence Retrieval
-
-Local RAG and episodic memory now use deterministic retrieval infrastructure:
-
-- Embedding model: `local_hash_embedding`
-- Vector store: `local_in_memory_vector`
-- Reranker: `local_hybrid_reranker`
-- Retention/invalidation: exposed on local knowledge and memory stores
-
-This proves the vector retrieval shape while keeping local tests independent of
-external embedding APIs or a production vector database.
-
-## LLM Providers
-
-`mock_llm` remains the default for deterministic tests.  Two real provider
-boundaries are registered behind the same `BaseLLMProvider` contract:
-
-- `openai_compatible`: external OpenAI-style `/v1/chat/completions` endpoint.
-- `ollama`: local Ollama `/api/chat` endpoint with role-based model routing
-  for RAG, coding, and reasoning prompts.
-
-Switching providers is configuration-driven through `AEGISQA_DEFAULT_LLM_PROVIDER`.
-The OpenAI-compatible provider also requires `AEGISQA_EXTERNAL_CONNECTORS_ENABLED=true`
-and `AEGISQA_OPENAI_COMPATIBLE_API_KEY`.  Provider configuration status is exposed
-through `/api/v1/intelligence/llm-providers` and the provider catalog.
-Local Ollama model availability and smoke tests are exposed through
-`/api/v1/intelligence/ollama/models`.
-
 ## Persistence
 
 Local SQLite persistence remains under `generated/storage/aegisqa.sqlite3`.
 Generated runtime artifacts remain under `generated/` and are excluded from clean
 packages.
-
-`docker-compose.yml` provisions Postgres for the production database path, plus
-Redis for Celery-compatible execution dispatch.  The current storage adapter is
-still SQLite-backed until the Postgres adapter is implemented.
 
 ## Packaging Rule
 

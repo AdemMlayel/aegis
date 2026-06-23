@@ -66,7 +66,6 @@ def validation_retry_gate(context: TestContext) -> TestContext:
             metadata={
                 "retry_count": context.validation_retry_count,
                 "max_retries": context.max_validation_retries,
-                "failed_files": failed_files,
             },
         )
         return context

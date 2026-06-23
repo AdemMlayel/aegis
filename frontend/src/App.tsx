@@ -1,56 +1,44 @@
 import {
   Activity,
-  AlertTriangle,
-  Brain,
+  Bot,
   CheckCircle2,
-  ClipboardCheck,
+  ClipboardList,
   Database,
-  ExternalLink,
   FileCode2,
   GitPullRequest,
   History,
   Loader2,
-  Play,
-  Plug,
+  PlayCircle,
   RefreshCw,
-  RotateCcw,
   Search,
   ShieldCheck,
+  Sparkles,
   XCircle
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   decideApproval,
   executeSuite,
+  executeWorkflow,
   getAutomationFile,
-  getIntegrationProfile,
-  getOllamaModelCatalog,
-  getProviderCatalog,
   getWorkflow,
-  listLlmProviders,
+  getEmbeddingProviders,
+  getLLMProviders,
+  getOllamaHealth,
+  getProviderCatalog,
   listExecutionEvents,
   listExecutionRuns,
   listMockTickets,
-  listPromptTemplates,
   listWorkflows,
-  searchKnowledge,
-  searchMemory,
-  smokeTestOllamaModels,
-  startWorkflow,
   startWorkflowFromMockTicket
 } from "./api";
 import type {
-  ApprovalStatus,
   AutomationBlock,
+  EmbeddingProvider,
   ExecutionEvent,
   ExecutionRunRecord,
-  IntegrationProfile,
-  KnowledgeSearchItem,
   LLMProvider,
-  MemorySearchItem,
-  OllamaModelCatalog,
-  OllamaSmokeTestResult,
-  PromptTemplate,
+  OllamaHealth,
   ProviderCatalog,
   TestCase,
   TestContext,
@@ -58,1387 +46,468 @@ import type {
   WorkflowSummary
 } from "./types";
 
-const DEFAULT_TICKET: TicketData = {
-  id: "FAKE-001",
-  title: "Money Transfer Feature",
-  description: "As an authenticated customer, I want to transfer money.",
-  acceptance_criteria: [
-    "Transfer completes within 3 seconds",
-    "Balance updates immediately"
-  ],
-  priority: "high",
-  labels: ["banking", "payments"],
-  source: "fake"
+type DemoStep = {
+  label: string;
+  status: "done" | "active" | "waiting" | "blocked";
+  detail: string;
 };
 
-function splitLines(value: string): string[] {
-  return value
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
+const REVIEWER = "pm-demo-reviewer";
 
-function splitLabels(value: string): string[] {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function fileName(path: string): string {
-  return path.split("/").pop() ?? path;
-}
-
-function formatDate(value?: string | null): string {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-    day: "2-digit"
-  }).format(new Date(value));
-}
-
-function statusTone(status: string): "good" | "warn" | "bad" | "info" {
-  if (
-    status.includes("complete") ||
-    status === "approved" ||
-    status === "passed" ||
-    status === "configured" ||
-    status === "installed" ||
-    status === "available" ||
-    status === "ok"
-  ) return "good";
-  if (
-    status.includes("blocked") ||
-    status.includes("failed") ||
-    status.includes("missing") ||
-    status === "disabled" ||
-    status === "offline"
-  ) return "bad";
-  if (status.includes("pending") || status.includes("review") || status === "skipped" || status === "fallback") return "warn";
-  return "info";
-}
-
-function formatProviderKind(value: string): string {
-  return value.replaceAll("_", " ");
-}
-
-function isFinalRunStatus(status: string): boolean {
-  return !["queued", "running"].includes(status);
-}
-
-function upsertExecutionRun(runs: ExecutionRunRecord[], run: ExecutionRunRecord): ExecutionRunRecord[] {
-  return [run, ...runs.filter((item) => item.run_id !== run.run_id)].sort(
-    (left, right) => new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime()
-  );
-}
-
-function toWebSocketUrl(path: string): string {
-  const url = new URL(path, window.location.origin);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  return url.toString();
-}
-
-function StatusPill({ value }: { value: string }) {
-  return <span className={`status-pill ${statusTone(value)}`}>{value.replaceAll("_", " ")}</span>;
-}
-
-function ValidationIcon({ automation }: { automation?: AutomationBlock }) {
-  if (!automation) return <AlertTriangle aria-hidden="true" />;
-  if (automation.validation.dry_run_passed) return <CheckCircle2 aria-hidden="true" />;
-  if (automation.validation.dry_run_passed === false) return <XCircle aria-hidden="true" />;
-  return <AlertTriangle aria-hidden="true" />;
-}
-
-export function App() {
-  const [createdBy, setCreatedBy] = useState("qa_engineer_001");
-  const [ticketId, setTicketId] = useState(DEFAULT_TICKET.id);
-  const [title, setTitle] = useState(DEFAULT_TICKET.title);
-  const [description, setDescription] = useState(DEFAULT_TICKET.description);
-  const [criteria, setCriteria] = useState(DEFAULT_TICKET.acceptance_criteria.join("\n"));
-  const [priority, setPriority] = useState<TicketData["priority"]>(DEFAULT_TICKET.priority);
-  const [labels, setLabels] = useState(DEFAULT_TICKET.labels.join(", "));
-  const [mockTickets, setMockTickets] = useState<TicketData[]>([]);
-  const [mockQuery, setMockQuery] = useState("");
-  const [selectedMockTicketId, setSelectedMockTicketId] = useState("");
-  const [mockLoading, setMockLoading] = useState(false);
+export default function App() {
+  const [tickets, setTickets] = useState<TicketData[]>([]);
+  const [selectedTicketId, setSelectedTicketId] = useState("MOCK-101");
+  const [context, setContext] = useState<TestContext | null>(null);
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
-  const [workflowQuery, setWorkflowQuery] = useState("");
-  const [approvalFilter, setApprovalFilter] = useState<ApprovalStatus | "all">("all");
-  const [queueLoading, setQueueLoading] = useState(false);
+  const [providerCatalog, setProviderCatalog] = useState<ProviderCatalog | null>(null);
+  const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
+  const [embeddingProviders, setEmbeddingProviders] = useState<EmbeddingProvider[]>([]);
+  const [ollamaHealth, setOllamaHealth] = useState<OllamaHealth | null>(null);
+  const [selectedLlmProvider, setSelectedLlmProvider] = useState("mock_llm");
+  const [selectedEmbeddingProvider, setSelectedEmbeddingProvider] = useState("local_hash_embeddings");
+  const [llmModelOverride, setLlmModelOverride] = useState("");
+  const [embeddingModelOverride, setEmbeddingModelOverride] = useState("");
+  const [automationContent, setAutomationContent] = useState("");
+  const [selectedTestId, setSelectedTestId] = useState("");
   const [executionRuns, setExecutionRuns] = useState<ExecutionRunRecord[]>([]);
   const [executionEvents, setExecutionEvents] = useState<ExecutionEvent[]>([]);
-  const [selectedRunId, setSelectedRunId] = useState("");
-  const [resultsLoading, setResultsLoading] = useState(false);
-  const [logsLoading, setLogsLoading] = useState(false);
-  const [providerCatalog, setProviderCatalog] = useState<ProviderCatalog | null>(null);
-  const [integrationProfile, setIntegrationProfile] = useState<IntegrationProfile | null>(null);
-  const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
-  const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
-  const [ollamaCatalog, setOllamaCatalog] = useState<OllamaModelCatalog | null>(null);
-  const [ollamaSmokeResults, setOllamaSmokeResults] = useState<OllamaSmokeTestResult[]>([]);
-  const [knowledgeResults, setKnowledgeResults] = useState<KnowledgeSearchItem[]>([]);
-  const [memoryResults, setMemoryResults] = useState<MemorySearchItem[]>([]);
-  const [providersLoading, setProvidersLoading] = useState(false);
-  const [ollamaTesting, setOllamaTesting] = useState(false);
-  const [includeExternalProviders, setIncludeExternalProviders] = useState(false);
-  const [intelligenceQuery, setIntelligenceQuery] = useState("banking transfer risk");
-  const [executionAdapter, setExecutionAdapter] = useState("mock");
-  const [executionEnv, setExecutionEnv] = useState("staging");
-  const [executionBranch, setExecutionBranch] = useState("");
-  const [executionTags, setExecutionTags] = useState("smoke, generated");
-  const [context, setContext] = useState<TestContext | null>(null);
-  const [loadId, setLoadId] = useState("");
-  const [selectedTestId, setSelectedTestId] = useState<string>("");
-  const [robotContent, setRobotContent] = useState("");
-  const [reviewer, setReviewer] = useState("qa_engineer_001");
-  const [reviewComment, setReviewComment] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const tests = context?.test_cases ?? [];
-  const selectedTest: TestCase | undefined =
-    tests.find((test) => test.id === selectedTestId) ?? tests[0];
-  const selectedAutomation = selectedTest ? context?.automation[selectedTest.id] : undefined;
-  const approval = context?.approval ?? null;
-  const execution = context?.execution ?? null;
-  const canReview = approval?.status === "pending_review";
-  const selectedMockTicket = mockTickets.find((ticket) => ticket.id === selectedMockTicketId);
-  const executionAdapterOptions =
-    providerCatalog?.providers.filter((provider) => provider.kind === "execution_adapter" && provider.enabled) ?? [];
-  const selectedProviderNames = new Set(
-    providerCatalog?.selected.map((provider) => `${provider.kind}:${provider.selected}`) ?? []
-  );
-  const ollamaSmokeByRole = useMemo(
-    () => new Map(ollamaSmokeResults.map((result) => [result.role, result])),
-    [ollamaSmokeResults]
+  const selectedTicket = useMemo(
+    () => tickets.find((ticket) => ticket.id === selectedTicketId) ?? tickets[0] ?? null,
+    [tickets, selectedTicketId]
   );
 
-  const validationCounts = useMemo(() => {
-    const automation = Object.values(context?.automation ?? {});
-    return {
-      total: automation.length,
-      passed: automation.filter((item) => item.validation.dry_run_passed === true).length,
-      failed: automation.filter((item) => item.validation.dry_run_passed === false).length
-    };
-  }, [context]);
-  const executionCounts = execution?.summary ?? {
-    total: 0,
-    passed: 0,
-    failed: 0,
-    skipped: 0,
-    duration_ms: 0
-  };
+  const selectedTest: TestCase | null = useMemo(
+    () => context?.test_cases.find((test) => test.id === selectedTestId) ?? context?.test_cases[0] ?? null,
+    [context, selectedTestId]
+  );
+
+  const selectedAutomation: AutomationBlock | null = selectedTest && context
+    ? context.automation[selectedTest.id] ?? null
+    : null;
+
+  const steps = useMemo(() => buildSteps(context), [context]);
 
   useEffect(() => {
-    const storedContextId = localStorage.getItem("aegisqa:lastContextId");
-    if (storedContextId) {
-      setLoadId(storedContextId);
+    void refreshAll();
+  }, []);
+
+  useEffect(() => {
+    if (!context) return;
+    localStorage.setItem("aegisqa:lastContextId", context.context_id);
+    if (!selectedTestId && context.test_cases.length > 0) {
+      setSelectedTestId(context.test_cases[0].id);
     }
-  }, []);
-
-  useEffect(() => {
-    void refreshMockTickets();
-    void refreshWorkflowQueue();
-  }, []);
-
-  useEffect(() => {
-    void refreshProviderMetadata();
-  }, [includeExternalProviders]);
-
-  useEffect(() => {
-    if (!context || selectedTestId) return;
-    setSelectedTestId(context.test_cases[0]?.id ?? "");
+    void refreshExecutionRuns(context.context_id);
   }, [context, selectedTestId]);
 
   useEffect(() => {
-    if (!context) {
-      setExecutionRuns([]);
-      setExecutionEvents([]);
-      setSelectedRunId("");
+    if (!context?.ticket || !selectedAutomation) {
+      setAutomationContent("");
       return;
     }
-    void refreshExecutionRuns(context.context_id);
-  }, [context?.context_id]);
+    getAutomationFile(context.ticket.id, selectedAutomation.robot_file)
+      .then(setAutomationContent)
+      .catch((err: Error) => setAutomationContent(`Unable to load generated file: ${err.message}`));
+  }, [context?.ticket?.id, selectedAutomation?.robot_file]);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadRobotFile() {
-      if (!context?.ticket || !selectedAutomation) {
-        setRobotContent("");
-        return;
-      }
-      setRobotContent("");
-      try {
-        const content = await getAutomationFile(context.ticket.id, selectedAutomation.robot_file);
-        if (!cancelled) setRobotContent(content);
-      } catch (err) {
-        if (!cancelled) {
-          setRobotContent(err instanceof Error ? err.message : "Unable to load Robot file");
-        }
-      }
-    }
-    void loadRobotFile();
-    return () => {
-      cancelled = true;
-    };
-  }, [context, selectedAutomation]);
-
-  function keepContext(next: TestContext) {
-    setContext(next);
-    setSelectedTestId((current) => current || next.test_cases[0]?.id || "");
-    localStorage.setItem("aegisqa:lastContextId", next.context_id);
-    setLoadId(next.context_id);
-  }
-
-  function fillTicket(ticket: TicketData) {
-    setSelectedMockTicketId(ticket.id);
-    setTicketId(ticket.id);
-    setTitle(ticket.title);
-    setDescription(ticket.description);
-    setCriteria(ticket.acceptance_criteria.join("\n"));
-    setPriority(ticket.priority);
-    setLabels(ticket.labels.join(", "));
-  }
-
-  async function refreshMockTickets(query = mockQuery) {
-    setMockLoading(true);
+  async function runAction<T>(name: string, action: () => Promise<T>): Promise<T | null> {
+    setBusy(name);
     setError(null);
     try {
-      const tickets = await listMockTickets({ query: query.trim() || undefined });
-      setMockTickets(tickets);
-      if (!selectedMockTicketId && tickets[0]) {
-        setSelectedMockTicketId(tickets[0].id);
-      }
+      return await action();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Mock tickets failed to load");
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
     } finally {
-      setMockLoading(false);
+      setBusy(null);
     }
   }
 
-  async function refreshWorkflowQueue(
-    query = workflowQuery,
-    nextApprovalFilter = approvalFilter
-  ) {
-    setQueueLoading(true);
-    setError(null);
-    try {
-      const rows = await listWorkflows({
-        query: query.trim() || undefined,
-        approvalStatus: nextApprovalFilter === "all" ? undefined : nextApprovalFilter,
-        limit: 50
-      });
-      setWorkflows(rows);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Workflow queue failed to load");
-    } finally {
-      setQueueLoading(false);
-    }
-  }
-
-  async function refreshExecutionRuns(contextId = context?.context_id) {
-    if (!contextId) {
-      setExecutionRuns([]);
-      setExecutionEvents([]);
-      setSelectedRunId("");
-      return;
-    }
-    setResultsLoading(true);
-    setError(null);
-    try {
-      const rows = await listExecutionRuns({ contextId, limit: 25 });
-      setExecutionRuns(rows);
-      const activeRunId =
-        selectedRunId && rows.some((run) => run.run_id === selectedRunId)
-          ? selectedRunId
-          : rows[0]?.run_id ?? "";
-      setSelectedRunId(activeRunId);
-      if (activeRunId) {
-        await refreshExecutionEvents(activeRunId);
-      } else {
-        setExecutionEvents([]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Execution results failed to load");
-    } finally {
-      setResultsLoading(false);
-    }
-  }
-
-  async function refreshExecutionEvents(runId = selectedRunId) {
-    if (!runId) {
-      setExecutionEvents([]);
-      return;
-    }
-    setLogsLoading(true);
-    setError(null);
-    try {
-      setExecutionEvents(await listExecutionEvents(runId));
-      setSelectedRunId(runId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Execution logs failed to load");
-    } finally {
-      setLogsLoading(false);
-    }
-  }
-
-  async function refreshProviderMetadata(query = intelligenceQuery) {
-    const searchText = query.trim() || "banking transfer risk";
-    setProvidersLoading(true);
-    setError(null);
-    try {
-      const [catalog, profile, prompts, llms, ollamaModels, knowledge, memory] = await Promise.all([
-        getProviderCatalog({ includeExternal: includeExternalProviders }),
-        getIntegrationProfile(),
-        listPromptTemplates(),
-        listLlmProviders(),
-        getOllamaModelCatalog(),
-        searchKnowledge(searchText, 3),
-        searchMemory(searchText, 3)
+  async function refreshAll() {
+    await runAction("refresh", async () => {
+      const [ticketList, queue, catalog, llms, embeddings, health] = await Promise.all([
+        listMockTickets(),
+        listWorkflows({ limit: 8 }),
+        getProviderCatalog(),
+        getLLMProviders(),
+        getEmbeddingProviders(),
+        getOllamaHealth()
       ]);
+      setTickets(ticketList);
+      setWorkflows(queue);
       setProviderCatalog(catalog);
-      setIntegrationProfile(profile);
-      setPromptTemplates(prompts);
       setLlmProviders(llms);
-      setOllamaCatalog(ollamaModels);
-      setKnowledgeResults(knowledge);
-      setMemoryResults(memory);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Provider metadata failed to load");
-    } finally {
-      setProvidersLoading(false);
-    }
-  }
-
-  async function runOllamaSmokeTest() {
-    setOllamaTesting(true);
-    setError(null);
-    try {
-      setOllamaSmokeResults(await smokeTestOllamaModels());
-      setOllamaCatalog(await getOllamaModelCatalog());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Ollama smoke test failed");
-    } finally {
-      setOllamaTesting(false);
-    }
-  }
-
-  async function waitForExecutionRunSocket(runId: string, websocketPath: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      let settled = false;
-      let socket: WebSocket | null = null;
-      const timeout = window.setTimeout(() => finish(false), 8000);
-
-      function finish(value: boolean) {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(timeout);
-        socket?.close();
-        resolve(value);
+      setEmbeddingProviders(embeddings);
+      setOllamaHealth(health);
+      setSelectedLlmProvider((current) => current || llms[0]?.name || "mock_llm");
+      setSelectedEmbeddingProvider((current) => current || embeddings[0]?.name || "local_hash_embeddings");
+      const stored = localStorage.getItem("aegisqa:lastContextId");
+      if (stored) {
+        const loaded = await getWorkflow(stored).catch(() => null);
+        if (loaded) setContext(loaded);
       }
-
-      try {
-        socket = new WebSocket(toWebSocketUrl(websocketPath));
-      } catch {
-        finish(false);
-        return;
-      }
-
-      socket.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data) as {
-            run?: ExecutionRunRecord;
-            events?: ExecutionEvent[];
-          };
-          if (!payload.run || payload.run.run_id !== runId) return;
-          setExecutionRuns((current) => upsertExecutionRun(current, payload.run as ExecutionRunRecord));
-          setSelectedRunId(payload.run.run_id);
-          if (payload.events) {
-            setExecutionEvents(payload.events);
-          }
-          if (isFinalRunStatus(payload.run.status)) {
-            finish(true);
-          }
-        } catch {
-          finish(false);
-        }
-      };
-      socket.onerror = () => finish(false);
-      socket.onclose = () => finish(false);
     });
   }
 
-  async function waitForExecutionRun(runId: string, contextId: string, websocketPath?: string | null) {
-    if (websocketPath) {
-      const completedFromSocket = await waitForExecutionRunSocket(runId, websocketPath);
-      if (completedFromSocket) {
-        keepContext(await getWorkflow(contextId));
-        return;
-      }
+  async function refreshExecutionRuns(contextId: string) {
+    const runs = await listExecutionRuns({ contextId, limit: 5 }).catch(() => []);
+    setExecutionRuns(runs);
+    const latest = runs[0];
+    if (latest) {
+      const events = await listExecutionEvents(latest.run_id).catch(() => []);
+      setExecutionEvents(events);
+    } else {
+      setExecutionEvents([]);
     }
-
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const rows = await listExecutionRuns({ contextId, limit: 25 });
-      setExecutionRuns(rows);
-      const run = rows.find((item) => item.run_id === runId);
-      if (run && isFinalRunStatus(run.status)) {
-        keepContext(await getWorkflow(contextId));
-        return;
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, 750));
-    }
-    keepContext(await getWorkflow(contextId));
   }
 
-  async function runStart() {
-    setBusy("start");
-    setError(null);
-    try {
-      const next = await startWorkflow({
-        created_by: createdBy,
-        ticket: {
-          id: ticketId,
-          title,
-          description,
-          acceptance_criteria: splitLines(criteria),
-          priority,
-          labels: splitLabels(labels),
-          source: "fake"
+  async function startDemoWorkflow() {
+    if (!selectedTicket) return;
+    const next = await runAction("workflow", () =>
+      startWorkflowFromMockTicket({
+        created_by: "pm-demo",
+        ticket_id: selectedTicket.id,
+        intelligence: {
+          llm_provider: selectedLlmProvider,
+          embedding_provider: selectedEmbeddingProvider,
+          llm_model: llmModelOverride.trim() || null,
+          embedding_model: embeddingModelOverride.trim() || null
         }
-      });
-      setSelectedTestId("");
-      keepContext(next);
-      void refreshWorkflowQueue();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Workflow start failed");
-    } finally {
-      setBusy(null);
+      })
+    );
+    if (next) {
+      setContext(next);
+      setSelectedTestId(next.test_cases[0]?.id ?? "");
+      await refreshAll();
     }
   }
 
-  async function runStartMock(ticket = selectedMockTicket) {
-    if (!ticket) return;
-    fillTicket(ticket);
-    setBusy("start-mock");
-    setError(null);
-    try {
-      const next = await startWorkflowFromMockTicket({
-        created_by: createdBy,
-        ticket_id: ticket.id
-      });
-      setSelectedTestId("");
-      keepContext(next);
-      void refreshWorkflowQueue();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Mock workflow start failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function runLoad() {
-    if (!loadId.trim()) return;
-    setBusy("load");
-    setError(null);
-    try {
-      const next = await getWorkflow(loadId.trim());
-      setSelectedTestId("");
-      keepContext(next);
-      void refreshWorkflowQueue();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Workflow load failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function runRefresh() {
+  async function approveWorkflow() {
     if (!context) return;
-    setBusy("refresh");
-    setError(null);
-    try {
-      keepContext(await getWorkflow(context.context_id));
-      void refreshWorkflowQueue();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Refresh failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function review(decision: "approve" | "request_changes") {
-    if (!context) return;
-    setBusy(decision);
-    setError(null);
-    try {
-      const next = await decideApproval({
+    const next = await runAction("approval", () =>
+      decideApproval({
         contextId: context.context_id,
-        decision,
-        reviewed_by: reviewer,
-        comment: reviewComment.trim() || undefined
-      });
-      keepContext(next);
-      if (decision === "request_changes") {
-        setReviewComment("");
-      }
-      void refreshWorkflowQueue();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Review action failed");
-    } finally {
-      setBusy(null);
-    }
+        decision: "approve",
+        reviewed_by: REVIEWER,
+        comment: "Approved for local architecture demo execution."
+      })
+    );
+    if (next) setContext(next);
   }
 
-  async function runExecution() {
+  async function executeApprovedWorkflow() {
     if (!context) return;
-    setBusy("execute");
-    setError(null);
-    try {
-      const run = await executeSuite({
-        suite: context.context_id,
-        adapter: executionAdapter,
-        branch: executionBranch.trim() || null,
-        env: executionEnv.trim() || "staging",
-        tags: splitLabels(executionTags),
-        actor: reviewer
-      });
-      setSelectedRunId(run.run_id);
-      await refreshExecutionRuns(run.context_id);
-      await waitForExecutionRun(run.run_id, run.context_id, run.websocket_url);
-      void refreshWorkflowQueue();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "CI execution failed");
-    } finally {
-      setBusy(null);
+    const next = await runAction("execution", () =>
+      executeWorkflow({ contextId: context.context_id, run_by: "pm-demo-runner" })
+    );
+    if (next) {
+      setContext(next);
+      await refreshExecutionRuns(next.context_id);
     }
   }
 
-  async function loadWorkflowFromQueue(contextId: string) {
-    setBusy("load-history");
-    setError(null);
-    try {
-      const next = await getWorkflow(contextId);
-      setSelectedTestId("");
-      keepContext(next);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Workflow load failed");
-    } finally {
-      setBusy(null);
-    }
+  async function runCiStyleExecution() {
+    const ticketId = context?.ticket?.id ?? selectedTicket?.id ?? "MOCK-101";
+    const response = await runAction("ci", () =>
+      executeSuite({
+        suite: ticketId,
+        adapter: "mock",
+        branch: context?.approval?.git_branch ?? "local/demo",
+        env: "local",
+        tags: ["demo", "generated"],
+        actor: "pm-demo-ci"
+      })
+    );
+    if (response && context) await refreshExecutionRuns(context.context_id);
   }
 
   return (
-    <main className="app-shell">
-      <aside className="sidebar" aria-label="Workflow controls">
+    <div className="app-shell">
+      <aside className="sidebar">
         <div className="brand">
-          <ShieldCheck aria-hidden="true" />
+          <ShieldCheck />
           <div>
             <h1>AegisQA</h1>
-            <span>Review console</span>
+            <p>AI-native QA orchestration demo</p>
           </div>
         </div>
 
         <section className="panel">
-          <div className="section-title">
-            <Database aria-hidden="true" />
-            <h2>Mock tickets</h2>
-          </div>
-          <div className="mock-search">
-            <label>
-              Search
-              <input
-                value={mockQuery}
-                onChange={(event) => setMockQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void refreshMockTickets();
-                }}
-              />
-            </label>
-            <button
-              className="icon-button"
-              onClick={() => void refreshMockTickets()}
-              disabled={mockLoading}
-              title="Search mock tickets"
-            >
-              {mockLoading ? <Loader2 className="spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
-            </button>
-          </div>
-          <div className="mock-ticket-list">
-            {mockTickets.map((ticket) => (
-              <button
-                key={ticket.id}
-                className={`mock-ticket ${selectedMockTicketId === ticket.id ? "active" : ""}`}
-                onClick={() => fillTicket(ticket)}
-              >
-                <span>
-                  <strong>{ticket.id}</strong>
-                  {ticket.title}
-                </span>
-                <em className={`priority ${ticket.priority}`}>{ticket.priority}</em>
-              </button>
-            ))}
-            {!mockLoading && mockTickets.length === 0 && (
-              <p className="empty-state">No mock tickets found.</p>
-            )}
-          </div>
-          <button
-            className="secondary-button full-width"
-            onClick={() => void runStartMock()}
-            disabled={busy !== null || !selectedMockTicket}
-          >
-            {busy === "start-mock" ? <Loader2 className="spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
-            Start selected
+          <SectionTitle icon={<ClipboardList />} title="Demo ticket" />
+          <label>
+            Local provider
+            <select value={selectedTicketId} onChange={(event) => setSelectedTicketId(event.target.value)}>
+              {tickets.map((ticket) => (
+                <option key={ticket.id} value={ticket.id}>{ticket.id} — {ticket.title}</option>
+              ))}
+            </select>
+          </label>
+          {selectedTicket ? <TicketPreview ticket={selectedTicket} /> : <Empty text="No local tickets loaded." />}
+          <button className="primary-button" disabled={busy !== null || !selectedTicket} onClick={startDemoWorkflow}>
+            {busy === "workflow" ? <Loader2 className="spin" /> : <PlayCircle />} Run full local workflow
           </button>
         </section>
 
         <section className="panel">
-          <div className="section-title">
-            <ClipboardCheck aria-hidden="true" />
-            <h2>Ticket</h2>
-          </div>
+          <SectionTitle icon={<Bot />} title="Local AI providers" />
           <label>
-            Created by
-            <input value={createdBy} onChange={(event) => setCreatedBy(event.target.value)} />
+            Workflow LLM
+            <select value={selectedLlmProvider} onChange={(event) => setSelectedLlmProvider(event.target.value)}>
+              {llmProviders.map((provider) => (
+                <option key={provider.name} value={provider.name}>{provider.name} - {provider.model}</option>
+              ))}
+            </select>
           </label>
           <label>
-            Ticket ID
-            <input value={ticketId} onChange={(event) => setTicketId(event.target.value)} />
-          </label>
-          <label>
-            Title
-            <input value={title} onChange={(event) => setTitle(event.target.value)} />
-          </label>
-          <label>
-            Description
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={4}
+            LLM model override
+            <input
+              value={llmModelOverride}
+              onChange={(event) => setLlmModelOverride(event.target.value)}
+              placeholder={ollamaHealth?.chat_model ?? "optional"}
             />
           </label>
           <label>
-            Acceptance criteria
-            <textarea value={criteria} onChange={(event) => setCriteria(event.target.value)} rows={4} />
+            Workflow embedding
+            <select value={selectedEmbeddingProvider} onChange={(event) => setSelectedEmbeddingProvider(event.target.value)}>
+              {embeddingProviders.map((provider) => (
+                <option key={provider.name} value={provider.name}>{provider.name} - {provider.model}</option>
+              ))}
+            </select>
           </label>
-          <div className="field-row">
-            <label>
-              Priority
-              <select value={priority} onChange={(event) => setPriority(event.target.value as TicketData["priority"])}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-            </label>
-            <label>
-              Labels
-              <input value={labels} onChange={(event) => setLabels(event.target.value)} />
-            </label>
-          </div>
-          <button className="primary-button" onClick={runStart} disabled={busy !== null}>
-            {busy === "start" ? <Loader2 className="spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
-            Start
-          </button>
+          <label>
+            Embedding model override
+            <input
+              value={embeddingModelOverride}
+              onChange={(event) => setEmbeddingModelOverride(event.target.value)}
+              placeholder={ollamaHealth?.embedding_model ?? "optional"}
+            />
+          </label>
+          <ProviderLine label="Catalog LLM" value={selectedProvider(providerCatalog, "llm_provider") ?? "mock_llm"} />
+          <ProviderLine label="Catalog embedding" value={selectedProvider(providerCatalog, "embedding_provider") ?? "local_hash_embeddings"} />
+          {context?.intelligence_config ? (
+            <>
+              <ProviderLine label="Run LLM" value={context.intelligence_config.llm_model || context.intelligence_config.llm_provider} />
+              <ProviderLine label="Run embedding" value={context.intelligence_config.embedding_model || context.intelligence_config.embedding_provider} />
+            </>
+          ) : null}
+          <ProviderLine label="Ollama" value={ollamaHealth?.message ?? "Not checked"} tone={ollamaHealth?.available ? "good" : "warn"} />
+          <details>
+            <summary>Available model providers</summary>
+            <ul className="compact-list">
+              {llmProviders.map((provider) => <li key={provider.name}>{provider.name} — {provider.model}</li>)}
+              {embeddingProviders.map((provider) => <li key={provider.name}>{provider.name} — {provider.model}</li>)}
+            </ul>
+          </details>
         </section>
 
         <section className="panel">
-          <div className="section-title">
-            <Search aria-hidden="true" />
-            <h2>Context</h2>
+          <SectionTitle icon={<History />} title="Recent workflows" />
+          <div className="workflow-list">
+            {workflows.slice(0, 5).map((item) => (
+              <button key={item.context_id} className="workflow-item" onClick={async () => {
+                const loaded = await runAction("load", () => getWorkflow(item.context_id));
+                if (loaded) setContext(loaded);
+              }}>
+                <strong>{item.ticket_id ?? "Untitled"}</strong>
+                <span>{item.workflow_status}</span>
+              </button>
+            ))}
           </div>
-          <label>
-            Context ID
-            <input value={loadId} onChange={(event) => setLoadId(event.target.value)} />
-          </label>
-          <div className="button-row">
-            <button className="secondary-button" onClick={runLoad} disabled={busy !== null || !loadId.trim()}>
-              <Search aria-hidden="true" />
-              Load
-            </button>
-            <button className="icon-button" onClick={runRefresh} disabled={busy !== null || !context} title="Refresh">
-              <RefreshCw aria-hidden="true" />
-            </button>
-          </div>
+          <button className="secondary-button full-width" onClick={refreshAll} disabled={busy !== null}>
+            {busy === "refresh" ? <Loader2 className="spin" /> : <RefreshCw />} Refresh
+          </button>
         </section>
       </aside>
 
-      <section className="workspace">
-        <header className="topbar">
+      <main className="workspace">
+        <header className="hero">
           <div>
-            <span className="eyebrow">{context?.ticket?.id ?? "No workflow"}</span>
-            <h2>{context?.ticket?.title ?? "Start or load a workflow"}</h2>
+            <p className="eyebrow">PM-ready architecture proof</p>
+            <h2>{context?.ticket?.title ?? "Run a local workflow to generate an evidence-backed QA package"}</h2>
+            <p>
+              Uses local/demo providers for tickets, AI, RAG, memory, Robot artifacts, approval, execution,
+              investigation, and reporting. External company systems remain disabled by design.
+            </p>
           </div>
-          <div className="topbar-actions">
-            {context && <StatusPill value={context.workflow_status} />}
-            {approval?.git_pr_url && (
-              <a className="link-button" href={approval.git_pr_url} target="_blank" rel="noreferrer">
-                <GitPullRequest aria-hidden="true" />
-                PR
-                <ExternalLink aria-hidden="true" />
-              </a>
-            )}
+          <div className="hero-actions">
+            <button className="secondary-button" disabled={!context || context.approval?.status !== "pending_review" || busy !== null} onClick={approveWorkflow}>
+              {busy === "approval" ? <Loader2 className="spin" /> : <GitPullRequest />} Approve
+            </button>
+            <button className="primary-button" disabled={!context || context.approval?.status !== "approved" || busy !== null} onClick={executeApprovedWorkflow}>
+              {busy === "execution" ? <Loader2 className="spin" /> : <Activity />} Execute
+            </button>
           </div>
         </header>
 
-        {error && (
-          <div className="error-banner" role="alert">
-            <AlertTriangle aria-hidden="true" />
-            {error}
-          </div>
-        )}
+        {error ? <div className="error-banner"><XCircle /> {error}</div> : null}
 
-        <section className="metrics" aria-label="Workflow summary">
-          <div>
-            <span>Tests</span>
-            <strong>{tests.length}</strong>
-          </div>
-          <div>
-            <span>Validated</span>
-            <strong>
-              {validationCounts.passed}/{validationCounts.total}
-            </strong>
-          </div>
-          <div>
-            <span>Revision</span>
-            <strong>{context?.automation_revision ?? 0}</strong>
-          </div>
-          <div>
-            <span>Approval</span>
-            <strong>{approval?.status.replaceAll("_", " ") ?? "None"}</strong>
-          </div>
-          <div>
-            <span>Execution</span>
-            <strong>{execution?.status ?? "None"}</strong>
-          </div>
+        <section className="status-grid">
+          {steps.map((step) => <StepCard key={step.label} step={step} />)}
         </section>
 
-        <section className="panel providers-panel">
-          <div className="provider-header">
-            <div className="section-title">
-              <Plug aria-hidden="true" />
-              <h2>Providers</h2>
-            </div>
-            <div className="provider-controls">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={includeExternalProviders}
-                  onChange={(event) => setIncludeExternalProviders(event.target.checked)}
-                />
-                External
-              </label>
-              <button
-                className="icon-button"
-                onClick={() => void refreshProviderMetadata()}
-                disabled={providersLoading}
-                title="Refresh providers"
-              >
-                {providersLoading ? <Loader2 className="spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="provider-summary">
-            <div>
-              <span>Environment</span>
-              <strong>{providerCatalog?.environment ?? "local"}</strong>
-            </div>
-            <div>
-              <span>Policy</span>
-              <strong>{integrationProfile?.policy.replaceAll("_", " ") ?? "mock only"}</strong>
-            </div>
-            <div>
-              <span>Selected</span>
-              <strong>{providerCatalog?.selected.length ?? 0}</strong>
-            </div>
-            <div>
-              <span>Registered</span>
-              <strong>{providerCatalog?.providers.length ?? 0}</strong>
-            </div>
-            <div>
-              <span>External</span>
-              <strong>{providerCatalog?.external_connectors_enabled ? "on" : "off"}</strong>
-            </div>
-          </div>
-
-          <div className="provider-layout">
-            <div className="selected-provider-panel">
-              <h3>Selected</h3>
-              <div className="selected-provider-list">
-                {(providerCatalog?.selected ?? []).map((provider) => (
-                  <article className="selected-provider" key={`${provider.kind}-${provider.selected}`}>
-                    <span>{formatProviderKind(provider.kind)}</span>
-                    <strong>{provider.selected}</strong>
-                    <StatusPill value={provider.status} />
-                  </article>
-                ))}
-                {!providersLoading && !providerCatalog?.selected.length && (
-                  <p className="empty-state">No providers selected.</p>
-                )}
+        <section className="content-grid">
+          <Panel title="Requirement Analysis" icon={<Search />}>
+            {context?.requirement_analysis ? (
+              <div className="stack">
+                <Metric label="Domain" value={context.requirement_analysis.domain} />
+                <Metric label="Actor" value={context.requirement_analysis.actor} />
+                <Metric label="Confidence" value={`${Math.round(context.requirement_analysis.confidence * 100)}%`} />
+                <TextList title="Expected results" items={context.requirement_analysis.expected_results} />
+                <TextList title="Clarification questions" items={context.requirement_analysis.clarification_questions} empty="No blocker questions." />
+                <p className="callout">{context.requirement_analysis.llm_summary}</p>
               </div>
-              {integrationProfile && (
-                <dl className="profile-facts">
-                  <div>
-                    <dt>Ticket</dt>
-                    <dd>{integrationProfile.ticket_connector?.name ?? "None"}</dd>
-                  </div>
-                  <div>
-                    <dt>Execution</dt>
-                    <dd>{integrationProfile.execution_adapter?.name ?? "None"}</dd>
-                  </div>
-                  <div>
-                    <dt>LLM</dt>
-                    <dd>{integrationProfile.llm_provider?.name ?? "None"}</dd>
-                  </div>
-                  <div>
-                    <dt>Memory</dt>
-                    <dd>{integrationProfile.memory_store?.name ?? "None"}</dd>
-                  </div>
-                </dl>
-              )}
-            </div>
+            ) : <Empty text="Requirement analysis appears after workflow execution." />}
+          </Panel>
 
-            <div className="provider-catalog-panel">
-              <h3>Catalog</h3>
-              <div className="provider-catalog-list">
-                {(providerCatalog?.providers ?? []).map((provider) => (
-                  <article
-                    className={`provider-card ${provider.enabled ? "" : "disabled"} ${
-                      selectedProviderNames.has(`${provider.kind}:${provider.name}`) ? "selected" : ""
-                    }`}
-                    key={`${provider.kind}-${provider.name}`}
-                  >
-                    <div className="provider-card-head">
-                      <span>
-                        <strong>{provider.name}</strong>
-                        {formatProviderKind(provider.kind)}
-                      </span>
-                      <div className="provider-badges">
-                        <StatusPill value={provider.mode} />
-                        <StatusPill value={provider.configuration_status ?? (provider.enabled ? "ready" : "disabled")} />
-                      </div>
-                    </div>
-                    <p>{provider.description}</p>
-                    <em>{provider.config_key ?? "runtime"}</em>
-                  </article>
-                ))}
-                {providersLoading && <p className="empty-state">Loading providers.</p>}
+          <Panel title="Coverage Plan" icon={<ShieldCheck />}>
+            {context?.coverage_plan ? (
+              <div className="stack">
+                <Metric label="Risk" value={context.coverage_plan.risk_level} />
+                <Metric label="Criticality" value={`${context.coverage_plan.business_criticality}/10`} />
+                <TextList title="Test types" items={context.coverage_plan.test_types_required} />
+                <TextList title="Risk rationale" items={context.coverage_plan.risk_rationale} />
               </div>
-            </div>
-          </div>
+            ) : <Empty text="Coverage is generated from requirement analysis and local memory." />}
+          </Panel>
 
-          <div className="intelligence-area">
-            <div className="intelligence-toolbar">
-              <div className="section-title">
-                <Brain aria-hidden="true" />
-                <h2>Intelligence</h2>
+          <Panel title="Generated Test Cases" icon={<ClipboardList />} wide>
+            {context?.test_cases.length ? (
+              <div className="test-layout">
+                <div className="test-tabs">
+                  {context.test_cases.map((test) => (
+                    <button key={test.id} className={selectedTest?.id === test.id ? "active" : ""} onClick={() => setSelectedTestId(test.id)}>
+                      <strong>{test.id}</strong>
+                      <span>{test.type}</span>
+                    </button>
+                  ))}
+                </div>
+                {selectedTest ? <TestCaseDetail test={selectedTest} /> : null}
               </div>
-              <div className="intelligence-search">
-                <label>
-                  Search
-                  <input
-                    value={intelligenceQuery}
-                    onChange={(event) => setIntelligenceQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") void refreshProviderMetadata();
-                    }}
-                  />
-                </label>
-                <button
-                  className="icon-button"
-                  onClick={() => void refreshProviderMetadata()}
-                  disabled={providersLoading}
-                  title="Search intelligence stores"
-                >
-                  {providersLoading ? <Loader2 className="spin" aria-hidden="true" /> : <Search aria-hidden="true" />}
+            ) : <Empty text="No generated test cases yet." />}
+          </Panel>
+
+          <Panel title="Automation Output" icon={<FileCode2 />} wide>
+            {selectedAutomation ? (
+              <div className="stack">
+                <div className="metrics-row">
+                  <Metric label="Revision" value={String(selectedAutomation.revision)} />
+                  <Metric label="Artifact" value={selectedAutomation.validation.artifact_exists ? "exists" : "missing"} />
+                  <Metric label="Validation" value={validationLabel(selectedAutomation)} />
+                </div>
+                <pre className="code-block">{automationContent || "Loading generated Robot file..."}</pre>
+              </div>
+            ) : <Empty text="Select a generated test case to inspect its automation artifact." />}
+          </Panel>
+
+          <Panel title="Execution Result" icon={<Activity />}>
+            {context?.execution ? (
+              <div className="stack">
+                <div className="metrics-row">
+                  <Metric label="Status" value={context.execution.status} />
+                  <Metric label="Passed" value={String(context.execution.summary.passed)} />
+                  <Metric label="Failed" value={String(context.execution.summary.failed)} />
+                  <Metric label="Skipped" value={String(context.execution.summary.skipped)} />
+                </div>
+                <TextList title="Case results" items={context.execution.results.map((result) => `${result.test_case_id}: ${result.status} — ${result.message}`)} />
+                <button className="secondary-button" onClick={runCiStyleExecution} disabled={busy !== null}>
+                  {busy === "ci" ? <Loader2 className="spin" /> : <PlayCircle />} Run CI-style API execution
                 </button>
               </div>
-            </div>
+            ) : (
+              <div className="stack">
+                <Empty text="Approve the workflow, then run execution. CI-style mock execution can also be triggered for API demos." />
+                <button className="secondary-button" onClick={runCiStyleExecution} disabled={busy !== null || !context}>
+                  {busy === "ci" ? <Loader2 className="spin" /> : <PlayCircle />} Run CI-style API execution
+                </button>
+              </div>
+            )}
+          </Panel>
 
-            <div className="intelligence-grid">
-              <div className="intelligence-column">
-                <h3>Prompts</h3>
-                {promptTemplates.map((prompt) => (
-                  <article className="intelligence-item" key={`${prompt.name}-${prompt.version}`}>
-                    <strong>{prompt.name}</strong>
-                    <span>{prompt.version}</span>
-                    <p>{prompt.description}</p>
-                  </article>
-                ))}
+          <Panel title="Report & Memory" icon={<Database />}>
+            {context?.reports ? (
+              <div className="stack">
+                <p>{context.reports.summary}</p>
+                <Metric label="Report confidence" value={`${Math.round(context.reports.confidence * 100)}%`} />
+                <TextList title="Next actions" items={context.reports.next_actions} />
+                <TextList title="Knowledge refs" items={context.reports.knowledge_refs_used} empty="No knowledge refs." />
+                <TextList title="Memory refs" items={context.reports.memory_refs_used} empty="No memory refs." />
+                <div className="callout">Memory archive: {context.memory_archive?.status ?? "not started"} {context.memory_archive?.memory_id ? `(${context.memory_archive.memory_id})` : ""}</div>
               </div>
-              <div className="intelligence-column">
-                <h3>LLM</h3>
-                {llmProviders.map((provider) => (
-                  <article className="intelligence-item" key={provider.name}>
-                    <strong>{provider.name}</strong>
-                    <span>{provider.model}</span>
-                    <p>{provider.description}</p>
-                  </article>
-                ))}
-                {context?.intelligence_trace && (
-                  <article className="intelligence-item trace">
-                    <strong>{context.intelligence_trace.llm_provider}</strong>
-                    <span>{context.intelligence_trace.llm_calls.length} calls</span>
-                    <p>
-                      {context.intelligence_trace.knowledge_refs.length} knowledge refs,
-                      {" "}
-                      {context.intelligence_trace.memory_refs.length} memory refs
-                    </p>
-                  </article>
-                )}
-              </div>
-              <div className="intelligence-column">
-                <h3>Knowledge</h3>
-                {knowledgeResults.map((result) => (
-                  <article className="intelligence-item" key={result.ref_id}>
-                    <strong>{result.title}</strong>
-                    <span>{result.source}</span>
-                    <p>{result.excerpt}</p>
-                  </article>
-                ))}
-              </div>
-              <div className="intelligence-column">
-                <h3>Memory</h3>
-                {memoryResults.map((result) => (
-                  <article className="intelligence-item" key={result.ref_id}>
-                    <strong>{result.title}</strong>
-                    <span>{result.tags.join(", ") || result.ref_id}</span>
-                    <p>{result.summary}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
+            ) : <Empty text="Report appears after workflow generation and updates after execution." />}
+          </Panel>
 
-            <div className="ollama-model-area">
-              <div className="ollama-model-header">
-                <div>
-                  <h3>Local model profiles</h3>
-                  <span>{ollamaCatalog?.base_url ?? "http://127.0.0.1:11434"}</span>
-                </div>
-                <div className="ollama-actions">
-                  <StatusPill value={ollamaCatalog?.service_available ? "available" : "offline"} />
-                  <button
-                    className="secondary-button"
-                    onClick={() => void runOllamaSmokeTest()}
-                    disabled={ollamaTesting || providersLoading}
-                  >
-                    {ollamaTesting ? <Loader2 className="spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
-                    Smoke test
-                  </button>
-                </div>
-              </div>
-              {ollamaCatalog?.service_error && (
-                <p className="empty-state">{ollamaCatalog.service_error}</p>
-              )}
-              <div className="ollama-model-list">
-                {(ollamaCatalog?.profiles ?? []).map((profile) => {
-                  const smoke = ollamaSmokeByRole.get(profile.role);
-                  const installStatus = profile.installed
-                    ? "installed"
-                    : profile.fallback_installed
-                      ? "fallback"
-                      : "missing";
-                  return (
-                    <article className="ollama-model-card" key={profile.role}>
-                      <div className="ollama-model-title">
-                        <span>
-                          <strong>{profile.role.replaceAll("_", " ")}</strong>
-                          {profile.kind}
-                        </span>
-                        <StatusPill value={smoke ? (smoke.ok ? "ok" : "failed") : installStatus} />
-                      </div>
-                      <p>{profile.model}</p>
-                      <em>{profile.env_key}</em>
-                      {profile.fallback_model && (
-                        <small>Fallback: {profile.fallback_model}</small>
-                      )}
-                      <code>{profile.installed ? "ready" : profile.pull_command}</code>
-                      {smoke && (
-                        <p className={smoke.ok ? "smoke-ok" : "smoke-error"}>
-                          {smoke.ok ? smoke.response_excerpt || "OK" : smoke.error}
-                        </p>
-                      )}
-                    </article>
-                  );
-                })}
-                {providersLoading && <p className="empty-state">Loading local model profiles.</p>}
-              </div>
+          <Panel title="Investigation & Events" icon={<Sparkles />} wide>
+            <div className="stack">
+              {context?.investigation ? <TextList title="Findings" items={context.investigation.findings.map((finding) => `${finding.severity}: ${finding.summary}`)} empty="No investigation findings." /> : <Empty text="Investigation runs after execution." />}
+              <TextList title="Latest execution events" items={executionEvents.slice(0, 6).map((event) => `${event.phase}: ${event.message}`)} empty="No CI events captured yet." />
+              <TextList title="Recent API runs" items={executionRuns.slice(0, 4).map((run) => `${run.run_id}: ${run.status}`)} empty="No execution runs yet." />
             </div>
-          </div>
+          </Panel>
         </section>
-
-        <section className="panel queue-panel">
-          <div className="queue-header">
-            <div className="section-title">
-              <History aria-hidden="true" />
-              <h2>Workflow queue</h2>
-            </div>
-            <div className="queue-controls">
-              <label>
-                Search
-                <input
-                  value={workflowQuery}
-                  onChange={(event) => setWorkflowQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") void refreshWorkflowQueue();
-                  }}
-                />
-              </label>
-              <label>
-                Approval
-                <select
-                  value={approvalFilter}
-                  onChange={(event) => {
-                    const nextFilter = event.target.value as ApprovalStatus | "all";
-                    setApprovalFilter(nextFilter);
-                    void refreshWorkflowQueue(workflowQuery, nextFilter);
-                  }}
-                >
-                  <option value="all">All</option>
-                  <option value="pending_review">Pending review</option>
-                  <option value="approved">Approved</option>
-                  <option value="changes_requested">Changes requested</option>
-                  <option value="not_ready">Not ready</option>
-                </select>
-              </label>
-              <button
-                className="icon-button"
-                onClick={() => void refreshWorkflowQueue()}
-                disabled={queueLoading}
-                title="Refresh workflow queue"
-              >
-                {queueLoading ? <Loader2 className="spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
-              </button>
-            </div>
-          </div>
-          <div className="queue-list">
-            {workflows.map((workflow) => (
-              <button
-                key={workflow.context_id}
-                className={`queue-row ${context?.context_id === workflow.context_id ? "active" : ""}`}
-                onClick={() => void loadWorkflowFromQueue(workflow.context_id)}
-                disabled={busy !== null}
-              >
-                <span className="queue-ticket">
-                  <strong>{workflow.ticket_id ?? "Untitled"}</strong>
-                  {workflow.ticket_title ?? workflow.context_id}
-                </span>
-                <span>{formatDate(workflow.updated_at)}</span>
-                <StatusPill value={workflow.workflow_status} />
-                <span>{workflow.approval_status?.replaceAll("_", " ") ?? "No approval"}</span>
-                <span>{workflow.execution_status ?? "Not run"}</span>
-                <span>{workflow.test_count} tests</span>
-                <span>r{workflow.automation_revision}</span>
-              </button>
-            ))}
-            {!queueLoading && workflows.length === 0 && (
-              <p className="empty-state">No workflows found.</p>
-            )}
-          </div>
-        </section>
-
-        <div className="content-grid">
-          <section className="panel test-list">
-            <div className="section-title">
-              <ClipboardCheck aria-hidden="true" />
-              <h2>Tests</h2>
-            </div>
-            <div className="scroll-area">
-              {tests.map((test) => {
-                const automation = context?.automation[test.id];
-                return (
-                  <button
-                    key={test.id}
-                    className={`test-card ${selectedTest?.id === test.id ? "active" : ""}`}
-                    onClick={() => setSelectedTestId(test.id)}
-                  >
-                    <ValidationIcon automation={automation} />
-                    <span>
-                      <strong>{test.id}</strong>
-                      {test.title}
-                    </span>
-                    <em>{test.type}</em>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="panel robot-panel">
-            <div className="section-title">
-              <FileCode2 aria-hidden="true" />
-              <h2>{selectedAutomation ? fileName(selectedAutomation.robot_file) : "Robot file"}</h2>
-            </div>
-            {selectedTest && (
-              <div className="test-detail">
-                <div>
-                  <span>Expected</span>
-                  <p>{selectedTest.expected_outcome}</p>
-                </div>
-                <div>
-                  <span>Validation</span>
-                  <p>
-                    {selectedAutomation?.validation.dry_run_passed
-                      ? "Dry-run passed"
-                      : selectedAutomation?.validation.errors[0] ??
-                        selectedAutomation?.validation.dry_run_skipped_reason ??
-                        "Pending"}
-                  </p>
-                </div>
-              </div>
-            )}
-            <pre className="robot-view">{robotContent || "No generated file selected."}</pre>
-          </section>
-
-          <section className="panel review-panel">
-            <div className="section-title">
-              <GitPullRequest aria-hidden="true" />
-              <h2>Review</h2>
-            </div>
-            <div className="review-state">
-              <span>Status</span>
-              <strong>{approval?.status.replaceAll("_", " ") ?? "None"}</strong>
-            </div>
-            <label>
-              Reviewer
-              <input value={reviewer} onChange={(event) => setReviewer(event.target.value)} />
-            </label>
-            <label>
-              Comment
-              <textarea
-                value={reviewComment}
-                onChange={(event) => setReviewComment(event.target.value)}
-                rows={5}
-              />
-            </label>
-            <div className="approval-actions">
-              <button className="primary-button" onClick={() => review("approve")} disabled={!canReview || busy !== null}>
-                {busy === "approve" ? <Loader2 className="spin" aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
-                Approve
-              </button>
-              <button
-                className="secondary-button"
-                onClick={() => review("request_changes")}
-                disabled={!canReview || busy !== null || !reviewComment.trim()}
-              >
-                {busy === "request_changes" ? <Loader2 className="spin" aria-hidden="true" /> : <RotateCcw aria-hidden="true" />}
-                Changes
-              </button>
-            </div>
-            {approval?.git_branch && (
-              <dl className="git-facts">
-                <div>
-                  <dt>Branch</dt>
-                  <dd>{approval.git_branch}</dd>
-                </div>
-                <div>
-                  <dt>Git</dt>
-                  <dd>{approval.git_status}</dd>
-                </div>
-                {approval.git_commit_sha && (
-                  <div>
-                    <dt>Commit</dt>
-                    <dd>{approval.git_commit_sha.slice(0, 10)}</dd>
-                  </div>
-                )}
-              </dl>
-            )}
-          </section>
-
-          <section className="panel execution-panel">
-            <div className="execution-header">
-              <div className="section-title">
-                <Activity aria-hidden="true" />
-                <h2>Execution</h2>
-              </div>
-              <button
-                className="icon-button"
-                onClick={() => void refreshExecutionRuns()}
-                disabled={resultsLoading || !context}
-                title="Refresh execution results"
-              >
-                {resultsLoading ? <Loader2 className="spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
-              </button>
-            </div>
-            <div className="execution-topline">
-              <div>
-                <span>Status</span>
-                <strong>{execution?.status ?? "Not run"}</strong>
-              </div>
-              <div>
-                <span>Passed</span>
-                <strong>{executionCounts.passed}</strong>
-              </div>
-              <div>
-                <span>Failed</span>
-                <strong>{executionCounts.failed}</strong>
-              </div>
-              <div>
-                <span>Skipped</span>
-                <strong>{executionCounts.skipped}</strong>
-              </div>
-            </div>
-
-            <div className="execution-config">
-              <label>
-                Adapter
-                <select value={executionAdapter} onChange={(event) => setExecutionAdapter(event.target.value)}>
-                  {executionAdapterOptions.length === 0 && <option value="mock">mock</option>}
-                  {executionAdapterOptions.map((provider) => (
-                    <option value={provider.name} key={provider.name}>
-                      {provider.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Env
-                <input value={executionEnv} onChange={(event) => setExecutionEnv(event.target.value)} />
-              </label>
-              <label>
-                Branch
-                <input value={executionBranch} onChange={(event) => setExecutionBranch(event.target.value)} />
-              </label>
-              <label>
-                Tags
-                <input value={executionTags} onChange={(event) => setExecutionTags(event.target.value)} />
-              </label>
-              <button
-                className="primary-button"
-                onClick={() => void runExecution()}
-                disabled={busy !== null || !context || Object.keys(context.automation).length === 0}
-              >
-                {busy === "execute" ? <Loader2 className="spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
-                Run CI
-              </button>
-            </div>
-
-            <div className="execution-layout">
-              <div className="execution-current">
-                <h3>Current result</h3>
-                <div className="execution-list">
-                  {(execution?.results ?? []).map((result) => (
-                    <article className="execution-result" key={result.test_case_id}>
-                      <span className={`result-status ${result.status}`}>{result.status}</span>
-                      <div>
-                        <strong>{result.test_case_id}</strong>
-                        <p>{result.title}</p>
-                        <em>{result.message}</em>
-                      </div>
-                      <span>{result.duration_ms} ms</span>
-                    </article>
-                  ))}
-                  {!execution && <p className="empty-state">No execution results yet.</p>}
-                </div>
-              </div>
-
-              <div className="run-history">
-                <h3>Run history</h3>
-                <div className="run-list">
-                  {executionRuns.map((run) => {
-                    const summary = run.execution?.summary;
-                    const statusUrl = `/api/v1/results/${encodeURIComponent(run.run_id)}`;
-                    return (
-                      <article
-                        className={`run-row ${selectedRunId === run.run_id ? "active" : ""}`}
-                        key={run.run_id}
-                      >
-                        <div className="run-main">
-                          <StatusPill value={run.status} />
-                          <span>
-                            <strong>{run.run_id}</strong>
-                            {formatDate(run.updated_at)}
-                          </span>
-                        </div>
-                        <div className="run-meta">
-                          <span>{run.request.adapter}</span>
-                          <span>{run.request.env}</span>
-                          <span>{run.request.branch || "No branch"}</span>
-                          <span>{summary ? `${summary.passed}/${summary.total} passed` : "No summary"}</span>
-                        </div>
-                        <div className="artifact-links">
-                          <button type="button" onClick={() => void refreshExecutionEvents(run.run_id)}>
-                            Logs
-                          </button>
-                          <a href={statusUrl} target="_blank" rel="noreferrer">
-                            JSON
-                            <ExternalLink aria-hidden="true" />
-                          </a>
-                          {run.execution && (
-                            <>
-                              <a href={`${statusUrl}/junit.xml`} target="_blank" rel="noreferrer">
-                                JUnit
-                                <ExternalLink aria-hidden="true" />
-                              </a>
-                              <a href={`${statusUrl}/report.html`} target="_blank" rel="noreferrer">
-                                HTML
-                                <ExternalLink aria-hidden="true" />
-                              </a>
-                            </>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
-                  {!resultsLoading && executionRuns.length === 0 && (
-                    <p className="empty-state">No persisted execution runs yet.</p>
-                  )}
-                  {resultsLoading && (
-                    <p className="empty-state">Loading execution runs.</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="execution-log-panel">
-                <div className="log-header">
-                  <h3>Live logs</h3>
-                  <button
-                    className="icon-button"
-                    onClick={() => void refreshExecutionEvents()}
-                    disabled={logsLoading || !selectedRunId}
-                    title="Refresh execution logs"
-                  >
-                    {logsLoading ? <Loader2 className="spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
-                  </button>
-                </div>
-                <div className="execution-log-list">
-                  {executionEvents.map((event) => (
-                    <article className={`execution-log ${event.level}`} key={event.id}>
-                      <span>{formatDate(event.created_at)}</span>
-                      <strong>{event.phase.replaceAll("_", " ")}</strong>
-                      <em>{event.test_case_id ?? event.status ?? event.level}</em>
-                      <p>{event.message}</p>
-                    </article>
-                  ))}
-                  {!logsLoading && executionEvents.length === 0 && (
-                    <p className="empty-state">No execution logs yet.</p>
-                  )}
-                  {logsLoading && <p className="empty-state">Loading execution logs.</p>}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="panel audit-panel">
-            <div className="section-title">
-              <History aria-hidden="true" />
-              <h2>Audit</h2>
-            </div>
-            <div className="scroll-area">
-              {(context?.audit_log ?? []).slice().reverse().map((event) => (
-                <article className="audit-item" key={event.id}>
-                  <span>{formatDate(event.created_at)}</span>
-                  <strong>{event.event_type.replaceAll("_", " ")}</strong>
-                  <p>{event.summary}</p>
-                  <em>{event.actor}</em>
-                </article>
-              ))}
-            </div>
-          </section>
-        </div>
-      </section>
-    </main>
+      </main>
+    </div>
   );
+}
+
+function buildSteps(context: TestContext | null): DemoStep[] {
+  return [
+    { label: "Ticket", status: context?.ticket ? "done" : "waiting", detail: context?.ticket?.id ?? "Local fixture provider" },
+    { label: "Requirement", status: context?.requirement_analysis ? "done" : "waiting", detail: context?.requirement_analysis?.domain ?? "AI/RAG analysis" },
+    { label: "Coverage", status: context?.coverage_plan ? "done" : "waiting", detail: context?.coverage_plan?.risk_level ?? "Risk plan" },
+    { label: "Tests", status: context?.test_cases.length ? "done" : "waiting", detail: `${context?.test_cases.length ?? 0} generated` },
+    { label: "Automation", status: context?.automation_revision ? "done" : "waiting", detail: `revision ${context?.automation_revision ?? 0}` },
+    { label: "Approval", status: context?.approval?.status === "approved" ? "done" : context?.approval?.status === "pending_review" ? "active" : "waiting", detail: context?.approval?.status ?? "not ready" },
+    { label: "Execution", status: context?.execution ? (context.execution.status === "failed" ? "blocked" : "done") : "waiting", detail: context?.execution?.status ?? "deferred" },
+    { label: "Memory", status: context?.memory_archive?.status === "archived" ? "done" : "waiting", detail: context?.memory_archive?.status ?? "not archived" }
+  ];
+}
+
+function selectedProvider(catalog: ProviderCatalog | null, kind: string): string | null {
+  return catalog?.selected.find((entry) => entry.kind === kind)?.selected ?? null;
+}
+
+function validationLabel(block: AutomationBlock): string {
+  if (block.validation.dry_run_passed === true) return "green";
+  if (block.validation.dry_run_passed === null) return "local fallback";
+  return "failed";
+}
+
+function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
+  return <div className="section-title">{icon}<h3>{title}</h3></div>;
+}
+
+function Panel({ icon, title, children, wide = false }: { icon: React.ReactNode; title: string; children: React.ReactNode; wide?: boolean }) {
+  return <section className={wide ? "panel content-panel wide" : "panel content-panel"}><SectionTitle icon={icon} title={title} />{children}</section>;
+}
+
+function StepCard({ step }: { step: DemoStep }) {
+  const Icon = step.status === "done" ? CheckCircle2 : step.status === "blocked" ? XCircle : Activity;
+  return <div className={`step-card ${step.status}`}><Icon /><strong>{step.label}</strong><span>{step.detail}</span></div>;
+}
+
+function TicketPreview({ ticket }: { ticket: TicketData }) {
+  return <div className="ticket-preview"><strong>{ticket.title}</strong><p>{ticket.description}</p><div className="tag-row"><span>{ticket.priority}</span>{ticket.labels.map((label) => <span key={label}>{label}</span>)}</div></div>;
+}
+
+function ProviderLine({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "good" | "warn" }) {
+  return <div className={`provider-line ${tone}`}><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return <div className="metric"><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function TextList({ title, items, empty = "None." }: { title: string; items: string[]; empty?: string }) {
+  return <div><p className="list-title">{title}</p>{items.length ? <ul className="text-list">{items.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : <p className="empty-inline">{empty}</p>}</div>;
+}
+
+function Empty({ text }: { text: string }) {
+  return <p className="empty-state">{text}</p>;
+}
+
+function TestCaseDetail({ test }: { test: TestCase }) {
+  return <div className="test-detail"><div className="metrics-row"><Metric label="Priority" value={test.priority} /><Metric label="Type" value={test.type} /></div><h4>{test.title}</h4><TextList title="Steps" items={test.steps} /><p className="callout">Expected: {test.expected_outcome}</p><TextList title="Evidence refs" items={[...test.evidence_refs, ...test.memory_refs]} empty="No evidence refs." /></div>;
 }

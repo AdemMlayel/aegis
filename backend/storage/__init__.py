@@ -11,7 +11,6 @@ from backend.storage.execution_runs import (
     load_execution_run,
     save_execution_run,
 )
-from backend.storage.migrations import list_applied_migrations, run_migrations
 
 __all__ = [
     "SQLITE_DB_PATH",
@@ -23,10 +22,8 @@ __all__ = [
     "list_execution_events",
     "list_execution_runs",
     "list_contexts",
-    "list_applied_migrations",
     "load_execution_run",
     "load_context",
-    "run_migrations",
     "save_execution_run",
     "save_context",
 ]

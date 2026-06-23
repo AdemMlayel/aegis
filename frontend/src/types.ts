@@ -1,35 +1,9 @@
 export type Priority = "low" | "medium" | "high" | "critical";
 export type TicketStatus = "backlog" | "ready" | "in_progress" | "blocked" | "done";
 export type ApprovalStatus = "not_ready" | "pending_review" | "approved" | "changes_requested";
-export type ExecutionStatus = "passed" | "failed" | "skipped";
+export type ExecutionStatus = "passed" | "failed" | "skipped" | "blocked";
 export type ExecutionResultStatus = "passed" | "failed" | "skipped";
-export type ExecutionRunStatus = ExecutionStatus | "queued" | "running" | "blocked";
-export type ProviderKind =
-  | "ticket_connector"
-  | "execution_adapter"
-  | "artifact_store"
-  | "secret_provider"
-  | "git_handoff"
-  | "llm_provider"
-  | "knowledge_store"
-  | "memory_store"
-  | "embedding_model"
-  | "vector_store"
-  | "reranker";
-export type ProviderMode = "mock" | "local" | "external";
-
-export type MockTicketComment = {
-  author: string;
-  body: string;
-  created_at: string;
-};
-
-export type MockLinkedRequirement = {
-  id: string;
-  title: string;
-  status: "draft" | "approved" | "needs_clarification";
-  source: string;
-};
+export type ExecutionRunStatus = ExecutionStatus | "queued" | "running";
 
 export type TicketData = {
   id: string;
@@ -44,8 +18,34 @@ export type TicketData = {
   status?: TicketStatus;
   created_at?: string;
   updated_at?: string;
-  comments?: MockTicketComment[];
-  linked_requirements?: MockLinkedRequirement[];
+};
+
+export type RequirementAnalysis = {
+  business_action: string;
+  domain: string;
+  actor: string;
+  preconditions: string[];
+  expected_results: string[];
+  missing_fields: string[];
+  clarification_questions: string[];
+  memory_refs_used: string[];
+  knowledge_refs_used: string[];
+  prompt_versions_used: string[];
+  llm_summary: string | null;
+  confidence: number;
+};
+
+export type CoveragePlan = {
+  risk_level: Priority;
+  business_criticality: number;
+  test_types_required: string[];
+  coverage_matrix: Record<string, string[]>;
+  regression_tests_to_rerun: string[];
+  estimated_automation_effort: "low" | "medium" | "high";
+  prioritization_order: string[];
+  memory_refs_used: string[];
+  knowledge_refs_used: string[];
+  risk_rationale: string[];
 };
 
 export type TestCase = {
@@ -58,6 +58,9 @@ export type TestCase = {
   steps: string[];
   expected_outcome: string;
   test_data_requirements: Record<string, string[]>;
+  evidence_refs: string[];
+  memory_refs: string[];
+  generation_notes: string[];
 };
 
 export type AutomationBlock = {
@@ -75,34 +78,10 @@ export type AutomationBlock = {
 };
 
 export type ExecutionArtifact = {
-  kind: "log" | "junit" | "html" | "robot-output" | "screenshot" | "trace" | "summary";
+  kind: string;
   path: string | null;
   content_type: string;
   description: string;
-};
-
-export type InvestigationBlock = {
-  status: "not_started" | "completed" | "skipped";
-  generated_at: string | null;
-  findings: Array<{
-    test_case_id: string | null;
-    severity: "info" | "warning" | "high" | "critical";
-    category: "test" | "application" | "environment" | "data" | "unknown";
-    summary: string;
-    evidence_refs: string[];
-    confidence: number;
-  }>;
-  root_cause_summary: string | null;
-  confidence: number;
-};
-
-export type MemoryArchiveBlock = {
-  status: "not_started" | "archived" | "skipped";
-  archived_at: string | null;
-  memory_id: string | null;
-  summary: string | null;
-  tags: string[];
-  source_refs: string[];
 };
 
 export type ExecutionBlock = {
@@ -131,208 +110,29 @@ export type ExecutionBlock = {
   artifacts: ExecutionArtifact[];
 };
 
-export type ExecutionRunRequest = {
-  suite: string;
-  adapter: string;
-  branch?: string | null;
-  env: string;
-  tags: string[];
-  actor: string;
+export type InvestigationBlock = {
+  status: "not_started" | "completed" | "skipped";
+  generated_at: string | null;
+  findings: Array<{
+    test_case_id: string | null;
+    severity: "info" | "warning" | "high" | "critical";
+    category: "test" | "application" | "environment" | "data" | "unknown";
+    summary: string;
+    evidence_refs: string[];
+    confidence: number;
+  }>;
+  root_cause_summary: string | null;
+  confidence: number;
 };
 
-export type ExecutionRunRecord = {
-  run_id: string;
-  context_id: string;
-  request: ExecutionRunRequest;
-  status: ExecutionRunStatus;
-  execution: ExecutionBlock | null;
-  junit_xml: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export type ExecutionEvent = {
-  id: string;
-  run_id: string;
-  context_id: string;
-  level: "debug" | "info" | "warning" | "error";
-  phase:
-    | "queued"
-    | "running"
-    | "case_started"
-    | "case_finished"
-    | "artifact"
-    | "completed"
-    | "blocked";
-  status: string | null;
-  test_case_id: string | null;
-  message: string;
-  metadata: Record<string, unknown>;
-  created_at: string;
-};
-
-export type ExecuteRunResponse = {
-  run_id: string;
-  context_id: string;
-  status: ExecutionRunStatus;
-  status_url: string;
-  summary_url: string;
-  junit_url: string;
-  report_url: string;
-  logs_url: string;
-  websocket_url: string | null;
-};
-
-export type ProviderCatalogEntry = {
-  kind: ProviderKind;
-  name: string;
-  mode: ProviderMode;
-  description: string;
-  version: string;
-  requires_external_api: boolean;
-  enabled: boolean;
-  selected: boolean;
-  config_key: string | null;
-  configuration_status?: string;
-  configuration_keys?: string[];
-};
-
-export type ProviderSelection = {
-  kind: ProviderKind;
-  selected: string;
-  requires_external_api: boolean;
-  status: string;
-};
-
-export type ProviderCatalog = {
-  environment: string;
-  external_connectors_enabled: boolean;
-  selected: ProviderSelection[];
-  providers: ProviderCatalogEntry[];
-};
-
-export type IntegrationProviderRef = {
-  kind: ProviderKind;
-  name: string;
-  mode: ProviderMode;
-  requires_external_api: boolean;
-  status: "ready" | "disabled" | "placeholder";
-  notes: string[];
-};
-
-export type IntegrationProfile = {
-  ticket_connector: IntegrationProviderRef | null;
-  execution_adapter: IntegrationProviderRef | null;
-  artifact_store: IntegrationProviderRef | null;
-  secret_provider: IntegrationProviderRef | null;
-  git_handoff: IntegrationProviderRef | null;
-  llm_provider: IntegrationProviderRef | null;
-  knowledge_store: IntegrationProviderRef | null;
-  memory_store: IntegrationProviderRef | null;
-  policy: "mock_only" | "local_only" | "external_allowed";
-  external_connectors_enabled: boolean;
-};
-
-export type PromptTemplate = {
-  name: string;
-  version: string;
-  description: string;
-};
-
-export type LLMProvider = {
-  name: string;
-  mode: ProviderMode;
-  model: string;
-  requires_external_api: boolean;
-  description: string;
-  configuration_status?: string;
-  configuration_keys?: string[];
-};
-
-export type OllamaModelProfile = {
-  role: string;
-  model: string;
-  kind: "chat" | "embedding";
-  purpose: string;
-  env_key: string;
-  fallback_model: string | null;
-  installed: boolean;
-  fallback_installed: boolean;
-  pull_command: string;
-  fallback_pull_command: string | null;
-};
-
-export type OllamaModelCatalog = {
-  base_url: string;
-  service_available: boolean;
-  service_error: string | null;
-  installed_models: string[];
-  profiles: OllamaModelProfile[];
-};
-
-export type OllamaSmokeTestResult = {
-  role: string;
-  model: string;
-  kind: "chat" | "embedding";
-  available: boolean;
-  ok: boolean;
-  response_excerpt: string;
-  error: string | null;
-};
-
-export type KnowledgeSearchItem = {
-  ref_id: string;
-  title: string;
-  source: string;
-  score: number;
-  vector_score: number;
-  rerank_score: number;
-  retention_status: string;
-  excerpt: string;
-  matched_terms: string[];
-};
-
-export type MemorySearchItem = {
-  ref_id: string;
-  title: string;
-  score: number;
-  vector_score: number;
-  rerank_score: number;
-  retention_status: string;
-  summary: string;
+export type MemoryArchiveBlock = {
+  status: "not_started" | "archived" | "skipped";
+  archived_at: string | null;
+  memory_id: string | null;
+  summary: string | null;
   tags: string[];
   source_refs: string[];
-  matched_terms: string[];
-};
-
-export type IntelligenceTrace = {
-  llm_provider: string;
-  knowledge_refs: Array<{
-    ref_id: string;
-    source: string;
-    title: string;
-    score: number;
-    excerpt: string;
-  }>;
-  memory_refs: Array<{
-    ref_id: string;
-    source: string;
-    title: string;
-    score: number;
-    excerpt: string;
-  }>;
-  prompt_versions: Array<{
-    name: string;
-    version: string;
-  }>;
-  llm_calls: Array<{
-    provider: string;
-    model: string;
-    prompt_name: string;
-    prompt_version: string;
-    deterministic: boolean;
-    summary: string;
-  }>;
+  indexed_refs: string[];
 };
 
 export type ApprovalBlock = {
@@ -350,6 +150,52 @@ export type ApprovalBlock = {
   git_handoff_path: string | null;
   comments: string[];
   notes: string[];
+};
+
+export type IntelligenceTrace = {
+  llm_provider: string;
+  configured_llm_provider: string;
+  configured_embedding_provider: string;
+  configured_llm_model: string | null;
+  configured_embedding_model: string | null;
+  knowledge_refs: Array<{ ref_id: string; title: string; source: string; score: number; excerpt: string }>;
+  memory_refs: Array<{ ref_id: string; title: string; source: string; score: number; excerpt: string }>;
+  prompt_versions: Array<{ name: string; version: string }>;
+  llm_calls: Array<{
+    provider: string;
+    model: string;
+    prompt_name: string;
+    prompt_version: string;
+    deterministic: boolean;
+    summary: string;
+  }>;
+};
+
+export type IntelligenceConfig = {
+  llm_provider: string;
+  embedding_provider: string;
+  llm_model: string | null;
+  embedding_model: string | null;
+};
+
+export type IntegrationProviderRef = {
+  kind: string;
+  name: string;
+  mode: "mock" | "local" | "external";
+  requires_external_api: boolean;
+  status: "ready" | "disabled" | "placeholder";
+  notes: string[];
+};
+
+export type IntegrationProfile = Record<string, IntegrationProviderRef | string | boolean | null>;
+
+export type AuditEvent = {
+  id: string;
+  created_at: string;
+  actor: string;
+  event_type: string;
+  summary: string;
+  metadata: Record<string, unknown>;
 };
 
 export type WorkflowSummary = {
@@ -372,51 +218,130 @@ export type WorkflowSummary = {
   executed_at: string | null;
 };
 
-export type AuditEvent = {
-  id: string;
-  created_at: string;
-  actor: string;
-  event_type: string;
-  summary: string;
-  metadata: Record<string, unknown>;
-};
-
 export type TestContext = {
   context_id: string;
   schema_version: string;
   created_by: string;
   workflow_status: string;
+  integration_profile: IntegrationProfile | null;
+  intelligence_config: IntelligenceConfig;
+  intelligence_trace: IntelligenceTrace;
   ticket: TicketData | null;
+  requirement_analysis: RequirementAnalysis | null;
+  coverage_plan: CoveragePlan | null;
   test_cases: TestCase[];
   automation_revision: number;
   automation: Record<string, AutomationBlock>;
-  integration_profile: IntegrationProfile | null;
-  intelligence_trace: IntelligenceTrace;
-  execution_request: {
-    requested_by: string;
-    requested_at: string;
-    adapter: string;
-    env: string;
-    branch: string | null;
-    tags: string[];
-    status: "pending" | "deferred" | "running" | "completed" | "blocked";
-    blocked_reason: string | null;
-  } | null;
   execution: ExecutionBlock | null;
   investigation: InvestigationBlock | null;
   memory_archive: MemoryArchiveBlock | null;
   approval: ApprovalBlock | null;
-  review_feedback: Array<{
-    requested_at: string;
-    requested_by: string;
-    comment: string;
-    status: "open" | "applied";
-  }>;
   audit_log: AuditEvent[];
   reports: {
     summary: string;
     total_test_cases: number;
     highest_risk: string;
     next_actions: string[];
+    knowledge_refs_used: string[];
+    memory_refs_used: string[];
+    prompt_versions_used: string[];
+    confidence: number;
   } | null;
+};
+
+export type ProviderCatalogEntry = {
+  kind: string;
+  name: string;
+  mode: string;
+  description: string;
+  version: string;
+  requires_external_api: boolean;
+  enabled: boolean;
+  selected: boolean;
+  config_key: string | null;
+};
+
+export type ProviderCatalog = {
+  environment: string;
+  external_connectors_enabled: boolean;
+  selected: Array<{ kind: string; selected: string; requires_external_api: boolean; status: string }>;
+  providers: ProviderCatalogEntry[];
+};
+
+export type LLMProvider = {
+  name: string;
+  mode: string;
+  model: string;
+  requires_external_api: boolean;
+  description: string;
+};
+
+export type EmbeddingProvider = {
+  name: string;
+  mode: string;
+  model: string;
+  dimensions: number;
+  requires_external_api: boolean;
+  description: string;
+};
+
+export type OllamaHealth = {
+  available: boolean;
+  base_url: string;
+  chat_model: string;
+  embedding_model: string;
+  installed_models: string[];
+  chat_model_ready: boolean;
+  embedding_model_ready: boolean;
+  message: string;
+};
+
+export type ExecutionRunRequest = {
+  suite: string;
+  adapter: string;
+  branch?: string | null;
+  env: string;
+  tags: string[];
+  actor: string;
+};
+
+export type ExecuteRunResponse = {
+  run_id: string;
+  context_id: string;
+  status: ExecutionRunStatus;
+  worker_backend: string;
+  worker_durable: boolean;
+  worker_task_id: string | null;
+  worker_fallback_used: boolean;
+  worker_message: string;
+  status_url: string;
+  summary_url: string;
+  junit_url: string;
+  report_url: string;
+  logs_url: string;
+  websocket_url: string | null;
+};
+
+export type ExecutionRunRecord = {
+  run_id: string;
+  context_id: string;
+  request: ExecutionRunRequest;
+  status: ExecutionRunStatus;
+  execution: ExecutionBlock | null;
+  junit_xml: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ExecutionEvent = {
+  id: string;
+  run_id: string;
+  context_id: string;
+  level: "debug" | "info" | "warning" | "error";
+  phase: string;
+  status: string | null;
+  test_case_id: string | null;
+  message: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
 };

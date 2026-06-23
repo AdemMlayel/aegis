@@ -20,6 +20,7 @@ class MockLLMProvider(BaseLLMProvider):
         prompt_version: str,
         rendered_prompt: str,
         system_instruction: str | None = None,
+        model_override: str | None = None,
     ) -> LLMResponse:
         compact = " ".join(rendered_prompt.split())
         ticket_match = re.search(r"Ticket:\s*([^|]+)", compact)
@@ -32,7 +33,7 @@ class MockLLMProvider(BaseLLMProvider):
         )
         return LLMResponse(
             provider=self.spec.name,
-            model=self.spec.model,
+            model=model_override or self.spec.model,
             prompt_name=prompt_name,
             prompt_version=prompt_version,
             text=text,
