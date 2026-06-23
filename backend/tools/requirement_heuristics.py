@@ -69,8 +69,8 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
         missing_fields.append("Data constraints are not described")
         clarification_questions.append("What input limits, formats, or currencies apply?")
 
-    knowledge_results = search_knowledge_for_ticket(ticket, limit=3)
-    memory_results = search_memory_for_ticket(ticket, limit=3)
+    knowledge_results = search_knowledge_for_ticket(ticket, limit=3, context=context)
+    memory_results = search_memory_for_ticket(ticket, limit=3, context=context)
     prompt = prompt_registry.get("requirement_analysis_v1")
     rendered_prompt = prompt.render(
         ticket_title=ticket.title,

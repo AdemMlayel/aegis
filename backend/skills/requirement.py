@@ -34,8 +34,14 @@ class AnalyzeRequirementSkill(BaseSkill):
 
         context.requirement_analysis = analysis
         if context.ticket is not None:
-            record_knowledge_refs(context, search_knowledge_for_ticket(context.ticket, limit=3))
-            record_memory_refs(context, search_memory_for_ticket(context.ticket, limit=3))
+            record_knowledge_refs(
+                context,
+                search_knowledge_for_ticket(context.ticket, limit=3, context=context),
+            )
+            record_memory_refs(
+                context,
+                search_memory_for_ticket(context.ticket, limit=3, context=context),
+            )
         for prompt_ref in analysis.prompt_versions_used:
             name, version = prompt_ref.split("@", 1)
             if (name, version) not in {(item.name, item.version) for item in context.intelligence_trace.prompt_versions}:

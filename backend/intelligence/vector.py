@@ -43,6 +43,9 @@ class EmbeddingProviderModel:
     def __init__(self, provider_name: str) -> None:
         self.provider_name = provider_name
         self.provider = embedding_provider_registry.create(provider_name)
+        self._fallback_provider = embedding_provider_registry.create(
+            "local_hash_embeddings"
+        )
         provider_spec = self.provider.spec
         self.spec = EmbeddingSpec(
             name=provider_spec.name,
@@ -52,7 +55,12 @@ class EmbeddingProviderModel:
         )
 
     def embed(self, text: str) -> tuple[float, ...]:
-        return self.provider.embed(text).vector
+        try:
+            return self.provider.embed(text).vector
+        except Exception:  # noqa: BLE001 - retrieval must degrade safely for local demos.
+            if self.provider_name == "local_hash_embeddings":
+                raise
+            return self._fallback_provider.embed(text).vector
 
 
 def create_embedding_model(

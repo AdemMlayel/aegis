@@ -61,8 +61,8 @@ def plan_coverage(
     if analysis.completeness_checklist.performance_expectations_set:
         required_types.append("performance")
 
-    knowledge_results = search_knowledge_for_ticket(ticket, limit=3)
-    memory_results = search_memory_for_ticket(ticket, limit=3)
+    knowledge_results = search_knowledge_for_ticket(ticket, limit=3, context=context)
+    memory_results = search_memory_for_ticket(ticket, limit=3, context=context)
     prompt = prompt_registry.get("coverage_planning_v1")
     rendered_prompt = prompt.render(
         ticket_title=ticket.title,

@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Literal
 from uuid import uuid4
+
+from backend.intelligence.vector import (
+    InMemoryVectorStore,
+    LocalHybridReranker,
+    VectorDocument,
+    create_embedding_model,
+)
 
 
 @dataclass(frozen=True)
@@ -23,6 +29,9 @@ class EpisodicMemorySearchResult:
     entry: EpisodicMemoryEntry
     score: float
     matched_terms: tuple[str, ...] = ()
+    vector_score: float = 0.0
+    rerank_score: float = 0.0
+    retention_status: str = "active"
 
     @property
     def ref(self) -> str:
@@ -30,29 +39,60 @@ class EpisodicMemorySearchResult:
 
 
 class EpisodicMemoryStore:
-    def __init__(self, entries: list[EpisodicMemoryEntry] | None = None) -> None:
-        self._entries = entries or []
-
-    def search(self, *, query: str, tags: list[str] | None = None, limit: int = 3) -> list[EpisodicMemorySearchResult]:
-        query_terms = _tokenize(query)
-        tag_terms = {tag.lower() for tag in (tags or [])}
-        results: list[EpisodicMemorySearchResult] = []
+    def __init__(
+        self,
+        entries: list[EpisodicMemoryEntry] | None = None,
+        *,
+        embedding_provider: str | None = None,
+    ) -> None:
+        self._entries = list(entries or [])
+        self._entry_by_id = {entry.memory_id: entry for entry in self._entries}
+        self._embedding_model = create_embedding_model(embedding_provider)
+        self._vector_store = InMemoryVectorStore()
+        self._reranker = LocalHybridReranker()
         for entry in self._entries:
-            entry_terms = _tokenize(" ".join([entry.title, entry.summary, " ".join(entry.tags)]))
-            matched_terms = tuple(sorted(query_terms & entry_terms))
-            tag_matches = tag_terms & {tag.lower() for tag in entry.tags}
-            if not matched_terms and not tag_matches:
+            self._index_entry(entry)
+
+    def search(
+        self,
+        *,
+        query: str,
+        tags: list[str] | None = None,
+        limit: int = 3,
+    ) -> list[EpisodicMemorySearchResult]:
+        query_text = query.strip()
+        if not query_text or limit <= 0:
+            return []
+
+        query_embedding = self._embedding_model.embed(query_text)
+        candidate_limit = max(limit * 4, limit, len(self._entries))
+        hits = self._vector_store.search(
+            query_embedding=query_embedding,
+            namespace="episodic_memory",
+            limit=candidate_limit,
+        )
+        reranked_hits = self._reranker.rerank(
+            query=query_text,
+            hits=hits,
+            tags=tags,
+            limit=candidate_limit,
+        )
+        results: list[EpisodicMemorySearchResult] = []
+        for hit in reranked_hits:
+            entry = self._entry_by_id.get(hit.document.document_id)
+            if entry is None:
                 continue
-            score = len(matched_terms) + (1.25 * len(tag_matches))
-            score = score / max(len(query_terms) or 1, 1)
             results.append(
                 EpisodicMemorySearchResult(
                     entry=entry,
-                    score=round(min(score, 1.0), 3),
-                    matched_terms=matched_terms,
+                    score=hit.rerank_score,
+                    matched_terms=hit.matched_terms,
+                    vector_score=hit.vector_score,
+                    rerank_score=hit.rerank_score,
+                    retention_status=hit.retention_status,
                 )
             )
-        return sorted(results, key=lambda result: (-result.score, result.entry.memory_id))[:limit]
+        return results[:limit]
 
     def archive(
         self,
@@ -72,11 +112,37 @@ class EpisodicMemoryStore:
             outcome=outcome,
         )
         self._entries.append(entry)
+        self._entry_by_id[entry.memory_id] = entry
+        self._index_entry(entry)
         return entry
 
     def list_entries(self) -> list[EpisodicMemoryEntry]:
         return list(self._entries)
 
+    def retrieval_profile(self) -> dict[str, object]:
+        return {
+            "name": "local_episodic_memory",
+            "entries": len(self._entries),
+            "embedding_model": self._embedding_model.spec.name,
+            "embedding_dimension": self._embedding_model.spec.dimension,
+            "vector_store": InMemoryVectorStore.spec["name"],
+            "reranker": LocalHybridReranker.spec["name"],
+        }
 
-def _tokenize(text: str) -> set[str]:
-    return {term for term in re.findall(r"[a-zA-Z0-9_]+", text.lower()) if len(term) > 2}
+    def _index_entry(self, entry: EpisodicMemoryEntry) -> None:
+        document = VectorDocument(
+            document_id=entry.memory_id,
+            namespace="episodic_memory",
+            text=" ".join([entry.title, entry.summary, " ".join(entry.tags)]),
+            metadata={
+                "title": entry.title,
+                "outcome": entry.outcome,
+                "source_refs": list(entry.source_refs),
+            },
+            tags=entry.tags,
+            created_at=entry.created_at,
+        )
+        self._vector_store.upsert(
+            document=document,
+            embedding=self._embedding_model.embed(document.text),
+        )

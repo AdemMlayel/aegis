@@ -32,7 +32,7 @@ Verification result during hardening:
 
 ```bash
 python -m pytest -q
-# 79 passed
+# 84 passed
 
 cd frontend
 npm install
@@ -186,7 +186,7 @@ Ollama health endpoint:
 GET /api/v1/intelligence/ollama/health
 ```
 
-If Ollama is not running or the selected model is missing, the API returns a clear status message. Workflow generation uses a deterministic fallback so PM demos do not fail silently.
+If Ollama is not running or the selected model is missing, the API returns a clear status message. Workflow generation and RAG/memory retrieval use deterministic fallbacks so PM demos do not fail silently.
 
 Workflow starts can override the local AI selection per run without changing
 global environment defaults:

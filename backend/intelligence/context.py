@@ -26,16 +26,28 @@ def build_ticket_query(ticket: TicketData) -> str:
     )
 
 
-def search_knowledge_for_ticket(ticket: TicketData, *, limit: int = 3) -> list[KnowledgeSearchResult]:
-    return get_local_knowledge_store().search(
+def search_knowledge_for_ticket(
+    ticket: TicketData,
+    *,
+    limit: int = 3,
+    context: TestContext | None = None,
+) -> list[KnowledgeSearchResult]:
+    embedding_provider = _embedding_provider_for_context(context)
+    return get_local_knowledge_store(embedding_provider=embedding_provider).search(
         query=build_ticket_query(ticket),
         tags=ticket.labels,
         limit=limit,
     )
 
 
-def search_memory_for_ticket(ticket: TicketData, *, limit: int = 3) -> list[EpisodicMemorySearchResult]:
-    return get_local_memory_store().search(
+def search_memory_for_ticket(
+    ticket: TicketData,
+    *,
+    limit: int = 3,
+    context: TestContext | None = None,
+) -> list[EpisodicMemorySearchResult]:
+    embedding_provider = _embedding_provider_for_context(context)
+    return get_local_memory_store(embedding_provider=embedding_provider).search(
         query=build_ticket_query(ticket),
         tags=ticket.labels,
         limit=limit,
@@ -117,6 +129,13 @@ def record_memory_refs(context: TestContext, results: list[EpisodicMemorySearchR
             )
         )
     return refs
+
+
+def _embedding_provider_for_context(context: TestContext | None) -> str | None:
+    if context is None:
+        return None
+    context.sync_intelligence_trace_config()
+    return context.intelligence_config.embedding_provider
 
 
 def prompt_version_ref(prompt_name: str) -> str:

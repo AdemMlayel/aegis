@@ -53,8 +53,8 @@ def generate_test_cases(
     evidence_refs = list(coverage_plan.knowledge_refs_used or analysis.knowledge_refs_used)
     memory_refs = list(coverage_plan.memory_refs_used or analysis.memory_refs_used)
     if ticket is not None:
-        knowledge_results = search_knowledge_for_ticket(ticket, limit=3)
-        memory_results = search_memory_for_ticket(ticket, limit=3)
+        knowledge_results = search_knowledge_for_ticket(ticket, limit=3, context=context)
+        memory_results = search_memory_for_ticket(ticket, limit=3, context=context)
         prompt = prompt_registry.get("test_case_generation_v1")
         rendered_prompt = prompt.render(
             ticket_title=ticket.title,
