@@ -326,6 +326,13 @@ export default function App() {
             smokeResults={smokeResults}
             onUse={useOllamaProfile}
           />
+          <TextList
+            title="Prompt routing"
+            items={(ollamaProfiles?.prompt_routes ?? []).map(
+              (route) => `${route.prompt_name}: ${route.role} -> ${route.model}`
+            )}
+            empty="No prompt routes loaded."
+          />
           <button className="secondary-button full-width" onClick={runOllamaSmokeTest} disabled={busy !== null}>
             {busy === "smoke" ? <Loader2 className="spin" /> : <Activity />} Smoke test roles
           </button>

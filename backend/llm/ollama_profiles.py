@@ -42,6 +42,25 @@ class OllamaSmokeTestResult:
     error: str | None = None
 
 
+@dataclass(frozen=True)
+class OllamaPromptRoute:
+    prompt_name: str
+    role: str
+    model: str
+
+
+PROMPT_MODEL_ROLES = {
+    "requirement_analysis_v1": "main_rag",
+    "coverage_planning_v1": "reasoning",
+    "test_case_generation_v1": "stable_baseline",
+    "report_generation_v1": "main_rag",
+    "automation_generation_v1": "coding_repo_analysis",
+    "repository_analysis_v1": "coding_repo_analysis",
+    "code_review_v1": "coding_repo_analysis",
+    "validation_retry_v1": "fast_testing",
+}
+
+
 def list_ollama_profiles() -> list[OllamaModelProfile]:
     return [
         OllamaModelProfile(
@@ -92,6 +111,42 @@ def list_ollama_profiles() -> list[OllamaModelProfile]:
     ]
 
 
+def resolve_chat_model_for_prompt(
+    *,
+    prompt_name: str,
+    model_role: str | None = None,
+) -> tuple[str, str]:
+    role = model_role or PROMPT_MODEL_ROLES.get(prompt_name, "stable_baseline")
+    return role, chat_model_for_role(role)
+
+
+def chat_model_for_role(role: str) -> str:
+    profiles = {profile.role: profile for profile in list_ollama_profiles()}
+    profile = profiles.get(role)
+    if profile is None:
+        raise KeyError(f"Ollama model role '{role}' is not configured")
+    if profile.kind != "chat":
+        raise ValueError(f"Ollama model role '{role}' is not a chat model role")
+    return profile.model
+
+
+def list_prompt_model_routes() -> list[OllamaPromptRoute]:
+    routes: list[OllamaPromptRoute] = []
+    for prompt_name, role in sorted(PROMPT_MODEL_ROLES.items()):
+        try:
+            model = chat_model_for_role(role)
+        except (KeyError, ValueError):
+            continue
+        routes.append(
+            OllamaPromptRoute(
+                prompt_name=prompt_name,
+                role=role,
+                model=model,
+            )
+        )
+    return routes
+
+
 def list_installed_ollama_models() -> tuple[bool, list[str], str | None]:
     try:
         payload = get_json(
@@ -129,6 +184,7 @@ def model_profile_status() -> dict[str, object]:
         "service_error": error,
         "installed_models": installed_models,
         "profiles": profiles,
+        "prompt_routes": [asdict(route) for route in list_prompt_model_routes()],
     }
 
 

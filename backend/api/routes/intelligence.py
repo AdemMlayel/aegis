@@ -67,12 +67,19 @@ class OllamaModelProfileResponse(BaseModel):
     fallback_pull_command: str | None
 
 
+class OllamaPromptRouteResponse(BaseModel):
+    prompt_name: str
+    role: str
+    model: str
+
+
 class OllamaModelProfilesResponse(BaseModel):
     base_url: str
     service_available: bool
     service_error: str | None
     installed_models: list[str]
     profiles: list[OllamaModelProfileResponse]
+    prompt_routes: list[OllamaPromptRouteResponse]
 
 
 class OllamaSmokeTestRequest(BaseModel):

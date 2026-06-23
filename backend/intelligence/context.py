@@ -79,7 +79,13 @@ def record_prompt_usage(context: TestContext, *, name: str, version: str) -> Non
         context.intelligence_trace.prompt_versions.append(PromptUsageRef(name=name, version=version))
 
 
-def record_llm_usage(context: TestContext, response: LLMResponse) -> None:
+def record_llm_usage(
+    context: TestContext,
+    response: LLMResponse,
+    *,
+    model_role: str | None = None,
+    requested_model: str | None = None,
+) -> None:
     context.intelligence_trace.llm_provider = response.provider
     context.intelligence_trace.llm_calls.append(
         LLMUsageRef(
@@ -88,6 +94,8 @@ def record_llm_usage(context: TestContext, response: LLMResponse) -> None:
             prompt_name=response.prompt_name,
             prompt_version=response.prompt_version,
             deterministic=response.deterministic,
+            model_role=model_role,
+            requested_model=requested_model,
             summary=response.text,
         )
     )
@@ -150,6 +158,7 @@ def complete_with_configured_llm(
     rendered_prompt: str,
     system_instruction: str | None = None,
     context: TestContext | None = None,
+    model_role: str | None = None,
 ) -> LLMResponse:
     """Call the selected LLM provider with a safe deterministic fallback.
 
@@ -159,9 +168,17 @@ def complete_with_configured_llm(
     """
     from backend.config.settings import settings
     from backend.llm import llm_provider_registry
+    from backend.llm.ollama_profiles import resolve_chat_model_for_prompt
 
     provider_name = context.intelligence_config.llm_provider if context else settings.default_llm_provider
-    model_override = context.intelligence_config.llm_model if context else None
+    configured_model = context.intelligence_config.llm_model if context else None
+    resolved_role = None
+    model_override = configured_model
+    if provider_name == "ollama" and not configured_model:
+        resolved_role, model_override = resolve_chat_model_for_prompt(
+            prompt_name=prompt_name,
+            model_role=model_role,
+        )
     try:
         response = llm_provider_registry.create(provider_name).complete(
             prompt_name=prompt_name,
@@ -178,9 +195,14 @@ def complete_with_configured_llm(
             system_instruction=system_instruction,
             model_override=model_override if provider_name == "mock_llm" else None,
         )
+        fallback_origin = (
+            f"{provider_name}:{model_override}"
+            if model_override and provider_name != "mock_llm"
+            else provider_name
+        )
         response = LLMResponse(
             provider="mock_llm",
-            model=f"{fallback.model} (fallback from {provider_name})",
+            model=f"{fallback.model} (fallback from {fallback_origin})",
             prompt_name=prompt_name,
             prompt_version=prompt_version,
             text=(
@@ -192,5 +214,10 @@ def complete_with_configured_llm(
     if context is not None:
         context.sync_intelligence_trace_config()
         record_prompt_usage(context, name=prompt_name, version=prompt_version)
-        record_llm_usage(context, response)
+        record_llm_usage(
+            context,
+            response,
+            model_role=resolved_role if not configured_model else "manual_override",
+            requested_model=model_override,
+        )
     return response

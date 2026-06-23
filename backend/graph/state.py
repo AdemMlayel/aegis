@@ -56,6 +56,8 @@ class LLMUsageRef(StrictModel):
     prompt_name: str
     prompt_version: str
     deterministic: bool = True
+    model_role: str | None = None
+    requested_model: str | None = None
     summary: str
 
 

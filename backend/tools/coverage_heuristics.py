@@ -78,6 +78,7 @@ def plan_coverage(
         rendered_prompt=rendered_prompt,
         system_instruction="You are a QA coverage planner operating in deterministic local mode.",
         context=context,
+        model_role="reasoning",
     )
 
     knowledge_refs = [result.chunk.chunk_id for result in knowledge_results]

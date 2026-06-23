@@ -10,6 +10,9 @@ from backend.graph.state import (
     TicketData,
 )
 from backend.graph.workflow import run_workflow
+from backend.intelligence.context import complete_with_configured_llm
+from backend.llm.base import LLMResponse
+from backend.llm.ollama import OllamaLLMProvider
 from backend.llm.ollama_profiles import list_ollama_profiles
 from backend.llm import llm_provider_registry
 from backend.main import app
@@ -98,6 +101,11 @@ def test_ollama_profile_endpoints_are_demo_safe(monkeypatch) -> None:
         profile["role"] == "main_rag" and profile["installed"] is True
         for profile in profiles_body["profiles"]
     )
+    assert any(
+        route["prompt_name"] == "coverage_planning_v1"
+        and route["role"] == "reasoning"
+        for route in profiles_body["prompt_routes"]
+    )
 
     monkeypatch.setattr(
         "backend.api.routes.intelligence.smoke_test_ollama_model_profiles",
@@ -119,6 +127,86 @@ def test_ollama_profile_endpoints_are_demo_safe(monkeypatch) -> None:
     )
     assert smoke_response.status_code == 200
     assert smoke_response.json()["results"][0]["ok"] is True
+
+
+def test_ollama_prompt_stages_route_to_role_models(monkeypatch) -> None:
+    calls: list[tuple[str, str | None]] = []
+
+    def fake_complete(self, **kwargs):
+        calls.append((kwargs["prompt_name"], kwargs["model_override"]))
+        return LLMResponse(
+            provider="ollama",
+            model=kwargs["model_override"] or "missing-model",
+            prompt_name=kwargs["prompt_name"],
+            prompt_version=kwargs["prompt_version"],
+            text="OK",
+            deterministic=False,
+        )
+
+    monkeypatch.setattr(OllamaLLMProvider, "complete", fake_complete)
+    context = WorkflowContext(
+        created_by="pytest",
+        intelligence_config=IntelligenceConfigBlock(llm_provider="ollama"),
+    )
+
+    for prompt_name in [
+        "requirement_analysis_v1",
+        "coverage_planning_v1",
+        "test_case_generation_v1",
+        "report_generation_v1",
+    ]:
+        complete_with_configured_llm(
+            prompt_name=prompt_name,
+            prompt_version="1.0.0",
+            rendered_prompt="Ticket: model role routing",
+            context=context,
+        )
+
+    assert calls == [
+        ("requirement_analysis_v1", "qwen3:3b"),
+        ("coverage_planning_v1", "deepseek-r1:8b"),
+        ("test_case_generation_v1", "llama3.1:8b"),
+        ("report_generation_v1", "qwen3:3b"),
+    ]
+    assert [
+        call.model_role
+        for call in context.intelligence_trace.llm_calls
+    ] == ["main_rag", "reasoning", "stable_baseline", "main_rag"]
+
+
+def test_manual_llm_model_override_bypasses_prompt_role_routing(monkeypatch) -> None:
+    calls: list[str | None] = []
+
+    def fake_complete(self, **kwargs):
+        calls.append(kwargs["model_override"])
+        return LLMResponse(
+            provider="ollama",
+            model=kwargs["model_override"] or "missing-model",
+            prompt_name=kwargs["prompt_name"],
+            prompt_version=kwargs["prompt_version"],
+            text="OK",
+            deterministic=False,
+        )
+
+    monkeypatch.setattr(OllamaLLMProvider, "complete", fake_complete)
+    context = WorkflowContext(
+        created_by="pytest",
+        intelligence_config=IntelligenceConfigBlock(
+            llm_provider="ollama",
+            llm_model="manual-model",
+        ),
+    )
+
+    complete_with_configured_llm(
+        prompt_name="coverage_planning_v1",
+        prompt_version="1.0.0",
+        rendered_prompt="Ticket: manual override",
+        context=context,
+    )
+
+    assert calls == ["manual-model"]
+    assert context.intelligence_trace.llm_calls[0].model_role == "manual_override"
+    assert context.intelligence_trace.llm_calls[0].requested_model == "manual-model"
 
 
 def test_workflow_uses_selected_embedding_provider_with_local_fallback(monkeypatch) -> None:

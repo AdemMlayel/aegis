@@ -32,7 +32,7 @@ Verification result during hardening:
 
 ```bash
 python -m pytest -q
-# 86 passed
+# 88 passed
 
 cd frontend
 npm install
@@ -224,6 +224,12 @@ global environment defaults:
 The selected providers and model overrides are persisted on
 `TestContext.intelligence_config` and mirrored into
 `TestContext.intelligence_trace`.
+
+When the workflow LLM provider is `ollama` and no explicit `llm_model` override
+is provided, prompt stages route automatically to local model roles:
+requirements/reporting use `main_rag`, coverage uses `reasoning`, and test case
+generation uses `stable_baseline`. A manual `llm_model` override still takes
+precedence for the full run.
 
 ## Main demo workflow
 

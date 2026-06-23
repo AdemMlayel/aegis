@@ -124,6 +124,7 @@ def generate_report(
             rendered_prompt=rendered_prompt,
             system_instruction="You are a QA report generator operating in deterministic local mode.",
             context=context,
+            model_role="main_rag",
         )
         if "report_generation_v1@1.0.0" not in prompt_refs:
             prompt_refs.append("report_generation_v1@1.0.0")

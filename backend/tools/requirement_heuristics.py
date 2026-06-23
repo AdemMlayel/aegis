@@ -87,6 +87,7 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
         rendered_prompt=rendered_prompt,
         system_instruction="You are a QA requirement analysis assistant operating in deterministic local mode.",
         context=context,
+        model_role="main_rag",
     )
 
     knowledge_refs = [result.chunk.chunk_id for result in knowledge_results]

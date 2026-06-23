@@ -167,6 +167,8 @@ export type IntelligenceTrace = {
     prompt_name: string;
     prompt_version: string;
     deterministic: boolean;
+    model_role: string | null;
+    requested_model: string | null;
     summary: string;
   }>;
 };
@@ -315,6 +317,13 @@ export type OllamaModelProfiles = {
   service_error: string | null;
   installed_models: string[];
   profiles: OllamaModelProfile[];
+  prompt_routes: OllamaPromptRoute[];
+};
+
+export type OllamaPromptRoute = {
+  prompt_name: string;
+  role: string;
+  model: string;
 };
 
 export type OllamaSmokeTestResult = {

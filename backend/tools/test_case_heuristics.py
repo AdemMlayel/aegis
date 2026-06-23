@@ -69,6 +69,7 @@ def generate_test_cases(
             rendered_prompt=rendered_prompt,
             system_instruction="You are a QA test case generator operating in deterministic local mode.",
             context=context,
+            model_role="stable_baseline",
         )
 
     test_cases = [
