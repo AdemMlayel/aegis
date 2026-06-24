@@ -120,6 +120,35 @@ Supported capabilities include ticket read/write, workflow start/read/approve,
 workflow execution, artifact read/edit, and audit read. Routes are protected through
 FastAPI dependencies while keeping local mock workflows easy to run.
 
+## Agent Governance and Observability
+
+Every registered agent now receives a stable identity under the
+`aegisqa.agent.*` trust domain, a service-account label, owner, version, and risk
+tier. `backend/governance/policy.py` derives an enforceable policy for each
+identity. Skill creation, tool execution, and model-provider calls all consult
+that policy. An agent cannot execute undeclared skills, a skill cannot execute
+undeclared tools, and deterministic agents cannot acquire model access.
+
+The gateway middleware assigns or propagates `X-Request-ID`, records structured
+JSON request logs, persists request latency/status, enforces per-actor rate
+limits and organization daily quotas, and applies a request timeout. Model calls
+atomically reserve their maximum token allowance before provider execution.
+Reservations enforce organization, per-call, per-workflow, model-call, and
+concurrent-request limits, then settle against the provider's actual usage.
+Provider failures feed circuit breakers; unavailable or open providers use the
+explicit deterministic fallback where policy permits.
+
+SQLite migrations persist request, agent, and model invocation records.
+Model telemetry includes prompt/output tokens, latency, estimated external cost,
+fallback origin, agent identity, request ID, workflow context, and organization.
+The `/api/v1/observability/*` endpoints expose summaries, quota status,
+operational health, and invocation details. `/health/live` and `/health/ready`
+support orchestrator probes, while `/metrics` emits Prometheus-compatible
+request, agent, model, token, cost, reservation, and circuit metrics.
+This is a production-shaped local implementation; multi-instance deployments
+still need shared Redis/PostgreSQL rate-limit and circuit state, an
+OpenTelemetry exporter, managed metrics storage, and alert delivery.
+
 ## Ticket Connectors
 
 The first ticket connector is `jira_mock`, registered in `backend/tickets/`.  It

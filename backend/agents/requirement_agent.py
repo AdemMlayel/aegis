@@ -10,6 +10,8 @@ from backend.skills.base import SkillRegistry, skill_registry as default_skill_r
     name="RequirementAgent",
     skills=["AnalyzeRequirementSkill"],
     description="Coordinates requirement analysis for a workflow ticket.",
+    uses_llm=True,
+    risk_tier="medium",
 )
 class RequirementAgent(BaseAgent):
     def __init__(self, *, skill_registry: SkillRegistry | None = None) -> None:

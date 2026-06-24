@@ -10,6 +10,8 @@ from backend.skills.base import SkillRegistry, skill_registry as default_skill_r
     name="ReportGeneratorAgent",
     skills=["GenerateReportSkill"],
     description="Coordinates deterministic workflow report generation.",
+    uses_llm=True,
+    risk_tier="medium",
 )
 class ReportGeneratorAgent(BaseAgent):
     def __init__(self, *, skill_registry: SkillRegistry | None = None) -> None:

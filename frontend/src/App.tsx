@@ -6,14 +6,18 @@ import {
   downloadWorkflowReport,
   editAutomationArtifact,
   executeWorkflow,
+  getAgentGovernanceCatalog,
   getAgentModelProfiles,
   getAutomationFile,
   getEmbeddingProviders,
   getLLMProviders,
   getOllamaHealth,
   getOllamaProfiles,
+  getObservabilitySummary,
+  getOperationalHealth,
   getProviderCatalog,
   getReportPackageManifest,
+  getTokenBudgetStatus,
   getWorkflow,
   listArtifactRevisions,
   listExecutionEvents,
@@ -42,6 +46,7 @@ import type {
   AgentModelProfile,
   AgentModelRoute,
   AgentRoutingCatalog,
+  AgentGovernanceCatalog,
   ArtifactRevision,
   EmbeddingProvider,
   ExecutionEvent,
@@ -49,10 +54,13 @@ import type {
   LLMProvider,
   OllamaHealth,
   OllamaModelProfiles,
+  ObservabilitySummary,
+  OperationalHealth,
   ProviderCatalog,
   ReportPackageManifest,
   TestContext,
   TicketData,
+  TokenBudgetStatus,
   WorkflowEvent,
   WorkflowMode,
   WorkflowStageName,
@@ -75,9 +83,13 @@ export default function App() {
   const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
   const [embeddingProviders, setEmbeddingProviders] = useState<EmbeddingProvider[]>([]);
   const [agentRouting, setAgentRouting] = useState<AgentRoutingCatalog | null>(null);
+  const [agentGovernance, setAgentGovernance] = useState<AgentGovernanceCatalog | null>(null);
+  const [observability, setObservability] = useState<ObservabilitySummary | null>(null);
+  const [tokenBudget, setTokenBudget] = useState<TokenBudgetStatus | null>(null);
+  const [operationalHealth, setOperationalHealth] = useState<OperationalHealth | null>(null);
   const [agentRoutes, setAgentRoutes] = useState<Record<string, AgentModelRoute>>({});
   const [workflowMode, setWorkflowMode] = useState<WorkflowMode>("approval_required");
-  const [selectedLlmProvider, setSelectedLlmProvider] = useState("mock_llm");
+  const [selectedLlmProvider, setSelectedLlmProvider] = useState("openai_compatible");
   const [selectedEmbeddingProvider, setSelectedEmbeddingProvider] = useState("local_hash_embeddings");
   const [embeddingModel, setEmbeddingModel] = useState("");
   const [ollamaHealth, setOllamaHealth] = useState<OllamaHealth | null>(null);
@@ -254,16 +266,24 @@ export default function App() {
         embeddings,
         routing,
         health,
-        profiles
+        profiles,
+        governance,
+        telemetry,
+        budget,
+        serviceHealth
       ] = await Promise.all([
         listMockTickets(),
-        listWorkflows({ limit: 100 }),
+        listWorkflows({ limit: 20 }),
         getProviderCatalog(),
         getLLMProviders(),
         getEmbeddingProviders(),
         getAgentModelProfiles(),
         getOllamaHealth(),
-        getOllamaProfiles()
+        getOllamaProfiles(),
+        getAgentGovernanceCatalog(),
+        getObservabilitySummary(),
+        getTokenBudgetStatus(),
+        getOperationalHealth()
       ]);
       setTickets(ticketList);
       setWorkflows(workflowList);
@@ -273,17 +293,51 @@ export default function App() {
       setAgentRouting(routing);
       setOllamaHealth(health);
       setOllamaProfiles(profiles);
-      initializeRoutes(routing);
+      setAgentGovernance(governance);
+      setObservability(telemetry);
+      setTokenBudget(budget);
+      setOperationalHealth(serviceHealth);
+      initializeRuntimeDefaults(routing, providers, embeddings, health);
 
       const storedContextId = localStorage.getItem("aegisqa:lastContextId");
       if (storedContextId) {
         const loaded = await getWorkflow(storedContextId).catch(() => null);
-        if (loaded) applyContext(loaded);
+        if (loaded) {
+          applyContext(loaded);
+        } else {
+          localStorage.removeItem("aegisqa:lastContextId");
+        }
       }
     });
   }
 
-  function initializeRoutes(routing: AgentRoutingCatalog) {
+  function initializeRuntimeDefaults(
+    routing: AgentRoutingCatalog,
+    providers: LLMProvider[],
+    embeddings: EmbeddingProvider[],
+    health: OllamaHealth
+  ) {
+    const externalReady = providers.some(
+      (provider) => provider.name === "openai_compatible" && provider.selectable
+    );
+    const localReady = providers.some(
+      (provider) => provider.name === "ollama" && provider.selectable
+    );
+    const defaultProvider = externalReady
+      ? "openai_compatible"
+      : localReady
+        ? "ollama"
+        : "mock_llm";
+    const localEmbeddingReady = health.available && health.embedding_model_ready
+      && embeddings.some(
+        (provider) => provider.name === "ollama_nomic_embed_text" && provider.selectable
+      );
+
+    setSelectedLlmProvider(defaultProvider);
+    setSelectedEmbeddingProvider(
+      localEmbeddingReady ? "ollama_nomic_embed_text" : "local_hash_embeddings"
+    );
+    setEmbeddingModel(localEmbeddingReady ? health.embedding_model : "");
     setAgentRoutes((current) => {
       if (Object.keys(current).length) return current;
       return Object.fromEntries(
@@ -292,8 +346,10 @@ export default function App() {
           .map((profile) => [
             profile.agent_name,
             {
-              provider: profile.local_provider ?? "mock_llm",
-              model: null
+              provider: defaultProvider,
+              model: defaultProvider === "openai_compatible"
+                ? profile.external_model
+                : null
             }
           ])
       );
@@ -311,7 +367,7 @@ export default function App() {
   }
 
   async function refreshWorkflows() {
-    const next = await listWorkflows({ limit: 100 });
+    const next = await listWorkflows({ limit: 20 });
     setWorkflows(next);
   }
 
@@ -534,19 +590,13 @@ export default function App() {
     }));
   }
 
-  function applyRoutingPreset(preset: "safe" | "local" | "hybrid") {
+  function applyRoutingPreset(preset: "external" | "local") {
     const externalReady = llmProviders.some(
       (provider) => provider.name === "openai_compatible" && provider.selectable
     );
     const nextRoutes: Record<string, AgentModelRoute> = {};
     for (const profile of (agentRouting?.agents ?? []).filter((item) => item.uses_llm)) {
-      if (preset === "safe") {
-        nextRoutes[profile.agent_name] = { provider: "mock_llm", model: null };
-      } else if (
-        preset === "local"
-        || profile.recommended_mode === "local"
-        || !externalReady
-      ) {
+      if (preset === "local" || !externalReady) {
         nextRoutes[profile.agent_name] = { provider: "ollama", model: null };
       } else {
         nextRoutes[profile.agent_name] = {
@@ -556,17 +606,19 @@ export default function App() {
       }
     }
     setAgentRoutes(nextRoutes);
-    if (preset === "safe") {
-      setSelectedLlmProvider("mock_llm");
-      setSelectedEmbeddingProvider("local_hash_embeddings");
-      setEmbeddingModel("");
-    } else {
-      setSelectedLlmProvider(
-        preset === "hybrid" && externalReady ? "openai_compatible" : "ollama"
-      );
-      setSelectedEmbeddingProvider("ollama_nomic_embed_text");
-      setEmbeddingModel(agentRouting?.embedding.recommended_model ?? "nomic-embed-text");
-    }
+    setSelectedLlmProvider(
+      preset === "external" && externalReady ? "openai_compatible" : "ollama"
+    );
+    const localEmbeddingReady = ollamaHealth?.available
+      && ollamaHealth.embedding_model_ready;
+    setSelectedEmbeddingProvider(
+      localEmbeddingReady ? "ollama_nomic_embed_text" : "local_hash_embeddings"
+    );
+    setEmbeddingModel(
+      localEmbeddingReady
+        ? ollamaHealth.embedding_model
+        : ""
+    );
   }
 
   async function smokeTest() {
@@ -658,6 +710,10 @@ export default function App() {
           providerCatalog={providerCatalog}
           integrationProfile={context?.integration_profile ?? null}
           ollamaHealth={ollamaHealth}
+          governance={agentGovernance}
+          observability={observability}
+          tokenBudget={tokenBudget}
+          operationalHealth={operationalHealth}
           smokeBusy={busy === "smoke"}
           onClose={() => setConfigCollapsed(true)}
           onModeChange={setWorkflowMode}

@@ -205,4 +205,8 @@ def test_workflow_control_migration_is_recorded() -> None:
     assert {
         (1, "initial_local_schema"),
         (2, "workflow_control_and_artifact_revisions"),
+        (3, "governance_observability"),
+        (4, "agent_invocation_observability"),
+        (5, "token_budget_reservations"),
+        (6, "request_observation_identity"),
     } <= applied

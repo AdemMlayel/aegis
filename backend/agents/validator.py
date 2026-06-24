@@ -10,6 +10,8 @@ from backend.skills.base import SkillRegistry, skill_registry as default_skill_r
     name="ValidatorAgent",
     skills=["ValidateAutomationSkill"],
     description="Coordinates validation for generated automation artifacts.",
+    risk_tier="critical",
+    require_human_approval=True,
 )
 class ValidatorAgent(BaseAgent):
     def __init__(self, *, skill_registry: SkillRegistry | None = None) -> None:

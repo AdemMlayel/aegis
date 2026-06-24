@@ -14,7 +14,7 @@ def test_mock_ticket_endpoints_return_seed_data() -> None:
 
     assert response.status_code == 200
     tickets = response.json()["tickets"]
-    assert len(tickets) >= 5
+    assert len(tickets) == 2
     assert {ticket["id"] for ticket in tickets} >= {"MOCK-101", "MOCK-103"}
 
     filtered_response = client.get("/api/v1/tickets/mock?q=refund&priority=critical")

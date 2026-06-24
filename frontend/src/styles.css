@@ -1133,6 +1133,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .session-links { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .session-links button { height: 34px; border: 1px solid #d9dee6; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 5px; color: #4f5b6e; background: white; font-size: 9px; font-weight: 750; }
 .session-links svg { width: 13px; }
+.governance-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid #e0e4ea;
+  background: #e0e4ea;
+}
+.governance-metrics div { min-width: 0; padding: 8px; background: white; }
+.governance-metrics span, .governance-metrics strong { display: block; }
+.governance-metrics span { color: #7a8494; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.governance-metrics strong { margin-top: 3px; color: #303b50; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+.governance-status-list { margin-top: 8px; }
 
 .global-error {
   position: absolute;

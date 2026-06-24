@@ -59,6 +59,12 @@ class LLMUsageRef(StrictModel):
     agent_name: str | None = None
     model_role: str | None = None
     requested_model: str | None = None
+    input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
+    total_tokens: int = Field(default=0, ge=0)
+    duration_ms: int = Field(default=0, ge=0)
+    estimated_cost_usd: float = Field(default=0.0, ge=0)
+    fallback_from: str | None = None
     summary: str
 
 

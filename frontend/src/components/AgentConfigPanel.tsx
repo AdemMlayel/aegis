@@ -7,19 +7,23 @@ import {
   Cpu,
   Database,
   History,
+  LockKeyhole,
   RefreshCw,
-  ShieldCheck,
   SlidersHorizontal
 } from "lucide-react";
 import type {
   AgentModelProfile,
   AgentModelRoute,
   AgentRoutingCatalog,
+  AgentGovernanceCatalog,
   EmbeddingProvider,
   IntegrationProfile,
   LLMProvider,
   OllamaHealth,
+  ObservabilitySummary,
+  OperationalHealth,
   ProviderCatalog,
+  TokenBudgetStatus,
   WorkflowMode
 } from "../types";
 
@@ -34,6 +38,10 @@ export function AgentConfigPanel({
   providerCatalog,
   integrationProfile,
   ollamaHealth,
+  governance,
+  observability,
+  tokenBudget,
+  operationalHealth,
   smokeBusy,
   onClose,
   onModeChange,
@@ -56,10 +64,14 @@ export function AgentConfigPanel({
   providerCatalog: ProviderCatalog | null;
   integrationProfile: IntegrationProfile | null;
   ollamaHealth: OllamaHealth | null;
+  governance: AgentGovernanceCatalog | null;
+  observability: ObservabilitySummary | null;
+  tokenBudget: TokenBudgetStatus | null;
+  operationalHealth: OperationalHealth | null;
   smokeBusy: boolean;
   onClose: () => void;
   onModeChange: (mode: WorkflowMode) => void;
-  onApplyPreset: (preset: "safe" | "local" | "hybrid") => void;
+  onApplyPreset: (preset: "external" | "local") => void;
   onProviderChange: (profile: AgentModelProfile, provider: string) => void;
   onModelChange: (profile: AgentModelProfile, model: string) => void;
   onEmbeddingProviderChange: (provider: string) => void;
@@ -101,17 +113,13 @@ export function AgentConfigPanel({
 
       <ConfigSection icon={<Brain />} title="Routing presets">
         <div className="preset-list">
-          <button type="button" onClick={() => onApplyPreset("safe")}>
-            <ShieldCheck />
-            <span><strong>Safe demo</strong><small>Deterministic and offline</small></span>
+          <button type="button" onClick={() => onApplyPreset("external")}>
+            <Cloud />
+            <span><strong>External live</strong><small>OpenAI for every LLM agent</small></span>
           </button>
           <button type="button" onClick={() => onApplyPreset("local")}>
             <Cpu />
             <span><strong>Private local</strong><small>Ollama role routing</small></span>
-          </button>
-          <button type="button" onClick={() => onApplyPreset("hybrid")}>
-            <Cloud />
-            <span><strong>Hybrid best</strong><small>External reasoning, local RAG</small></span>
           </button>
         </div>
       </ConfigSection>
@@ -139,7 +147,9 @@ export function AgentConfigPanel({
                       value={route.provider}
                       onChange={(event) => onProviderChange(profile, event.target.value)}
                     >
-                      {providers.map((provider) => (
+                      {providers
+                        .filter((provider) => provider.name !== "mock_llm")
+                        .map((provider) => (
                         <option
                           key={provider.name}
                           value={provider.name}
@@ -148,7 +158,7 @@ export function AgentConfigPanel({
                           {provider.mode} - {provider.name}
                           {provider.selectable ? "" : ` - ${provider.configuration_status}`}
                         </option>
-                      ))}
+                        ))}
                     </select>
                     <input
                       aria-label={`${profile.label} model`}
@@ -226,6 +236,46 @@ export function AgentConfigPanel({
         </button>
       </ConfigSection>
 
+      <ConfigSection icon={<LockKeyhole />} title="Governance">
+        <div className="governance-metrics">
+          <div><span>Identities</span><strong>{governance?.agents.length ?? 0}</strong></div>
+          <div><span>Agent runs</span><strong>{observability?.agents.total ?? 0}</strong></div>
+          <div><span>Tokens today</span><strong>{compactNumber(observability?.models.total_tokens ?? 0)}</strong></div>
+          <div>
+            <span>Token capacity</span>
+            <strong>
+              {tokenBudget
+                ? `${compactNumber(tokenBudget.remaining_tokens)} left`
+                : "--"}
+            </strong>
+          </div>
+        </div>
+        <div className="governance-status-list">
+          <SourceRow
+            label="Request gateway"
+            status={`${observability?.requests.total ?? 0} requests`}
+          />
+          <SourceRow
+            label="Policy enforcement"
+            status="enabled"
+          />
+          <SourceRow
+            label="Provider circuits"
+            status={
+              observability?.provider_circuits.some((item) => item.state === "open")
+                ? "open circuit"
+                : "healthy"
+            }
+            muted={observability?.provider_circuits.some((item) => item.state === "open")}
+          />
+          <SourceRow
+            label="Operational health"
+            status={operationalHealth?.status ?? "unknown"}
+            muted={operationalHealth?.status === "degraded"}
+          />
+        </div>
+      </ConfigSection>
+
       <ConfigSection icon={<History />} title="Session">
         <div className="session-links">
           <button type="button" onClick={onOpenLogs}><Activity /> View logs</button>
@@ -277,4 +327,10 @@ function integrationName(
   const value = profile?.[key];
   if (!value || typeof value === "string" || typeof value === "boolean") return null;
   return value.name;
+}
+
+function compactNumber(value: number): string {
+  if (value < 1000) return String(value);
+  if (value < 1_000_000) return `${(value / 1000).toFixed(1)}K`;
+  return `${(value / 1_000_000).toFixed(1)}M`;
 }

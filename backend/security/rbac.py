@@ -59,6 +59,7 @@ ROLE_CAPABILITIES: dict[Role, set[Capability]] = {
 
 class Principal(BaseModel):
     user_id: str = Field(min_length=1)
+    organization_id: str = Field(default="local", min_length=1)
     role: Role
     capabilities: set[Capability] = Field(default_factory=set)
     auth_mode: str = "local"
@@ -75,6 +76,7 @@ def _local_principal() -> Principal:
     role = Role(os.getenv("AEGISQA_LOCAL_ROLE", Role.QA_LEAD).strip())
     return Principal(
         user_id=os.getenv("AEGISQA_LOCAL_USER", "local-user"),
+        organization_id=os.getenv("AEGISQA_LOCAL_ORGANIZATION", "local"),
         role=role,
         capabilities=ROLE_CAPABILITIES[role],
         auth_mode="permissive",
@@ -85,6 +87,10 @@ def get_current_principal(
     authorization: Annotated[str | None, Header()] = None,
     x_aegis_user: Annotated[str | None, Header(alias="X-Aegis-User")] = None,
     x_aegis_role: Annotated[str | None, Header(alias="X-Aegis-Role")] = None,
+    x_aegis_organization: Annotated[
+        str | None,
+        Header(alias="X-Aegis-Organization"),
+    ] = None,
 ) -> Principal:
     """Resolve the current API principal.
 
@@ -104,6 +110,10 @@ def get_current_principal(
             role = Role(os.getenv("AEGISQA_TOKEN_ROLE", Role.QA_LEAD).strip())
             return Principal(
                 user_id=os.getenv("AEGISQA_TOKEN_USER", "token-user"),
+                organization_id=os.getenv(
+                    "AEGISQA_TOKEN_ORGANIZATION",
+                    "local",
+                ),
                 role=role,
                 capabilities=ROLE_CAPABILITIES[role],
                 auth_mode=mode,
@@ -119,6 +129,7 @@ def get_current_principal(
             ) from exc
         return Principal(
             user_id=x_aegis_user,
+            organization_id=x_aegis_organization or "local",
             role=role,
             capabilities=ROLE_CAPABILITIES[role],
             auth_mode=mode,

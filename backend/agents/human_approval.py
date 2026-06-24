@@ -10,6 +10,8 @@ from backend.skills.base import SkillRegistry, skill_registry as default_skill_r
     name="HumanApprovalAgent",
     skills=["RequestHumanApprovalSkill"],
     description="Coordinates human approval request creation for validated automation.",
+    risk_tier="critical",
+    require_human_approval=True,
 )
 class HumanApprovalAgent(BaseAgent):
     def __init__(self, *, skill_registry: SkillRegistry | None = None) -> None:

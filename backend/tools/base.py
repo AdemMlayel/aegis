@@ -8,6 +8,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
 
+from backend.governance.context import current_agent_execution
+from backend.governance.gateway import GatewayLimitExceeded
+from backend.governance.policy import agent_policy_engine
+from backend.governance.policy import AgentPolicyDenied
 
 @dataclass(frozen=True)
 class ToolSpec:
@@ -118,6 +122,10 @@ class ToolRegistry:
         audit_sink: Callable[..., object] | None = None,
         **kwargs: Any,
     ) -> ToolResult:
+        agent_policy_engine.authorize_tool(
+            current_agent_execution(),
+            name,
+        )
         tool = self.create(name)
         return execute_tool(
             tool,
@@ -165,6 +173,8 @@ def execute_tool(
             )
             _audit_tool_record(record, actor=actor, context_id=context_id, sink=audit_sink)
             return ToolResult(value=value, record=record)
+        except (AgentPolicyDenied, GatewayLimitExceeded):
+            raise
         except Exception as exc:  # noqa: BLE001 - contract records tool failures.
             last_error = exc
             if attempts > spec.max_retries:

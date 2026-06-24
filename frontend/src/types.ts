@@ -462,6 +462,78 @@ export type AgentRoutingCatalog = {
   embedding: EmbeddingRecommendation;
 };
 
+export type AgentGovernanceCatalog = {
+  agents: Array<{
+    identity: {
+      agent_id: string;
+      name: string;
+      version: string;
+      owner: string;
+      service_account: string;
+      trust_domain: string;
+      risk_tier: string;
+    };
+    policy: {
+      agent_id: string;
+      allowed_skills: string[];
+      allowed_providers: string[];
+      max_model_calls_per_workflow: number;
+      max_tokens_per_call: number;
+      max_tokens_per_workflow: number;
+      require_human_approval: boolean;
+    };
+  }>;
+};
+
+export type ObservabilitySummary = {
+  date: string;
+  requests: {
+    total: number;
+    server_errors: number;
+    average_duration_ms: number;
+    max_duration_ms: number;
+  };
+  models: {
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+    estimated_cost_usd: number;
+  };
+  agents: {
+    total: number;
+    failed: number;
+    average_duration_ms: number;
+  };
+  provider_circuits: Array<{
+    provider: string;
+    state: string;
+    failures: number;
+    opened_at_epoch: number | null;
+  }>;
+};
+
+export type TokenBudgetStatus = {
+  organization_id: string;
+  context_id: string | null;
+  agent_name: string | null;
+  used_tokens: number;
+  reserved_tokens: number;
+  limit_tokens: number;
+  remaining_tokens: number;
+  used_calls: number;
+  reserved_calls: number;
+  limit_calls: number | null;
+};
+
+export type OperationalHealth = {
+  status: "healthy" | "degraded";
+  request_error_rate: number;
+  agent_failure_rate: number;
+  open_provider_circuits: number;
+  signals: Array<Record<string, unknown>>;
+};
+
 export type OllamaHealth = {
   available: boolean;
   base_url: string;

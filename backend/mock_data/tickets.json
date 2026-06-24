@@ -39,36 +39,6 @@
     "raw_url": null
   },
   {
-    "id": "MOCK-102",
-    "title": "Password Reset Flow",
-    "description": "As a locked-out user, I want to reset my password using a verified email link so that I can regain access safely.",
-    "acceptance_criteria": [
-      "Reset link is sent only to a registered email address",
-      "Reset link expires after 15 minutes",
-      "New password must satisfy the configured password policy",
-      "User can sign in with the new password after reset"
-    ],
-    "priority": "medium",
-    "labels": ["identity", "security", "support"],
-    "assignee": "qa_engineer_002",
-    "status": "backlog",
-    "comments": [
-      {
-        "author": "support_lead",
-        "body": "Include expired-link and reused-link scenarios."
-      }
-    ],
-    "linked_requirements": [
-      {
-        "id": "REQ-MOCK-102-1",
-        "title": "Password reset links expire after the configured window",
-        "status": "draft"
-      }
-    ],
-    "source": "fake",
-    "raw_url": null
-  },
-  {
     "id": "MOCK-103",
     "title": "Admin Refund Approval",
     "description": "As an operations manager, I want to approve high-value refund requests with audit tracking so that refund risk is controlled.",
@@ -97,66 +67,6 @@
       {
         "id": "REQ-MOCK-103-2",
         "title": "Refund decisions produce immutable audit records",
-        "status": "needs_clarification"
-      }
-    ],
-    "source": "fake",
-    "raw_url": null
-  },
-  {
-    "id": "MOCK-104",
-    "title": "Account Statement Export",
-    "description": "As a customer, I want to export account statements as PDF and CSV files so that I can reconcile my records.",
-    "acceptance_criteria": [
-      "Customer can choose a date range up to 24 months",
-      "PDF export includes opening balance, transactions, and closing balance",
-      "CSV export includes transaction date, description, debit, credit, and balance",
-      "Invalid date ranges show a validation message"
-    ],
-    "priority": "medium",
-    "labels": ["banking", "reporting", "export"],
-    "assignee": "qa_engineer_003",
-    "status": "ready",
-    "comments": [
-      {
-        "author": "data_analyst",
-        "body": "CSV column order matters for downstream reconciliation imports."
-      }
-    ],
-    "linked_requirements": [
-      {
-        "id": "REQ-MOCK-104-1",
-        "title": "Customers can export statements for supported date ranges",
-        "status": "approved"
-      }
-    ],
-    "source": "fake",
-    "raw_url": null
-  },
-  {
-    "id": "MOCK-105",
-    "title": "Transfer Limit Validation",
-    "description": "As a retail banking platform, I want to enforce daily transfer limits so that transactions stay within customer and regulatory controls.",
-    "acceptance_criteria": [
-      "Transfers exceeding the daily customer limit are blocked",
-      "Customer sees remaining daily transfer allowance",
-      "Limit checks include completed transfers from the same calendar day",
-      "Internal users can view the blocked transfer reason"
-    ],
-    "priority": "high",
-    "labels": ["banking", "limits", "risk"],
-    "assignee": "qa_engineer_001",
-    "status": "blocked",
-    "comments": [
-      {
-        "author": "compliance",
-        "body": "Daily limit reset timezone still needs confirmation."
-      }
-    ],
-    "linked_requirements": [
-      {
-        "id": "REQ-MOCK-105-1",
-        "title": "Daily transfer limit checks include completed transfers",
         "status": "needs_clarification"
       }
     ],

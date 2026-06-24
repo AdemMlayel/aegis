@@ -10,6 +10,8 @@ from backend.skills.base import SkillRegistry, skill_registry as default_skill_r
     name="CoveragePlannerAgent",
     skills=["PlanCoverageSkill"],
     description="Coordinates deterministic coverage planning for analyzed requirements.",
+    uses_llm=True,
+    risk_tier="high",
 )
 class CoveragePlannerAgent(BaseAgent):
     def __init__(self, *, skill_registry: SkillRegistry | None = None) -> None:

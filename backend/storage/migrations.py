@@ -167,6 +167,143 @@ CREATE INDEX IF NOT EXISTS idx_artifact_revisions_context_case
     ON artifact_revisions(context_id, test_case_id, version ASC);
 """
 
+GOVERNANCE_OBSERVABILITY_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS request_observations (
+    request_id TEXT PRIMARY KEY,
+    actor TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    method TEXT NOT NULL,
+    path TEXT NOT NULL,
+    status_code INTEGER NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    error_type TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_request_observations_created_at
+    ON request_observations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_request_observations_actor
+    ON request_observations(actor, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_request_observations_organization
+    ON request_observations(organization_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS model_invocations (
+    id TEXT PRIMARY KEY,
+    request_id TEXT,
+    context_id TEXT,
+    organization_id TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    agent_id TEXT,
+    agent_name TEXT,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    prompt_name TEXT NOT NULL,
+    status TEXT NOT NULL,
+    input_tokens INTEGER NOT NULL,
+    output_tokens INTEGER NOT NULL,
+    total_tokens INTEGER NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    estimated_cost_usd REAL NOT NULL,
+    fallback_from TEXT,
+    error_type TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_model_invocations_created_at
+    ON model_invocations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_model_invocations_context
+    ON model_invocations(context_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_model_invocations_agent
+    ON model_invocations(agent_name, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_model_invocations_organization
+    ON model_invocations(organization_id, created_at DESC);
+"""
+
+AGENT_INVOCATION_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS agent_invocations (
+    id TEXT PRIMARY KEY,
+    request_id TEXT,
+    context_id TEXT,
+    organization_id TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    status TEXT NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    error_type TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_invocations_created_at
+    ON agent_invocations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_invocations_context
+    ON agent_invocations(context_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_invocations_agent
+    ON agent_invocations(agent_name, created_at DESC);
+"""
+
+TOKEN_GOVERNANCE_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS token_reservations (
+    id TEXT PRIMARY KEY,
+    request_id TEXT,
+    context_id TEXT,
+    organization_id TEXT NOT NULL,
+    agent_id TEXT,
+    agent_name TEXT,
+    provider TEXT NOT NULL,
+    estimated_input_tokens INTEGER NOT NULL,
+    reserved_tokens INTEGER NOT NULL,
+    actual_tokens INTEGER,
+    status TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_reservations_active_organization
+    ON token_reservations(organization_id, status, expires_at);
+CREATE INDEX IF NOT EXISTS idx_token_reservations_active_workflow
+    ON token_reservations(context_id, agent_name, status, expires_at);
+CREATE INDEX IF NOT EXISTS idx_token_reservations_created_at
+    ON token_reservations(created_at DESC);
+"""
+
+REQUEST_OBSERVATION_ID_SCHEMA_SQL = """
+CREATE TABLE request_observations_v2 (
+    id TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    organization_id TEXT NOT NULL,
+    method TEXT NOT NULL,
+    path TEXT NOT NULL,
+    status_code INTEGER NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    error_type TEXT,
+    created_at TEXT NOT NULL
+);
+
+INSERT INTO request_observations_v2 (
+    id, request_id, actor, organization_id, method, path, status_code,
+    duration_ms, error_type, created_at
+)
+SELECT
+    request_id, request_id, actor, organization_id, method, path, status_code,
+    duration_ms, error_type, created_at
+FROM request_observations;
+
+DROP TABLE request_observations;
+ALTER TABLE request_observations_v2 RENAME TO request_observations;
+
+CREATE INDEX IF NOT EXISTS idx_request_observations_request_id
+    ON request_observations(request_id);
+CREATE INDEX IF NOT EXISTS idx_request_observations_created_at
+    ON request_observations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_request_observations_actor
+    ON request_observations(actor, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_request_observations_organization
+    ON request_observations(organization_id, created_at DESC);
+"""
+
 
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(
@@ -178,6 +315,26 @@ MIGRATIONS: tuple[Migration, ...] = (
         version=2,
         name="workflow_control_and_artifact_revisions",
         sql=WORKFLOW_CONTROL_SCHEMA_SQL,
+    ),
+    Migration(
+        version=3,
+        name="governance_observability",
+        sql=GOVERNANCE_OBSERVABILITY_SCHEMA_SQL,
+    ),
+    Migration(
+        version=4,
+        name="agent_invocation_observability",
+        sql=AGENT_INVOCATION_SCHEMA_SQL,
+    ),
+    Migration(
+        version=5,
+        name="token_budget_reservations",
+        sql=TOKEN_GOVERNANCE_SCHEMA_SQL,
+    ),
+    Migration(
+        version=6,
+        name="request_observation_identity",
+        sql=REQUEST_OBSERVATION_ID_SCHEMA_SQL,
     ),
 )
 

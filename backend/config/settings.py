@@ -2,7 +2,33 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from pathlib import Path
+
 from pydantic import BaseModel, Field
+
+
+def _load_local_env() -> None:
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    if not env_path.is_file():
+        return
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        normalized_name = name.strip()
+        normalized_value = value.strip()
+        if (
+            len(normalized_value) >= 2
+            and normalized_value[0] == normalized_value[-1]
+            and normalized_value[0] in {"'", '"'}
+        ):
+            normalized_value = normalized_value[1:-1]
+        if normalized_name:
+            os.environ.setdefault(normalized_name, normalized_value)
+
+
+_load_local_env()
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -22,7 +48,10 @@ class Settings(BaseModel):
 
     app_name: str = "AegisQA"
     environment: str = Field(default_factory=lambda: os.getenv("AEGISQA_ENV", "local"))
-    workflow_schema_version: str = "0.14.0"
+    workflow_schema_version: str = "0.15.0"
+    sqlite_db_path: str | None = Field(
+        default_factory=lambda: os.getenv("AEGISQA_SQLITE_DB_PATH")
+    )
 
     auth_mode: str = Field(default_factory=lambda: os.getenv("AEGISQA_AUTH_MODE", "permissive"))
     local_user: str = Field(default_factory=lambda: os.getenv("AEGISQA_LOCAL_USER", "local-user"))
@@ -62,6 +91,21 @@ class Settings(BaseModel):
     execution_worker_backend: str = Field(default_factory=lambda: os.getenv("AEGISQA_EXECUTION_WORKER_BACKEND", "local"))
     celery_task_name: str = Field(default_factory=lambda: os.getenv("AEGISQA_CELERY_EXECUTION_TASK", "aegisqa.execution.process_run"))
     celery_fallback_to_local: bool = Field(default_factory=lambda: _env_bool("AEGISQA_CELERY_FALLBACK_TO_LOCAL", True))
+
+    gateway_requests_per_minute: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_GATEWAY_REQUESTS_PER_MINUTE", "240")))
+    gateway_daily_request_quota: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_GATEWAY_DAILY_REQUEST_QUOTA", "10000")))
+    gateway_request_timeout_seconds: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_GATEWAY_REQUEST_TIMEOUT_SECONDS", "60")))
+    provider_circuit_failure_threshold: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_PROVIDER_CIRCUIT_FAILURE_THRESHOLD", "3")))
+    provider_circuit_reset_seconds: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_PROVIDER_CIRCUIT_RESET_SECONDS", "30")))
+    agent_max_model_calls_per_workflow: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_AGENT_MAX_MODEL_CALLS_PER_WORKFLOW", "24")))
+    agent_max_tokens_per_call: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_AGENT_MAX_TOKENS_PER_CALL", "16000")))
+    agent_max_tokens_per_workflow: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_AGENT_MAX_TOKENS_PER_WORKFLOW", "120000")))
+    organization_daily_token_quota: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_ORGANIZATION_DAILY_TOKEN_QUOTA", "1000000")))
+    token_reservation_ttl_seconds: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_TOKEN_RESERVATION_TTL_SECONDS", "300")))
+    external_input_cost_per_1k: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_EXTERNAL_INPUT_COST_PER_1K", "0.00015")))
+    external_output_cost_per_1k: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_EXTERNAL_OUTPUT_COST_PER_1K", "0.0006")))
+    observability_error_rate_threshold: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_OBSERVABILITY_ERROR_RATE_THRESHOLD", "0.05")))
+    observability_agent_failure_rate_threshold: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_OBSERVABILITY_AGENT_FAILURE_RATE_THRESHOLD", "0.10")))
 
 
 @lru_cache(maxsize=1)

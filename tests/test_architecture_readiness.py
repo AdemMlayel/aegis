@@ -4,6 +4,7 @@ import os
 
 from fastapi.testclient import TestClient
 
+from backend.config.settings import settings
 from backend.execution import RobotExecutionAdapter, execution_adapter_registry
 from backend.main import app
 from backend.security import Capability, Role
@@ -90,7 +91,11 @@ def test_milestone3_provider_catalog_is_local_and_swappable() -> None:
     assert selected[ProviderKind.EXECUTION_ADAPTER] == "mock"
 
 
-def test_integration_endpoints_expose_local_providers_only() -> None:
+def test_integration_endpoints_expose_local_providers_only(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "external_connectors_enabled", False)
+    monkeypatch.setattr(settings, "default_llm_provider", "mock_llm")
     client = TestClient(app)
 
     response = client.get("/api/v1/integrations/providers")
@@ -122,7 +127,11 @@ def test_mock_vault_returns_references_without_secret_values() -> None:
     assert all(ref["masked_value"] == "********" for ref in body["references"])
 
 
-def test_start_workflow_from_connector_uses_mock_jira_boundary() -> None:
+def test_start_workflow_from_connector_uses_mock_jira_boundary(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "external_connectors_enabled", False)
+    monkeypatch.setattr(settings, "default_llm_provider", "mock_llm")
     client = TestClient(app)
 
     response = client.post(

@@ -10,6 +10,8 @@ from backend.skills.base import SkillRegistry, skill_registry as default_skill_r
     name="TestCaseGeneratorAgent",
     skills=["GenerateTestCasesSkill"],
     description="Coordinates deterministic test case generation for a workflow.",
+    uses_llm=True,
+    risk_tier="high",
 )
 class TestCaseGeneratorAgent(BaseAgent):
     def __init__(self, *, skill_registry: SkillRegistry | None = None) -> None:

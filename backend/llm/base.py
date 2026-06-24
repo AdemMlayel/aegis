@@ -22,6 +22,9 @@ class LLMResponse:
     prompt_version: str
     text: str
     deterministic: bool = True
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
 
 
 class BaseLLMProvider(ABC):
@@ -36,6 +39,7 @@ class BaseLLMProvider(ABC):
         rendered_prompt: str,
         system_instruction: str | None = None,
         model_override: str | None = None,
+        max_output_tokens: int | None = None,
     ) -> LLMResponse:
         raise NotImplementedError
 

@@ -3,8 +3,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass
+from types import MethodType
 from typing import ClassVar
 
+from backend.governance.context import (
+    agent_execution_scope,
+    current_agent_execution,
+)
+from backend.governance.policy import agent_policy_engine
 from backend.graph.state import TestContext
 
 
@@ -72,7 +78,28 @@ class SkillRegistry:
             raise KeyError(f"Skill '{normalized_name}' is not registered") from exc
 
     def create(self, name: str, **kwargs: object) -> BaseSkill:
-        return self.get(name)(**kwargs)
+        skill = self.get(name)(**kwargs)
+        execution = current_agent_execution()
+        agent_policy_engine.authorize_skill(execution, skill.spec.name)
+        if execution is None:
+            return skill
+        original_execute = skill.execute
+
+        def governed_execute(
+            _skill: BaseSkill,
+            context: TestContext,
+        ) -> TestContext:
+            with agent_execution_scope(
+                agent_id=execution.agent_id,
+                agent_name=execution.agent_name,
+                context_id=context.context_id,
+                skill_name=skill.spec.name,
+                allowed_tools=skill.spec.tools,
+            ):
+                return original_execute(context)
+
+        skill.execute = MethodType(governed_execute, skill)
+        return skill
 
     def has(self, name: str) -> bool:
         return _require_name(name) in self._skills

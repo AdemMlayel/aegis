@@ -1,6 +1,7 @@
 import type {
   AgentModelRoute,
   AgentRoutingCatalog,
+  AgentGovernanceCatalog,
   ApprovalStatus,
   ArtifactRevision,
   EmbeddingProvider,
@@ -13,11 +14,14 @@ import type {
   OllamaHealth,
   OllamaModelProfiles,
   OllamaSmokeTestResult,
+  ObservabilitySummary,
+  OperationalHealth,
   ProviderCatalog,
   ReportPackageManifest,
   TestContext,
   TicketData,
   TicketStatus,
+  TokenBudgetStatus,
   WorkflowEvent,
   WorkflowMode,
   WorkflowStageName,
@@ -61,6 +65,26 @@ export async function getEmbeddingProviders(): Promise<EmbeddingProvider[]> {
 export async function getAgentModelProfiles(): Promise<AgentRoutingCatalog> {
   const response = await fetch(`${API_ROOT}/intelligence/agent-model-profiles`);
   return parseResponse<AgentRoutingCatalog>(response);
+}
+
+export async function getAgentGovernanceCatalog(): Promise<AgentGovernanceCatalog> {
+  const response = await fetch(`${API_ROOT}/governance/agents`);
+  return parseResponse<AgentGovernanceCatalog>(response);
+}
+
+export async function getObservabilitySummary(): Promise<ObservabilitySummary> {
+  const response = await fetch(`${API_ROOT}/observability/summary`);
+  return parseResponse<ObservabilitySummary>(response);
+}
+
+export async function getTokenBudgetStatus(): Promise<TokenBudgetStatus> {
+  const response = await fetch(`${API_ROOT}/observability/token-budget`);
+  return parseResponse<TokenBudgetStatus>(response);
+}
+
+export async function getOperationalHealth(): Promise<OperationalHealth> {
+  const response = await fetch(`${API_ROOT}/observability/health`);
+  return parseResponse<OperationalHealth>(response);
 }
 
 export async function getOllamaHealth(): Promise<OllamaHealth> {

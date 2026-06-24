@@ -28,6 +28,7 @@ class OllamaLLMProvider(BaseLLMProvider):
         rendered_prompt: str,
         system_instruction: str | None = None,
         model_override: str | None = None,
+        max_output_tokens: int | None = None,
     ) -> LLMResponse:
         model = model_override or settings.ollama_chat_model
         prompt = rendered_prompt if not system_instruction else f"{system_instruction}\n\n{rendered_prompt}"
@@ -35,7 +36,14 @@ class OllamaLLMProvider(BaseLLMProvider):
             "model": model,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": 0.1},
+            "options": {
+                "temperature": 0.1,
+                **(
+                    {"num_predict": max_output_tokens}
+                    if max_output_tokens is not None
+                    else {}
+                ),
+            },
         }
         try:
             raw = _post_json("/api/generate", payload, timeout=settings.ollama_timeout_seconds)
@@ -56,6 +64,12 @@ class OllamaLLMProvider(BaseLLMProvider):
             prompt_version=prompt_version,
             text=text,
             deterministic=False,
+            input_tokens=int(raw.get("prompt_eval_count") or 0),
+            output_tokens=int(raw.get("eval_count") or 0),
+            total_tokens=(
+                int(raw.get("prompt_eval_count") or 0)
+                + int(raw.get("eval_count") or 0)
+            ),
         )
 
 

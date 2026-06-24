@@ -3,9 +3,23 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass
+from functools import wraps
+from time import perf_counter
 from typing import ClassVar
 
+from backend.governance.context import (
+    agent_execution_scope,
+    current_request_context,
+)
+from backend.governance.policy import (
+    RiskTier,
+    agent_policy_engine,
+)
 from backend.graph.state import TestContext
+from backend.storage.observability import (
+    AgentInvocation,
+    save_agent_invocation,
+)
 
 
 @dataclass(frozen=True)
@@ -14,6 +28,11 @@ class AgentSpec:
     skills: tuple[str, ...] = ()
     description: str = ""
     version: str = "0.1.0"
+    owner: str = "qa-platform"
+    risk_tier: RiskTier = "medium"
+    uses_llm: bool = False
+    require_human_approval: bool = False
+    agent_id: str = ""
 
 
 class BaseAgent(ABC):
@@ -42,13 +61,32 @@ class AgentRegistry:
         skills: Iterable[str] = (),
         description: str = "",
         version: str = "0.1.0",
+        owner: str = "qa-platform",
+        risk_tier: RiskTier = "medium",
+        uses_llm: bool = False,
+        require_human_approval: bool = False,
     ):
         normalized_name = _require_name(name)
+        normalized_skills = tuple(skills)
+        identity = agent_policy_engine.register(
+            name=normalized_name,
+            version=version,
+            skills=normalized_skills,
+            owner=owner,
+            risk_tier=risk_tier,
+            uses_llm=uses_llm,
+            require_human_approval=require_human_approval,
+        )
         spec = AgentSpec(
             name=normalized_name,
-            skills=tuple(skills),
+            skills=normalized_skills,
             description=description,
             version=version,
+            owner=owner,
+            risk_tier=risk_tier,
+            uses_llm=uses_llm,
+            require_human_approval=require_human_approval,
+            agent_id=identity.agent_id,
         )
 
         def decorator(agent_cls: type[BaseAgent]) -> type[BaseAgent]:
@@ -59,6 +97,80 @@ class AgentRegistry:
                     f"Agent '{normalized_name}' is already registered"
                 )
             agent_cls.spec = spec
+            original_run = agent_cls.run
+
+            @wraps(original_run)
+            def governed_run(
+                self: BaseAgent,
+                context: TestContext,
+            ) -> TestContext:
+                started = perf_counter()
+                request_context = current_request_context()
+                with agent_execution_scope(
+                    agent_id=identity.agent_id,
+                    agent_name=normalized_name,
+                    context_id=context.context_id,
+                ):
+                    try:
+                        result = original_run(self, context)
+                    except Exception as exc:
+                        save_agent_invocation(
+                            AgentInvocation(
+                                request_id=(
+                                    request_context.request_id
+                                    if request_context
+                                    else None
+                                ),
+                                context_id=context.context_id,
+                                organization_id=(
+                                    request_context.organization_id
+                                    if request_context
+                                    else "local"
+                                ),
+                                actor=(
+                                    request_context.actor
+                                    if request_context
+                                    else "system"
+                                ),
+                                agent_id=identity.agent_id,
+                                agent_name=normalized_name,
+                                status="failed",
+                                duration_ms=round(
+                                    (perf_counter() - started) * 1000
+                                ),
+                                error_type=type(exc).__name__,
+                            )
+                        )
+                        raise
+                    save_agent_invocation(
+                        AgentInvocation(
+                            request_id=(
+                                request_context.request_id
+                                if request_context
+                                else None
+                            ),
+                            context_id=context.context_id,
+                            organization_id=(
+                                request_context.organization_id
+                                if request_context
+                                else "local"
+                            ),
+                            actor=(
+                                request_context.actor
+                                if request_context
+                                else "system"
+                            ),
+                            agent_id=identity.agent_id,
+                            agent_name=normalized_name,
+                            status="success",
+                            duration_ms=round(
+                                (perf_counter() - started) * 1000
+                            ),
+                        )
+                    )
+                    return result
+
+            agent_cls.run = governed_run
             self._agents[normalized_name] = agent_cls
             return agent_cls
 

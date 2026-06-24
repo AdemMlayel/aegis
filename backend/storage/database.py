@@ -3,11 +3,16 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+from backend.config.settings import settings
 from backend.graph.artifacts import GENERATED_STORAGE_ROOT
 from backend.storage.migrations import run_migrations
 
 
-SQLITE_DB_PATH = GENERATED_STORAGE_ROOT / "aegisqa.sqlite3"
+SQLITE_DB_PATH = (
+    Path(settings.sqlite_db_path).expanduser().resolve()
+    if settings.sqlite_db_path
+    else GENERATED_STORAGE_ROOT / "aegisqa.sqlite3"
+)
 
 
 def initialize_database(db_path: Path = SQLITE_DB_PATH) -> Path:

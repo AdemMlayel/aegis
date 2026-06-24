@@ -11,7 +11,7 @@ Implemented and verified locally:
 - FastAPI backend.
 - React three-panel agent operations workspace.
 - Agent -> Skill -> Tool architecture.
-- Typed workflow context schema `0.14.0`.
+- Typed workflow context schema `0.15.0`.
 - Full local workflow graph with validation retry, approval, execution, investigation, memory archive, and reporting.
 - Local/mock Jira-style ticket provider.
 - Toolized Git handoff boundary.
@@ -30,13 +30,18 @@ Implemented and verified locally:
 - Pollable workflow timeline, stage review/regeneration, artifact revision history, and execution logs.
 - Deterministic validation summary with traceability, quality scoring, risk areas, and retry evidence.
 - Final technical/executive reports with a hashed ZIP evidence package and export manifest.
+- Registered agent identities with centralized skill, tool, and model-provider policies.
+- Durable request, agent, and model telemetry with token, latency, fallback, and cost fields.
+- Atomic token reservations with organization, workflow, call, and concurrency-safe quota enforcement.
+- Structured JSON logs, liveness/readiness probes, operational health, and Prometheus-compatible metrics.
+- Gateway request limits, daily quotas, request timeouts, model-token budgets, and provider circuit breakers.
 - Backend tests and frontend production build verified.
 
 Verification result during hardening:
 
 ```bash
 python -m pytest -q
-# 109 passed
+# 121 passed
 
 cd frontend
 npm install
@@ -247,13 +252,17 @@ The selected providers, embedding model, and agent routes are persisted on
 `TestContext.intelligence_config` and mirrored into
 `TestContext.intelligence_trace`.
 
-The dashboard provides three presets:
+The streamlined dashboard provides two presets:
 
-- `Safe demo`: deterministic mock LLM and local hash embeddings.
-- `Private local`: Ollama role routing and local Nomic embeddings.
-- `Hybrid best`: configured external models for requirement reasoning,
-  coverage, and test generation; local Ollama for reporting; local Nomic for
-  embeddings. It falls back to local routes when external access is unavailable.
+- `External live`: the configured OpenAI-compatible model for every LLM-backed
+  agent, with local embeddings.
+- `Private local`: Ollama role routing. When Ollama embeddings are unavailable,
+  the dashboard keeps deterministic local embeddings so workflow startup remains
+  reliable.
+
+The deterministic mock provider remains registered for automated tests and
+provider-failure fallback, but it is no longer shown as a primary dashboard
+configuration.
 
 Agent selections always override the workflow-level LLM fallback. For Ollama,
 an empty agent model uses the built-in role mapping: requirements/reporting use
@@ -272,6 +281,35 @@ AEGISQA_OPENAI_COMPATIBLE_CHAT_MODEL=your-default-model
 
 The API returns provider readiness and required environment-variable names but
 never returns credential values.
+
+## Clean real-LLM demo state
+
+The source fixture set contains two representative tickets. Reset accumulated
+local workflow history before a team demo with:
+
+```bash
+python scripts/reset_demo_state.py
+```
+
+The command backs up `generated/storage/aegisqa.sqlite3`, creates a fresh
+runtime database, and reseeds the two tickets. Pytest uses a separate
+`generated/storage/aegisqa-test.sqlite3`, so regression runs no longer populate
+the live dashboard.
+
+For a live external workflow, configure:
+
+```bash
+AEGISQA_EXTERNAL_CONNECTORS_ENABLED=true
+AEGISQA_DEFAULT_LLM_PROVIDER=openai_compatible
+AEGISQA_DEFAULT_EMBEDDING_PROVIDER=local_hash_embeddings
+AEGISQA_OPENAI_COMPATIBLE_BASE_URL=https://api.openai.com/v1
+AEGISQA_OPENAI_COMPATIBLE_API_KEY=your-server-side-key
+AEGISQA_OPENAI_COMPATIBLE_CHAT_MODEL=gpt-4o-mini
+```
+
+Current model responses enrich requirement analysis, coverage rationale, test
+generation notes, and the final report. The typed test-case structure and Robot
+generation remain deterministic pending the structured-output upgrade.
 
 ## Controlled workflow sessions
 
@@ -346,12 +384,22 @@ The frontend exposes this flow as one operational workspace:
 
 ```text
 GET  /health
+GET  /health/live
+GET  /health/ready
+GET  /metrics
 GET  /api/v1/security/me
 GET  /api/v1/integrations/providers
 GET  /api/v1/intelligence/llm-providers
 GET  /api/v1/intelligence/embedding-providers
 GET  /api/v1/intelligence/agent-model-profiles
 GET  /api/v1/intelligence/ollama/health
+GET  /api/v1/governance/agents
+GET  /api/v1/observability/summary
+GET  /api/v1/observability/agent-invocations
+GET  /api/v1/observability/model-invocations
+GET  /api/v1/observability/token-usage
+GET  /api/v1/observability/token-budget
+GET  /api/v1/observability/health
 GET  /api/v1/tickets/mock
 POST /api/v1/workflows/start-from-mock-ticket
 POST /api/v1/workflows/sessions
@@ -381,6 +429,9 @@ GET  /api/v1/results/{run_id}
 - Generated Robot files.
 - Validation gate.
 - Approval gate.
+- Agent identity and policy enforcement.
+- Request/agent/model observability and token accounting.
+- Gateway limits and provider circuit breakers.
 - Local/mock execution and report generation.
 - Tests and clean packaging.
 
@@ -393,7 +444,31 @@ GET  /api/v1/results/{run_id}
 - Company internal documentation ingestion.
 - Production vector database.
 - Production PostgreSQL persistence.
+- Multi-instance distributed rate limits and circuit state.
+- OpenTelemetry export, managed metrics storage, dashboards, and alerting integration.
 - Docker-isolated execution against real test environments.
+
+## Governance settings
+
+The local defaults are intentionally generous for demos. Production deployments
+should set organization-specific values:
+
+```text
+AEGISQA_GATEWAY_REQUESTS_PER_MINUTE=240
+AEGISQA_GATEWAY_DAILY_REQUEST_QUOTA=10000
+AEGISQA_GATEWAY_REQUEST_TIMEOUT_SECONDS=60
+AEGISQA_PROVIDER_CIRCUIT_FAILURE_THRESHOLD=3
+AEGISQA_PROVIDER_CIRCUIT_RESET_SECONDS=30
+AEGISQA_AGENT_MAX_MODEL_CALLS_PER_WORKFLOW=24
+AEGISQA_AGENT_MAX_TOKENS_PER_CALL=16000
+AEGISQA_AGENT_MAX_TOKENS_PER_WORKFLOW=120000
+AEGISQA_ORGANIZATION_DAILY_TOKEN_QUOTA=1000000
+AEGISQA_TOKEN_RESERVATION_TTL_SECONDS=300
+AEGISQA_EXTERNAL_INPUT_COST_PER_1K=0.00015
+AEGISQA_EXTERNAL_OUTPUT_COST_PER_1K=0.0006
+AEGISQA_OBSERVABILITY_ERROR_RATE_THRESHOLD=0.05
+AEGISQA_OBSERVABILITY_AGENT_FAILURE_RATE_THRESHOLD=0.10
+```
 
 ## Clean packaging
 

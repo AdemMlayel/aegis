@@ -10,6 +10,8 @@ from backend.skills.base import SkillRegistry, skill_registry as default_skill_r
     name="AutomationGeneratorAgent",
     skills=["GenerateAutomationSkill"],
     description="Coordinates deterministic Robot Framework automation generation.",
+    risk_tier="high",
+    require_human_approval=True,
 )
 class AutomationGeneratorAgent(BaseAgent):
     def __init__(self, *, skill_registry: SkillRegistry | None = None) -> None:
