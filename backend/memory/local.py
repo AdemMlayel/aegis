@@ -38,17 +38,23 @@ SEEDED_MEMORY_ENTRIES = [
     ),
 ]
 
-_memory_stores: dict[str, EpisodicMemoryStore] = {
-    "default": EpisodicMemoryStore(entries=list(SEEDED_MEMORY_ENTRIES)),
+_memory_stores: dict[tuple[str, str | None], EpisodicMemoryStore] = {
+    ("default", None): EpisodicMemoryStore(entries=list(SEEDED_MEMORY_ENTRIES)),
 }
 
 
-def get_local_memory_store(*, embedding_provider: str | None = None) -> EpisodicMemoryStore:
+def get_local_memory_store(
+    *,
+    embedding_provider: str | None = None,
+    embedding_model: str | None = None,
+) -> EpisodicMemoryStore:
     if embedding_provider is None:
-        return _memory_stores["default"]
-    if embedding_provider not in _memory_stores:
-        _memory_stores[embedding_provider] = EpisodicMemoryStore(
+        return _memory_stores[("default", None)]
+    key = (embedding_provider, embedding_model)
+    if key not in _memory_stores:
+        _memory_stores[key] = EpisodicMemoryStore(
             entries=list(SEEDED_MEMORY_ENTRIES),
             embedding_provider=embedding_provider,
+            embedding_model=embedding_model,
         )
-    return _memory_stores[embedding_provider]
+    return _memory_stores[key]

@@ -44,10 +44,14 @@ class KnowledgeStore:
         chunks: list[KnowledgeChunk],
         *,
         embedding_provider: str | None = None,
+        embedding_model: str | None = None,
     ) -> None:
         self._chunks = list(chunks)
         self._chunk_by_id = {chunk.chunk_id: chunk for chunk in self._chunks}
-        self._embedding_model = create_embedding_model(embedding_provider)
+        self._embedding_model = create_embedding_model(
+            embedding_provider,
+            embedding_model,
+        )
         self._vector_store = InMemoryVectorStore()
         self._reranker = LocalHybridReranker()
         self._index_chunks()

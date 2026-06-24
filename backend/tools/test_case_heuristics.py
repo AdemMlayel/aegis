@@ -52,6 +52,7 @@ def generate_test_cases(
 ) -> list[TestCase]:
     evidence_refs = list(coverage_plan.knowledge_refs_used or analysis.knowledge_refs_used)
     memory_refs = list(coverage_plan.memory_refs_used or analysis.memory_refs_used)
+    model_guidance: str | None = None
     if ticket is not None:
         knowledge_results = search_knowledge_for_ticket(ticket, limit=3, context=context)
         memory_results = search_memory_for_ticket(ticket, limit=3, context=context)
@@ -63,14 +64,19 @@ def generate_test_cases(
             knowledge_context=format_knowledge_context(knowledge_results),
             memory_context=format_memory_context(memory_results),
         )
-        complete_with_configured_llm(
+        llm_response = complete_with_configured_llm(
             prompt_name=prompt.name,
             prompt_version=prompt.version,
             rendered_prompt=rendered_prompt,
-            system_instruction="You are a QA test case generator operating in deterministic local mode.",
+            system_instruction=(
+                "You are an evidence-grounded QA test case generator. Identify complete "
+                "positive, negative, boundary, and regression scenarios."
+            ),
             context=context,
             model_role="stable_baseline",
         )
+        if llm_response.provider != "mock_llm" and llm_response.text:
+            model_guidance = f"Model guidance: {llm_response.text[:1200]}"
 
     test_cases = [
         TestCase(
@@ -163,5 +169,9 @@ def generate_test_cases(
                 generation_notes=["Generated from episodic memory regression hint."],
             )
         )
+
+    if model_guidance:
+        for test_case in test_cases:
+            test_case.generation_notes.append(model_guidance)
 
     return test_cases

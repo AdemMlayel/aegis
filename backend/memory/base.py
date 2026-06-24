@@ -44,10 +44,14 @@ class EpisodicMemoryStore:
         entries: list[EpisodicMemoryEntry] | None = None,
         *,
         embedding_provider: str | None = None,
+        embedding_model: str | None = None,
     ) -> None:
         self._entries = list(entries or [])
         self._entry_by_id = {entry.memory_id: entry for entry in self._entries}
-        self._embedding_model = create_embedding_model(embedding_provider)
+        self._embedding_model = create_embedding_model(
+            embedding_provider,
+            embedding_model,
+        )
         self._vector_store = InMemoryVectorStore()
         self._reranker = LocalHybridReranker()
         for entry in self._entries:

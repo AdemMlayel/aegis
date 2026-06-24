@@ -15,10 +15,11 @@ from backend.llm.ollama import OllamaUnavailableError, _post_json
 )
 class OllamaEmbeddingProvider(BaseEmbeddingProvider):
     def embed(self, text: str) -> EmbeddingResponse:
+        model = self.model_override or settings.ollama_embedding_model
         try:
             raw = _post_json(
                 "/api/embeddings",
-                {"model": settings.ollama_embedding_model, "prompt": text},
+                {"model": model, "prompt": text},
                 timeout=settings.ollama_timeout_seconds,
             )
         except OllamaUnavailableError as exc:
@@ -30,11 +31,11 @@ class OllamaEmbeddingProvider(BaseEmbeddingProvider):
         vector = raw.get("embedding")
         if not isinstance(vector, list) or not vector:
             raise OllamaUnavailableError(
-                f"Ollama returned no embedding for model {settings.ollama_embedding_model!r}."
+                f"Ollama returned no embedding for model {model!r}."
             )
         return EmbeddingResponse(
             provider=self.spec.name,
-            model=settings.ollama_embedding_model,
+            model=model,
             vector=tuple(float(value) for value in vector),
             deterministic=False,
         )

@@ -11,7 +11,7 @@ Implemented and verified locally:
 - FastAPI backend.
 - React PM-facing dashboard.
 - Agent -> Skill -> Tool architecture.
-- Typed workflow context schema `0.11.0`.
+- Typed workflow context schema `0.12.0`.
 - Full local workflow graph with validation retry, approval, execution, investigation, memory archive, and reporting.
 - Local/mock Jira-style ticket provider.
 - Toolized Git handoff boundary.
@@ -32,7 +32,7 @@ Verification result during hardening:
 
 ```bash
 python -m pytest -q
-# 88 passed
+# 95 passed
 
 cd frontend
 npm install
@@ -205,8 +205,9 @@ POST /api/v1/intelligence/ollama/profiles/smoke-test
 
 If Ollama is not running or the selected model is missing, the API returns a clear status message. Workflow generation and RAG/memory retrieval use deterministic fallbacks so PM demos do not fail silently.
 
-Workflow starts can override the local AI selection per run without changing
-global environment defaults:
+Workflow starts can override AI routing per run without changing global
+environment defaults. Each LLM-backed agent can use a different provider and
+model:
 
 ```json
 {
@@ -215,21 +216,58 @@ global environment defaults:
   "intelligence": {
     "llm_provider": "ollama",
     "embedding_provider": "ollama_nomic_embed_text",
-    "llm_model": "qwen3:3b",
-    "embedding_model": "qwen3-embedding:0.6b"
+    "embedding_model": "nomic-embed-text",
+    "agent_routes": {
+      "RequirementAgent": {
+        "provider": "openai_compatible",
+        "model": "your-requirement-model"
+      },
+      "CoveragePlannerAgent": {
+        "provider": "openai_compatible",
+        "model": "your-reasoning-model"
+      },
+      "TestCaseGeneratorAgent": {
+        "provider": "openai_compatible",
+        "model": "your-generation-model"
+      },
+      "ReportGeneratorAgent": {
+        "provider": "ollama",
+        "model": "qwen3:3b"
+      }
+    }
   }
 }
 ```
 
-The selected providers and model overrides are persisted on
+The selected providers, embedding model, and agent routes are persisted on
 `TestContext.intelligence_config` and mirrored into
 `TestContext.intelligence_trace`.
 
-When the workflow LLM provider is `ollama` and no explicit `llm_model` override
-is provided, prompt stages route automatically to local model roles:
-requirements/reporting use `main_rag`, coverage uses `reasoning`, and test case
-generation uses `stable_baseline`. A manual `llm_model` override still takes
-precedence for the full run.
+The dashboard provides three presets:
+
+- `Safe demo`: deterministic mock LLM and local hash embeddings.
+- `Private local`: Ollama role routing and local Nomic embeddings.
+- `Hybrid best`: configured external models for requirement reasoning,
+  coverage, and test generation; local Ollama for reporting; local Nomic for
+  embeddings. It falls back to local routes when external access is unavailable.
+
+Agent selections always override the workflow-level LLM fallback. For Ollama,
+an empty agent model uses the built-in role mapping: requirements/reporting use
+`main_rag`, coverage uses `reasoning`, and test generation uses
+`stable_baseline`.
+
+External credentials are server-side only. Enable and configure an
+OpenAI-compatible endpoint before it becomes selectable:
+
+```bash
+AEGISQA_EXTERNAL_CONNECTORS_ENABLED=true
+AEGISQA_OPENAI_COMPATIBLE_BASE_URL=https://your-provider.example/v1
+AEGISQA_OPENAI_COMPATIBLE_API_KEY=server-side-secret
+AEGISQA_OPENAI_COMPATIBLE_CHAT_MODEL=your-default-model
+```
+
+The API returns provider readiness and required environment-variable names but
+never returns credential values.
 
 ## Main demo workflow
 
@@ -248,7 +286,7 @@ precedence for the full run.
 The frontend exposes this flow in readable PM-facing sections:
 
 - Demo Ticket
-- Local AI Providers
+- Agent Model Routing
 - Workflow Progress
 - Requirement Analysis
 - Coverage Plan
@@ -266,6 +304,7 @@ GET  /api/v1/security/me
 GET  /api/v1/integrations/providers
 GET  /api/v1/intelligence/llm-providers
 GET  /api/v1/intelligence/embedding-providers
+GET  /api/v1/intelligence/agent-model-profiles
 GET  /api/v1/intelligence/ollama/health
 GET  /api/v1/tickets/mock
 POST /api/v1/workflows/start-from-mock-ticket

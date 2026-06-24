@@ -56,9 +56,15 @@ class LLMUsageRef(StrictModel):
     prompt_name: str
     prompt_version: str
     deterministic: bool = True
+    agent_name: str | None = None
     model_role: str | None = None
     requested_model: str | None = None
     summary: str
+
+
+class AgentModelRouteBlock(StrictModel):
+    provider: str = Field(min_length=1)
+    model: str | None = None
 
 
 class IntelligenceTraceBlock(StrictModel):
@@ -67,6 +73,7 @@ class IntelligenceTraceBlock(StrictModel):
     configured_embedding_provider: str = Field(default_factory=lambda: settings.default_embedding_provider)
     configured_llm_model: str | None = None
     configured_embedding_model: str | None = None
+    configured_agent_routes: dict[str, AgentModelRouteBlock] = Field(default_factory=dict)
     knowledge_refs: list[IntelligenceEvidenceRef] = Field(default_factory=list)
     memory_refs: list[IntelligenceEvidenceRef] = Field(default_factory=list)
     prompt_versions: list[PromptUsageRef] = Field(default_factory=list)
@@ -78,6 +85,7 @@ class IntelligenceConfigBlock(StrictModel):
     embedding_provider: str = Field(default_factory=lambda: settings.default_embedding_provider)
     llm_model: str | None = None
     embedding_model: str | None = None
+    agent_routes: dict[str, AgentModelRouteBlock] = Field(default_factory=dict)
 
 
 class CompletenessChecklist(StrictModel):
@@ -367,6 +375,10 @@ class TestContext(StrictModel):
         self.intelligence_trace.configured_embedding_provider = self.intelligence_config.embedding_provider
         self.intelligence_trace.configured_llm_model = self.intelligence_config.llm_model
         self.intelligence_trace.configured_embedding_model = self.intelligence_config.embedding_model
+        self.intelligence_trace.configured_agent_routes = {
+            agent_name: route.model_copy(deep=True)
+            for agent_name, route in self.intelligence_config.agent_routes.items()
+        }
 
     def mark(self, status: str) -> None:
         self.workflow_status = status

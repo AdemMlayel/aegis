@@ -4,6 +4,7 @@ from dataclasses import asdict
 
 from backend.knowledge import get_local_knowledge_store
 from backend.intelligence.vector import retrieval_profile
+from backend.intelligence.providers import llm_provider_metadata
 from backend.llm import llm_provider_registry
 from backend.llm.ollama_profiles import model_profile_status, smoke_test_profiles
 from backend.memory import get_local_memory_store
@@ -29,8 +30,7 @@ def list_llm_providers() -> list[dict[str, object]]:
             "model": spec.model,
             "requires_external_api": spec.requires_external_api,
             "description": spec.description,
-            "configuration_status": spec.configuration_status,
-            "configuration_keys": list(spec.configuration_keys),
+            **llm_provider_metadata(spec.name),
         }
         for spec in llm_provider_registry.list_specs()
     ]

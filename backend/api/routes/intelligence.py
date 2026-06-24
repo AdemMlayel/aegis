@@ -6,6 +6,14 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from backend.knowledge import get_local_knowledge_store
+from backend.intelligence.providers import (
+    embedding_provider_metadata,
+    llm_provider_metadata,
+)
+from backend.intelligence.routing import (
+    embedding_recommendation,
+    list_agent_model_profiles,
+)
 from backend.llm import llm_provider_registry
 from backend.embeddings import embedding_provider_registry
 from backend.llm.ollama import ollama_health
@@ -32,6 +40,9 @@ class LLMProviderResponse(BaseModel):
     model: str
     requires_external_api: bool
     description: str
+    configuration_status: str
+    configuration_keys: list[str]
+    selectable: bool
 
 
 class EmbeddingProviderResponse(BaseModel):
@@ -41,6 +52,39 @@ class EmbeddingProviderResponse(BaseModel):
     dimensions: int
     requires_external_api: bool
     description: str
+    configuration_status: str
+    configuration_keys: list[str]
+    selectable: bool
+
+
+class AgentModelProfileResponse(BaseModel):
+    agent_name: str
+    label: str
+    purpose: str
+    uses_llm: bool
+    prompt_names: list[str]
+    local_role: str | None
+    recommended_mode: str
+    rationale: str
+    local_provider: str | None
+    local_model: str | None
+    external_provider: str | None
+    external_model: str | None
+    recommended_provider: str | None
+    recommended_model: str | None
+
+
+class EmbeddingRecommendationResponse(BaseModel):
+    recommended_mode: str
+    recommended_provider: str
+    recommended_model: str
+    fallback_provider: str
+    rationale: str
+
+
+class AgentRoutingCatalogResponse(BaseModel):
+    agents: list[AgentModelProfileResponse]
+    embedding: EmbeddingRecommendationResponse
 
 
 class OllamaHealthResponse(BaseModel):
@@ -138,16 +182,19 @@ def list_prompt_templates(
 def list_llm_providers(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
 ) -> list[LLMProviderResponse]:
-    return [
-        LLMProviderResponse(
-            name=spec.name,
-            mode=spec.mode,
-            model=spec.model,
-            requires_external_api=spec.requires_external_api,
-            description=spec.description,
+    providers = []
+    for spec in llm_provider_registry.list_specs():
+        providers.append(
+            LLMProviderResponse(
+                name=spec.name,
+                mode=spec.mode,
+                model=spec.model,
+                requires_external_api=spec.requires_external_api,
+                description=spec.description,
+                **llm_provider_metadata(spec.name),
+            )
         )
-        for spec in llm_provider_registry.list_specs()
-    ]
+    return providers
 
 
 
@@ -156,17 +203,33 @@ def list_llm_providers(
 def list_embedding_providers(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
 ) -> list[EmbeddingProviderResponse]:
-    return [
-        EmbeddingProviderResponse(
-            name=spec.name,
-            mode=spec.mode,
-            model=spec.model,
-            dimensions=spec.dimensions,
-            requires_external_api=spec.requires_external_api,
-            description=spec.description,
+    providers = []
+    for spec in embedding_provider_registry.list_specs():
+        providers.append(
+            EmbeddingProviderResponse(
+                name=spec.name,
+                mode=spec.mode,
+                model=spec.model,
+                dimensions=spec.dimensions,
+                requires_external_api=spec.requires_external_api,
+                description=spec.description,
+                **embedding_provider_metadata(spec.name),
+            )
         )
-        for spec in embedding_provider_registry.list_specs()
-    ]
+    return providers
+
+
+@router.get(
+    "/intelligence/agent-model-profiles",
+    response_model=AgentRoutingCatalogResponse,
+)
+def get_agent_model_profiles(
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
+) -> AgentRoutingCatalogResponse:
+    return AgentRoutingCatalogResponse(
+        agents=list_agent_model_profiles(),
+        embedding=embedding_recommendation(),
+    )
 
 
 @router.get("/intelligence/ollama/health", response_model=OllamaHealthResponse)

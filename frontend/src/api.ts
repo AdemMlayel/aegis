@@ -1,4 +1,6 @@
 import type {
+  AgentModelRoute,
+  AgentRoutingCatalog,
   ApprovalStatus,
   EmbeddingProvider,
   ExecuteRunResponse,
@@ -22,6 +24,7 @@ type IntelligenceConfigPayload = {
   embedding_provider?: string;
   llm_model?: string | null;
   embedding_model?: string | null;
+  agent_routes?: Record<string, AgentModelRoute>;
 };
 
 const API_ROOT = "/api/v1";
@@ -48,6 +51,11 @@ export async function getLLMProviders(): Promise<LLMProvider[]> {
 export async function getEmbeddingProviders(): Promise<EmbeddingProvider[]> {
   const response = await fetch(`${API_ROOT}/intelligence/embedding-providers`);
   return parseResponse<EmbeddingProvider[]>(response);
+}
+
+export async function getAgentModelProfiles(): Promise<AgentRoutingCatalog> {
+  const response = await fetch(`${API_ROOT}/intelligence/agent-model-profiles`);
+  return parseResponse<AgentRoutingCatalog>(response);
 }
 
 export async function getOllamaHealth(): Promise<OllamaHealth> {

@@ -32,8 +32,11 @@ def search_knowledge_for_ticket(
     limit: int = 3,
     context: TestContext | None = None,
 ) -> list[KnowledgeSearchResult]:
-    embedding_provider = _embedding_provider_for_context(context)
-    return get_local_knowledge_store(embedding_provider=embedding_provider).search(
+    embedding_provider, embedding_model = _embedding_config_for_context(context)
+    return get_local_knowledge_store(
+        embedding_provider=embedding_provider,
+        embedding_model=embedding_model,
+    ).search(
         query=build_ticket_query(ticket),
         tags=ticket.labels,
         limit=limit,
@@ -46,8 +49,11 @@ def search_memory_for_ticket(
     limit: int = 3,
     context: TestContext | None = None,
 ) -> list[EpisodicMemorySearchResult]:
-    embedding_provider = _embedding_provider_for_context(context)
-    return get_local_memory_store(embedding_provider=embedding_provider).search(
+    embedding_provider, embedding_model = _embedding_config_for_context(context)
+    return get_local_memory_store(
+        embedding_provider=embedding_provider,
+        embedding_model=embedding_model,
+    ).search(
         query=build_ticket_query(ticket),
         tags=ticket.labels,
         limit=limit,
@@ -83,6 +89,7 @@ def record_llm_usage(
     context: TestContext,
     response: LLMResponse,
     *,
+    agent_name: str | None = None,
     model_role: str | None = None,
     requested_model: str | None = None,
 ) -> None:
@@ -94,6 +101,7 @@ def record_llm_usage(
             prompt_name=response.prompt_name,
             prompt_version=response.prompt_version,
             deterministic=response.deterministic,
+            agent_name=agent_name,
             model_role=model_role,
             requested_model=requested_model,
             summary=response.text,
@@ -139,11 +147,16 @@ def record_memory_refs(context: TestContext, results: list[EpisodicMemorySearchR
     return refs
 
 
-def _embedding_provider_for_context(context: TestContext | None) -> str | None:
+def _embedding_config_for_context(
+    context: TestContext | None,
+) -> tuple[str | None, str | None]:
     if context is None:
-        return None
+        return None, None
     context.sync_intelligence_trace_config()
-    return context.intelligence_config.embedding_provider
+    return (
+        context.intelligence_config.embedding_provider,
+        context.intelligence_config.embedding_model,
+    )
 
 
 def prompt_version_ref(prompt_name: str) -> str:
@@ -167,11 +180,25 @@ def complete_with_configured_llm(
     the fallback reason so the UI and report remain honest.
     """
     from backend.config.settings import settings
+    from backend.intelligence.routing import agent_name_for_prompt
     from backend.llm import llm_provider_registry
     from backend.llm.ollama_profiles import resolve_chat_model_for_prompt
 
-    provider_name = context.intelligence_config.llm_provider if context else settings.default_llm_provider
-    configured_model = context.intelligence_config.llm_model if context else None
+    agent_name = agent_name_for_prompt(prompt_name)
+    agent_route = (
+        context.intelligence_config.agent_routes.get(agent_name)
+        if context is not None and agent_name is not None
+        else None
+    )
+    if agent_route is not None:
+        provider_name = agent_route.provider
+        configured_model = agent_route.model
+    elif context is not None:
+        provider_name = context.intelligence_config.llm_provider
+        configured_model = context.intelligence_config.llm_model
+    else:
+        provider_name = settings.default_llm_provider
+        configured_model = None
     resolved_role = None
     model_override = configured_model
     if provider_name == "ollama" and not configured_model:
@@ -217,6 +244,7 @@ def complete_with_configured_llm(
         record_llm_usage(
             context,
             response,
+            agent_name=agent_name,
             model_role=resolved_role if not configured_model else "manual_override",
             requested_model=model_override,
         )

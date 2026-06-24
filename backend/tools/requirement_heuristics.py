@@ -85,7 +85,10 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
         prompt_name=prompt.name,
         prompt_version=prompt.version,
         rendered_prompt=rendered_prompt,
-        system_instruction="You are a QA requirement analysis assistant operating in deterministic local mode.",
+        system_instruction=(
+            "You are an evidence-grounded QA requirement analysis assistant. "
+            "Be concise and identify ambiguity, constraints, and expected behavior."
+        ),
         context=context,
         model_role="main_rag",
     )

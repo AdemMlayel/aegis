@@ -3,6 +3,8 @@ import {
   Bot,
   CheckCircle2,
   ClipboardList,
+  Cloud,
+  Cpu,
   Database,
   FileCode2,
   GitPullRequest,
@@ -20,6 +22,7 @@ import {
   decideApproval,
   executeSuite,
   executeWorkflow,
+  getAgentModelProfiles,
   getAutomationFile,
   getWorkflow,
   getEmbeddingProviders,
@@ -35,6 +38,9 @@ import {
   startWorkflowFromMockTicket
 } from "./api";
 import type {
+  AgentModelProfile,
+  AgentModelRoute,
+  AgentRoutingCatalog,
   AutomationBlock,
   EmbeddingProvider,
   ExecutionEvent,
@@ -67,6 +73,8 @@ export default function App() {
   const [providerCatalog, setProviderCatalog] = useState<ProviderCatalog | null>(null);
   const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
   const [embeddingProviders, setEmbeddingProviders] = useState<EmbeddingProvider[]>([]);
+  const [agentRouting, setAgentRouting] = useState<AgentRoutingCatalog | null>(null);
+  const [agentRoutes, setAgentRoutes] = useState<Record<string, AgentModelRoute>>({});
   const [ollamaHealth, setOllamaHealth] = useState<OllamaHealth | null>(null);
   const [ollamaProfiles, setOllamaProfiles] = useState<OllamaModelProfiles | null>(null);
   const [smokeResults, setSmokeResults] = useState<OllamaSmokeTestResult[]>([]);
@@ -135,12 +143,13 @@ export default function App() {
 
   async function refreshAll() {
     await runAction("refresh", async () => {
-      const [ticketList, queue, catalog, llms, embeddings, health, profiles] = await Promise.all([
+      const [ticketList, queue, catalog, llms, embeddings, routing, health, profiles] = await Promise.all([
         listMockTickets(),
         listWorkflows({ limit: 8 }),
         getProviderCatalog(),
         getLLMProviders(),
         getEmbeddingProviders(),
+        getAgentModelProfiles(),
         getOllamaHealth(),
         getOllamaProfiles()
       ]);
@@ -149,6 +158,7 @@ export default function App() {
       setProviderCatalog(catalog);
       setLlmProviders(llms);
       setEmbeddingProviders(embeddings);
+      setAgentRouting(routing);
       setOllamaHealth(health);
       setOllamaProfiles(profiles);
       setSelectedLlmProvider((current) => current || llms[0]?.name || "mock_llm");
@@ -156,7 +166,14 @@ export default function App() {
       const stored = localStorage.getItem("aegisqa:lastContextId");
       if (stored) {
         const loaded = await getWorkflow(stored).catch(() => null);
-        if (loaded) setContext(loaded);
+        if (loaded) {
+          setContext(loaded);
+          setAgentRoutes(loaded.intelligence_config.agent_routes);
+          setSelectedLlmProvider(loaded.intelligence_config.llm_provider);
+          setSelectedEmbeddingProvider(loaded.intelligence_config.embedding_provider);
+          setLlmModelOverride(loaded.intelligence_config.llm_model ?? "");
+          setEmbeddingModelOverride(loaded.intelligence_config.embedding_model ?? "");
+        }
       }
     });
   }
@@ -183,7 +200,18 @@ export default function App() {
           llm_provider: selectedLlmProvider,
           embedding_provider: selectedEmbeddingProvider,
           llm_model: llmModelOverride.trim() || null,
-          embedding_model: embeddingModelOverride.trim() || null
+          embedding_model: embeddingModelOverride.trim() || null,
+          agent_routes: Object.fromEntries(
+            (agentRouting?.agents ?? [])
+              .filter((profile) => profile.uses_llm)
+              .map((profile) => [
+                profile.agent_name,
+                agentRoutes[profile.agent_name] ?? {
+                  provider: selectedLlmProvider,
+                  model: llmModelOverride.trim() || null
+                }
+              ])
+          )
         }
       })
     );
@@ -248,7 +276,78 @@ export default function App() {
       return;
     }
     setSelectedLlmProvider("ollama");
-    setLlmModelOverride(profile.model);
+    const matchingAgents = (agentRouting?.agents ?? []).filter(
+      (agent) => agent.uses_llm && agent.local_role === profile.role
+    );
+    setAgentRoutes((current) => {
+      const next = { ...current };
+      for (const agent of matchingAgents) {
+        next[agent.agent_name] = { provider: "ollama", model: profile.model };
+      }
+      return next;
+    });
+  }
+
+  function updateAgentProvider(profile: AgentModelProfile, provider: string) {
+    const suggestedModel = provider === "openai_compatible"
+      ? profile.external_model
+      : null;
+    setAgentRoutes((current) => ({
+      ...current,
+      [profile.agent_name]: { provider, model: suggestedModel }
+    }));
+  }
+
+  function updateAgentModel(profile: AgentModelProfile, model: string) {
+    const current = agentRoutes[profile.agent_name] ?? {
+      provider: selectedLlmProvider,
+      model: null
+    };
+    setAgentRoutes((routes) => ({
+      ...routes,
+      [profile.agent_name]: {
+        ...current,
+        model: model.trim() || null
+      }
+    }));
+  }
+
+  function applyRoutingPreset(preset: "safe" | "local" | "hybrid") {
+    const externalReady = llmProviders.some(
+      (provider) => provider.name === "openai_compatible" && provider.selectable
+    );
+    const nextRoutes: Record<string, AgentModelRoute> = {};
+    for (const profile of (agentRouting?.agents ?? []).filter((item) => item.uses_llm)) {
+      if (preset === "safe") {
+        nextRoutes[profile.agent_name] = { provider: "mock_llm", model: null };
+      } else if (
+        preset === "local"
+        || profile.recommended_mode === "local"
+        || !externalReady
+      ) {
+        nextRoutes[profile.agent_name] = { provider: "ollama", model: null };
+      } else {
+        nextRoutes[profile.agent_name] = {
+          provider: "openai_compatible",
+          model: profile.external_model
+        };
+      }
+    }
+    setAgentRoutes(nextRoutes);
+    setLlmModelOverride("");
+    if (preset === "safe") {
+      setSelectedLlmProvider("mock_llm");
+      setSelectedEmbeddingProvider("local_hash_embeddings");
+      setEmbeddingModelOverride("");
+      return;
+    }
+    setSelectedLlmProvider(
+      preset === "hybrid" && externalReady ? "openai_compatible" : "ollama"
+    );
+    setSelectedEmbeddingProvider("ollama_nomic_embed_text");
+    setEmbeddingModelOverride(
+      agentRouting?.embedding.recommended_model ?? "nomic-embed-text"
+    );
   }
 
   return (
@@ -274,33 +373,57 @@ export default function App() {
           </label>
           {selectedTicket ? <TicketPreview ticket={selectedTicket} /> : <Empty text="No local tickets loaded." />}
           <button className="primary-button" disabled={busy !== null || !selectedTicket} onClick={startDemoWorkflow}>
-            {busy === "workflow" ? <Loader2 className="spin" /> : <PlayCircle />} Run full local workflow
+            {busy === "workflow" ? <Loader2 className="spin" /> : <PlayCircle />} Run full workflow
           </button>
         </section>
 
         <section className="panel">
-          <SectionTitle icon={<Bot />} title="Local AI providers" />
+          <SectionTitle icon={<Bot />} title="Agent model routing" />
+          <div className="mode-switch" aria-label="AI routing preset">
+            <button type="button" onClick={() => applyRoutingPreset("safe")}><ShieldCheck /> Safe demo</button>
+            <button type="button" onClick={() => applyRoutingPreset("local")}><Cpu /> Private local</button>
+            <button type="button" onClick={() => applyRoutingPreset("hybrid")}><Cloud /> Hybrid best</button>
+          </div>
+          <AgentRoutingList
+            profiles={agentRouting?.agents ?? []}
+            providers={llmProviders}
+            routes={agentRoutes}
+            fallbackProvider={selectedLlmProvider}
+            onProviderChange={updateAgentProvider}
+            onModelChange={updateAgentModel}
+          />
           <label>
-            Workflow LLM
+            Default LLM fallback
             <select value={selectedLlmProvider} onChange={(event) => setSelectedLlmProvider(event.target.value)}>
               {llmProviders.map((provider) => (
-                <option key={provider.name} value={provider.name}>{provider.name} - {provider.model}</option>
+                <option key={provider.name} value={provider.name} disabled={!provider.selectable}>
+                  {provider.name} - {provider.model}
+                </option>
               ))}
             </select>
           </label>
           <label>
-            LLM model override
+            Default model override
             <input
               value={llmModelOverride}
               onChange={(event) => setLlmModelOverride(event.target.value)}
               placeholder={ollamaHealth?.chat_model ?? "optional"}
             />
           </label>
+          <div className="route-heading embedding-heading">
+            <div>
+              <strong>RAG and memory embeddings</strong>
+              <span>{agentRouting?.embedding.rationale ?? "Local embeddings keep retrieval data private."}</span>
+            </div>
+            <span className="recommendation local">Best: local</span>
+          </div>
           <label>
-            Workflow embedding
+            Embedding provider
             <select value={selectedEmbeddingProvider} onChange={(event) => setSelectedEmbeddingProvider(event.target.value)}>
               {embeddingProviders.map((provider) => (
-                <option key={provider.name} value={provider.name}>{provider.name} - {provider.model}</option>
+                <option key={provider.name} value={provider.name} disabled={!provider.selectable}>
+                  {provider.name} - {provider.model}
+                </option>
               ))}
             </select>
           </label>
@@ -309,7 +432,7 @@ export default function App() {
             <input
               value={embeddingModelOverride}
               onChange={(event) => setEmbeddingModelOverride(event.target.value)}
-              placeholder={ollamaHealth?.embedding_model ?? "optional"}
+              placeholder={agentRouting?.embedding.recommended_model ?? ollamaHealth?.embedding_model ?? "optional"}
             />
           </label>
           <ProviderLine label="Catalog LLM" value={selectedProvider(providerCatalog, "llm_provider") ?? "mock_llm"} />
@@ -370,8 +493,8 @@ export default function App() {
             <p className="eyebrow">PM-ready architecture proof</p>
             <h2>{context?.ticket?.title ?? "Run a local workflow to generate an evidence-backed QA package"}</h2>
             <p>
-              Uses local/demo providers for tickets, AI, RAG, memory, Robot artifacts, approval, execution,
-              investigation, and reporting. External company systems remain disabled by design.
+              Routes each AI agent independently across mock, private local, or configured external models,
+              while RAG embeddings can remain local.
             </p>
           </div>
           <div className="hero-actions">
@@ -536,6 +659,90 @@ function TicketPreview({ ticket }: { ticket: TicketData }) {
 
 function ProviderLine({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "good" | "warn" }) {
   return <div className={`provider-line ${tone}`}><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function AgentRoutingList({
+  profiles,
+  providers,
+  routes,
+  fallbackProvider,
+  onProviderChange,
+  onModelChange
+}: {
+  profiles: AgentModelProfile[];
+  providers: LLMProvider[];
+  routes: Record<string, AgentModelRoute>;
+  fallbackProvider: string;
+  onProviderChange: (profile: AgentModelProfile, provider: string) => void;
+  onModelChange: (profile: AgentModelProfile, model: string) => void;
+}) {
+  if (!profiles.length) return <Empty text="No agent routing profiles loaded." />;
+
+  return (
+    <div className="agent-routing-list">
+      {profiles.map((profile) => {
+        const route = routes[profile.agent_name] ?? {
+          provider: fallbackProvider,
+          model: null
+        };
+        const selectedProvider = providers.find((provider) => provider.name === route.provider);
+        const placeholder = route.provider === "ollama"
+          ? profile.local_model ?? "automatic local role"
+          : route.provider === "openai_compatible"
+            ? profile.external_model ?? "configured external model"
+            : "provider default";
+        return (
+          <div className="agent-route" key={profile.agent_name}>
+            <div className="route-heading">
+              <div>
+                <strong>{profile.label}</strong>
+                <span>{profile.purpose}</span>
+              </div>
+              <span className={`recommendation ${profile.recommended_mode}`}>
+                {profile.uses_llm ? `Best: ${profile.recommended_mode}` : "Deterministic"}
+              </span>
+            </div>
+            <p className="route-rationale">{profile.rationale}</p>
+            {profile.uses_llm ? (
+              <div className="route-controls">
+                <label>
+                  Provider
+                  <select
+                    value={route.provider}
+                    onChange={(event) => onProviderChange(profile, event.target.value)}
+                  >
+                    {providers.map((provider) => (
+                      <option
+                        key={provider.name}
+                        value={provider.name}
+                        disabled={!provider.selectable}
+                      >
+                        {provider.mode}: {provider.name}
+                        {provider.selectable ? "" : ` (${provider.configuration_status})`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Model
+                  <input
+                    value={route.model ?? ""}
+                    onChange={(event) => onModelChange(profile, event.target.value)}
+                    placeholder={placeholder}
+                  />
+                </label>
+                {selectedProvider && !selectedProvider.selectable ? (
+                  <p className="provider-warning">
+                    Configure {selectedProvider.configuration_keys.join(", ")} on the API server.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function ModelProfileList({

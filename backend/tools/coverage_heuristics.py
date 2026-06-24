@@ -72,11 +72,14 @@ def plan_coverage(
         knowledge_context=format_knowledge_context(knowledge_results),
         memory_context=format_memory_context(memory_results),
     )
-    complete_with_configured_llm(
+    llm_response = complete_with_configured_llm(
         prompt_name=prompt.name,
         prompt_version=prompt.version,
         rendered_prompt=rendered_prompt,
-        system_instruction="You are a QA coverage planner operating in deterministic local mode.",
+        system_instruction=(
+            "You are an evidence-grounded QA coverage planner. Focus on business risk, "
+            "negative paths, boundaries, and regression scope."
+        ),
         context=context,
         model_role="reasoning",
     )
@@ -97,6 +100,8 @@ def plan_coverage(
         risk_rationale.append(f"Knowledge evidence considered: {', '.join(knowledge_refs)}.")
     if memory_refs:
         risk_rationale.append(f"Episodic memory considered: {', '.join(memory_refs)}.")
+    if llm_response.provider != "mock_llm" and llm_response.text:
+        risk_rationale.append(f"Model guidance: {llm_response.text[:1200]}")
 
     return CoveragePlan(
         risk_level=risk_level,

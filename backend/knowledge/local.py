@@ -58,5 +58,13 @@ LOCAL_KNOWLEDGE_CHUNKS = [
 ]
 
 
-def get_local_knowledge_store(*, embedding_provider: str | None = None) -> KnowledgeStore:
-    return KnowledgeStore(LOCAL_KNOWLEDGE_CHUNKS, embedding_provider=embedding_provider)
+def get_local_knowledge_store(
+    *,
+    embedding_provider: str | None = None,
+    embedding_model: str | None = None,
+) -> KnowledgeStore:
+    return KnowledgeStore(
+        LOCAL_KNOWLEDGE_CHUNKS,
+        embedding_provider=embedding_provider,
+        embedding_model=embedding_model,
+    )

@@ -106,6 +106,7 @@ def generate_report(
     knowledge_refs = [ref.ref_id for ref in intelligence_trace.knowledge_refs] if intelligence_trace else []
     memory_refs = [ref.ref_id for ref in intelligence_trace.memory_refs] if intelligence_trace else []
     prompt_refs = [f"{ref.name}@{ref.version}" for ref in intelligence_trace.prompt_versions] if intelligence_trace else []
+    model_summary: str | None = None
 
     if ticket is not None:
         prompt = prompt_registry.get("report_generation_v1")
@@ -118,19 +119,24 @@ def generate_report(
             knowledge_refs=knowledge_refs,
             memory_refs=memory_refs,
         )
-        complete_with_configured_llm(
+        llm_response = complete_with_configured_llm(
             prompt_name=prompt.name,
             prompt_version=prompt.version,
             rendered_prompt=rendered_prompt,
-            system_instruction="You are a QA report generator operating in deterministic local mode.",
+            system_instruction=(
+                "You are an evidence-grounded QA report generator. Summarize outcomes, "
+                "risk, confidence, and practical next actions."
+            ),
             context=context,
             model_role="main_rag",
         )
+        if llm_response.provider != "mock_llm" and llm_response.text:
+            model_summary = llm_response.text[:2000]
         if "report_generation_v1@1.0.0" not in prompt_refs:
             prompt_refs.append("report_generation_v1@1.0.0")
 
     return ReportBlock(
-        summary=(
+        summary=model_summary or (
             f"Generated {len(test_cases)} starter test cases and "
             f"{automation_count} Robot automation files for "
             f"{ticket.id if ticket else 'unknown ticket'}. "

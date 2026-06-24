@@ -11,9 +11,20 @@ from backend.tools.git_handoff import GitExecutionResult
 from backend.tools.base import tool_registry
 from backend.graph.artifacts import relative_to_project, resolve_robot_file
 from backend.graph.regeneration import regenerate_after_changes
-from backend.graph.state import IntelligenceConfigBlock, ReviewFeedback, TestContext, TicketData, utc_now
+from backend.graph.state import (
+    AgentModelRouteBlock,
+    IntelligenceConfigBlock,
+    ReviewFeedback,
+    TestContext,
+    TicketData,
+    utc_now,
+)
 from backend.graph.workflow import create_initial_context, run_post_approval_workflow, run_workflow
-from backend.llm import llm_provider_registry
+from backend.intelligence.providers import (
+    validate_embedding_provider_selection,
+    validate_llm_provider_selection,
+)
+from backend.intelligence.routing import list_llm_agent_names
 from backend.storage.audit import append_audit_event
 from backend.storage.contexts import list_contexts, load_context, save_context
 from backend.security import Capability, Principal, require_capability
@@ -33,6 +44,7 @@ class IntelligenceConfigRequest(BaseModel):
     embedding_provider: str | None = Field(default=None, min_length=1)
     llm_model: str | None = Field(default=None, min_length=1)
     embedding_model: str | None = Field(default=None, min_length=1)
+    agent_routes: dict[str, AgentModelRouteBlock] = Field(default_factory=dict)
 
 
 class StartWorkflowRequest(BaseModel):
@@ -120,6 +132,10 @@ def run_and_persist_workflow_start(
         "embedding_provider": completed_context.intelligence_config.embedding_provider,
         "llm_model": completed_context.intelligence_config.llm_model,
         "embedding_model": completed_context.intelligence_config.embedding_model,
+        "agent_routes": {
+            agent_name: route.model_dump()
+            for agent_name, route in completed_context.intelligence_config.agent_routes.items()
+        },
     }
     completed_context.record_event(
         actor=created_by,
@@ -150,35 +166,36 @@ def build_intelligence_config(
         else settings.default_embedding_provider
     )
 
-    if not llm_provider_registry.has(llm_provider):
+    try:
+        validate_llm_provider_selection(llm_provider)
+        validate_embedding_provider_selection(embedding_provider)
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"LLM provider '{llm_provider}' is not registered",
-        )
-    llm_spec = llm_provider_registry.get(llm_provider).spec
-    if llm_spec.requires_external_api and not settings.external_connectors_enabled:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="External LLM providers are disabled in local architecture mode",
-        )
+            detail=str(exc),
+        ) from exc
 
-    if not embedding_provider_registry.has(embedding_provider):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Embedding provider '{embedding_provider}' is not registered",
-        )
-    embedding_spec = embedding_provider_registry.get(embedding_provider).spec
-    if embedding_spec.requires_external_api and not settings.external_connectors_enabled:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="External embedding providers are disabled in local architecture mode",
-        )
+    known_agents = list_llm_agent_names()
+    for agent_name, route in (request.agent_routes.items() if request else ()):
+        if agent_name not in known_agents:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Agent model route '{agent_name}' is not registered",
+            )
+        try:
+            validate_llm_provider_selection(route.provider)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{agent_name}: {exc}",
+            ) from exc
 
     return IntelligenceConfigBlock(
         llm_provider=llm_provider,
         embedding_provider=embedding_provider,
         llm_model=request.llm_model if request else None,
         embedding_model=request.embedding_model if request else None,
+        agent_routes=request.agent_routes if request else {},
     )
 
 

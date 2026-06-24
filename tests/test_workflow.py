@@ -25,7 +25,7 @@ def test_workflow_runs_ticket_to_report() -> None:
     result = run_workflow(context)
 
     assert result.workflow_status == "report_generated"
-    assert result.schema_version == "0.11.0"
+    assert result.schema_version == "0.12.0"
     assert result.ticket is not None
     assert result.requirement_analysis is not None
     assert result.requirement_analysis.domain == "banking"

@@ -40,15 +40,27 @@ class LocalHashEmbeddingModel:
 
 
 class EmbeddingProviderModel:
-    def __init__(self, provider_name: str) -> None:
+    def __init__(
+        self,
+        provider_name: str,
+        *,
+        model_override: str | None = None,
+    ) -> None:
         self.provider_name = provider_name
-        self.provider = embedding_provider_registry.create(provider_name)
+        self.provider = embedding_provider_registry.create(
+            provider_name,
+            model_override=model_override,
+        )
         self._fallback_provider = embedding_provider_registry.create(
             "local_hash_embeddings"
         )
         provider_spec = self.provider.spec
         self.spec = EmbeddingSpec(
-            name=provider_spec.name,
+            name=(
+                f"{provider_spec.name}:{model_override}"
+                if model_override
+                else provider_spec.name
+            ),
             dimension=provider_spec.dimensions,
             deterministic=provider_spec.name == "local_hash_embeddings",
             description=provider_spec.description,
@@ -65,10 +77,14 @@ class EmbeddingProviderModel:
 
 def create_embedding_model(
     provider_name: str | None = None,
+    model_override: str | None = None,
 ) -> LocalHashEmbeddingModel | EmbeddingProviderModel:
     selected_provider = provider_name or settings.default_embedding_provider
     if embedding_provider_registry.has(selected_provider):
-        return EmbeddingProviderModel(selected_provider)
+        return EmbeddingProviderModel(
+            selected_provider,
+            model_override=model_override,
+        )
     return LocalHashEmbeddingModel()
 
 

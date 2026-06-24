@@ -27,6 +27,9 @@ class EmbeddingResponse:
 class BaseEmbeddingProvider(ABC):
     spec: EmbeddingProviderSpec = EmbeddingProviderSpec(name="base")
 
+    def __init__(self, *, model_override: str | None = None) -> None:
+        self.model_override = model_override
+
     @abstractmethod
     def embed(self, text: str) -> EmbeddingResponse:
         raise NotImplementedError
@@ -67,8 +70,13 @@ class EmbeddingProviderRegistry:
 
         return decorator
 
-    def create(self, name: str) -> BaseEmbeddingProvider:
-        return self.get(name)()
+    def create(
+        self,
+        name: str,
+        *,
+        model_override: str | None = None,
+    ) -> BaseEmbeddingProvider:
+        return self.get(name)(model_override=model_override)
 
     def get(self, name: str) -> type[BaseEmbeddingProvider]:
         normalized_name = _require_name(name)

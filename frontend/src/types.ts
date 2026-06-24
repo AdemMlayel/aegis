@@ -158,6 +158,7 @@ export type IntelligenceTrace = {
   configured_embedding_provider: string;
   configured_llm_model: string | null;
   configured_embedding_model: string | null;
+  configured_agent_routes: Record<string, AgentModelRoute>;
   knowledge_refs: Array<{ ref_id: string; title: string; source: string; score: number; excerpt: string }>;
   memory_refs: Array<{ ref_id: string; title: string; source: string; score: number; excerpt: string }>;
   prompt_versions: Array<{ name: string; version: string }>;
@@ -167,10 +168,16 @@ export type IntelligenceTrace = {
     prompt_name: string;
     prompt_version: string;
     deterministic: boolean;
+    agent_name: string | null;
     model_role: string | null;
     requested_model: string | null;
     summary: string;
   }>;
+};
+
+export type AgentModelRoute = {
+  provider: string;
+  model: string | null;
 };
 
 export type IntelligenceConfig = {
@@ -178,6 +185,7 @@ export type IntelligenceConfig = {
   embedding_provider: string;
   llm_model: string | null;
   embedding_model: string | null;
+  agent_routes: Record<string, AgentModelRoute>;
 };
 
 export type IntegrationProviderRef = {
@@ -276,6 +284,9 @@ export type LLMProvider = {
   model: string;
   requires_external_api: boolean;
   description: string;
+  configuration_status: "ready" | "disabled" | "unconfigured";
+  configuration_keys: string[];
+  selectable: boolean;
 };
 
 export type EmbeddingProvider = {
@@ -285,6 +296,39 @@ export type EmbeddingProvider = {
   dimensions: number;
   requires_external_api: boolean;
   description: string;
+  configuration_status: "ready" | "disabled" | "unconfigured";
+  configuration_keys: string[];
+  selectable: boolean;
+};
+
+export type AgentModelProfile = {
+  agent_name: string;
+  label: string;
+  purpose: string;
+  uses_llm: boolean;
+  prompt_names: string[];
+  local_role: string | null;
+  recommended_mode: "external" | "local" | "deterministic";
+  rationale: string;
+  local_provider: string | null;
+  local_model: string | null;
+  external_provider: string | null;
+  external_model: string | null;
+  recommended_provider: string | null;
+  recommended_model: string | null;
+};
+
+export type EmbeddingRecommendation = {
+  recommended_mode: "local";
+  recommended_provider: string;
+  recommended_model: string;
+  fallback_provider: string;
+  rationale: string;
+};
+
+export type AgentRoutingCatalog = {
+  agents: AgentModelProfile[];
+  embedding: EmbeddingRecommendation;
 };
 
 export type OllamaHealth = {
