@@ -197,6 +197,15 @@ def review_workflow_stage(
         raise WorkflowControlBadRequest(
             "request_changes decisions require a comment"
         )
+    if (
+        stage == "validation"
+        and decision == "approve"
+        and context.validation_summary is not None
+        and context.validation_summary.status == "failed"
+    ):
+        raise WorkflowControlConflict(
+            "Failed validation cannot be approved; request changes and rerun validation"
+        )
     pending_stages = {
         name
         for name, item in control.stage_reviews.items()
@@ -585,6 +594,7 @@ def _invalidate_from_stage(
         context.test_data = {}
     if restart_index <= WORKFLOW_STAGE_SEQUENCE.index("automation"):
         context.automation = {}
+        context.validation_summary = None
     if restart_index <= WORKFLOW_STAGE_SEQUENCE.index("approval"):
         context.approval = None
     if restart_stage != "report":
@@ -631,6 +641,7 @@ def _invalidate_after_artifact_edit(
         control.state = "paused"
     control.pause_requested = False
     context.approval = None
+    context.validation_summary = None
     context.execution_request = None
     context.execution = None
     context.investigation = None

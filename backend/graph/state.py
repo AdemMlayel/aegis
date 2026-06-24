@@ -168,6 +168,30 @@ class AutomationBlock(StrictModel):
     generated_at: datetime = Field(default_factory=utc_now)
 
 
+class ValidationSummary(StrictModel):
+    generated_at: datetime = Field(default_factory=utc_now)
+    status: Literal["passed", "warning", "failed"] = "failed"
+    total_artifacts: int = Field(default=0, ge=0)
+    passed_artifacts: int = Field(default=0, ge=0)
+    failed_artifacts: int = Field(default=0, ge=0)
+    requirement_coverage_percent: int = Field(default=0, ge=0, le=100)
+    artifact_pass_percent: int = Field(default=0, ge=0, le=100)
+    data_reference_percent: int = Field(default=0, ge=0, le=100)
+    requirement_completeness_percent: int = Field(default=0, ge=0, le=100)
+    quality_score: int = Field(default=0, ge=0, le=100)
+    missing_requirements: list[str] = Field(default_factory=list)
+    risk_areas: list[str] = Field(default_factory=list)
+    validator_mode: Literal[
+        "robot_dry_run",
+        "local_structural",
+        "mixed",
+        "not_run",
+    ] = "not_run"
+    total_attempts: int = Field(default=0, ge=0)
+    retry_count: int = Field(default=0, ge=0)
+    max_retries: int = Field(default=0, ge=0)
+
+
 class ExecutionCaseResult(StrictModel):
     test_case_id: str
     title: str
@@ -413,6 +437,7 @@ class TestContext(StrictModel):
     test_data: dict[str, TestDataBlock] = Field(default_factory=dict)
     automation_revision: int = 0
     automation: dict[str, AutomationBlock] = Field(default_factory=dict)
+    validation_summary: ValidationSummary | None = None
     execution_request: ExecutionRequestBlock | None = None
     execution: ExecutionBlock | None = None
     investigation: InvestigationBlock | None = None

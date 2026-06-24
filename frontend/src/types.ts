@@ -94,6 +94,25 @@ export type AutomationBlock = {
   };
 };
 
+export type ValidationSummary = {
+  generated_at: string;
+  status: "passed" | "warning" | "failed";
+  total_artifacts: number;
+  passed_artifacts: number;
+  failed_artifacts: number;
+  requirement_coverage_percent: number;
+  artifact_pass_percent: number;
+  data_reference_percent: number;
+  requirement_completeness_percent: number;
+  quality_score: number;
+  missing_requirements: string[];
+  risk_areas: string[];
+  validator_mode: "robot_dry_run" | "local_structural" | "mixed" | "not_run";
+  total_attempts: number;
+  retry_count: number;
+  max_retries: number;
+};
+
 export type ExecutionArtifact = {
   kind: string;
   path: string | null;
@@ -276,6 +295,8 @@ export type TestContext = {
   updated_at: string;
   workflow_status: string;
   current_node: string | null;
+  validation_retry_count: number;
+  max_validation_retries: number;
   workflow_trace: Array<{
     node_name: string;
     status: "started" | "completed" | "failed" | "routed";
@@ -294,6 +315,7 @@ export type TestContext = {
   test_cases: TestCase[];
   automation_revision: number;
   automation: Record<string, AutomationBlock>;
+  validation_summary: ValidationSummary | null;
   execution: ExecutionBlock | null;
   investigation: InvestigationBlock | null;
   memory_archive: MemoryArchiveBlock | null;

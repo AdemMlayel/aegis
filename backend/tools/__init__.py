@@ -13,6 +13,7 @@ from backend.tools.requirement_heuristics import LocalRequirementHeuristicTool
 from backend.tools.robot_validation import LocalRobotValidationTool
 from backend.tools.test_case_heuristics import LocalTestCaseHeuristicTool
 from backend.tools.test_data_heuristics import LocalTestDataHeuristicTool
+from backend.tools.validation_summary import ValidationSummaryTool
 
 __all__ = [
     "BaseTool",
@@ -24,6 +25,7 @@ __all__ = [
     "LocalRobotValidationTool",
     "LocalTestCaseHeuristicTool",
     "LocalTestDataHeuristicTool",
+    "ValidationSummaryTool",
     "ToolRegistrationError",
     "ToolRegistry",
     "ToolSpec",

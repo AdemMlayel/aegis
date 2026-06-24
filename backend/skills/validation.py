@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import backend.tools.robot_validation  # Registers LocalRobotValidationTool.
-from backend.graph.state import AutomationBlock, TestContext
+import backend.tools.validation_summary  # Registers ValidationSummaryTool.
+from backend.graph.state import AutomationBlock, TestContext, ValidationSummary
 from backend.skills.base import BaseSkill, skill_registry
 from backend.tools.base import ToolRegistry, tool_registry as default_tool_registry
 
 
 @skill_registry.register(
     name="ValidateAutomationSkill",
-    tools=["LocalRobotValidationTool"],
+    tools=["LocalRobotValidationTool", "ValidationSummaryTool"],
     description="Validates generated automation artifacts before human approval.",
 )
 class ValidateAutomationSkill(BaseSkill):
@@ -36,6 +37,23 @@ class ValidateAutomationSkill(BaseSkill):
             )
 
         context.automation = automation
+        summary_result = self.tool_registry.execute(
+            "ValidationSummaryTool",
+            actor="system",
+            context_id=context.context_id,
+            audit_sink=context.record_event,
+            automation=context.automation,
+            test_cases=context.test_cases,
+            coverage_plan=context.coverage_plan,
+            requirement_analysis=context.requirement_analysis,
+            retry_count=context.validation_retry_count,
+            max_retries=context.max_validation_retries,
+        )
+        if not isinstance(summary_result.value, ValidationSummary):
+            raise TypeError(
+                "Validation summary tools must return ValidationSummary"
+            )
+        context.validation_summary = summary_result.value
         all_ready = all(
             block.validation.artifact_exists
             and block.data_reference_check_passed

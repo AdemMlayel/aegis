@@ -6,8 +6,10 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from backend.main import app
+from backend.graph.state import StageReviewBlock, ValidationSummary, utc_now
 from backend.security import Capability, Role
 from backend.security.rbac import ROLE_CAPABILITIES
+from backend.storage.contexts import load_context, save_context
 
 
 def _session_payload(*, mode: str) -> dict[str, object]:
@@ -273,6 +275,51 @@ def test_pause_is_persisted_at_stage_boundaries() -> None:
     assert control["state"] == "paused"
     assert control["pause_requested"] is True
     assert control["next_stage"] == "ticket"
+
+
+def test_failed_validation_stage_cannot_be_approved() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/workflows/sessions",
+        json=_session_payload(mode="approval_required"),
+    )
+    context_id = created.json()["context"]["context_id"]
+    context = load_context(context_id)
+    assert context is not None
+    context.workflow_control.state = "waiting_review"
+    context.workflow_control.completed_stages = [
+        "ticket",
+        "requirements",
+        "coverage",
+        "tests",
+        "automation",
+        "validation",
+    ]
+    context.workflow_control.next_stage = "approval"
+    context.workflow_control.stage_reviews["validation"] = StageReviewBlock(
+        stage="validation",
+        status="pending",
+        requested_at=utc_now(),
+        requested_by="workflow-operator",
+    )
+    context.validation_summary = ValidationSummary(
+        status="failed",
+        total_artifacts=1,
+        failed_artifacts=1,
+        risk_areas=["One automation artifact failed validation."],
+    )
+    save_context(context)
+
+    response = client.post(
+        f"/api/v1/workflows/{context_id}/stages/validation/review",
+        json={
+            "decision": "approve",
+            "reviewed_by": "qa-lead",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "Failed validation cannot be approved" in response.json()["detail"]
 
 
 def test_robot_artifact_edits_are_versioned_and_require_revalidation() -> None:

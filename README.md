@@ -11,7 +11,7 @@ Implemented and verified locally:
 - FastAPI backend.
 - React three-panel agent operations workspace.
 - Agent -> Skill -> Tool architecture.
-- Typed workflow context schema `0.13.0`.
+- Typed workflow context schema `0.14.0`.
 - Full local workflow graph with validation retry, approval, execution, investigation, memory archive, and reporting.
 - Local/mock Jira-style ticket provider.
 - Toolized Git handoff boundary.
@@ -28,13 +28,14 @@ Implemented and verified locally:
 - Clean package script.
 - Controlled workflow sessions with autonomous, approval-required, and step-by-step modes.
 - Pollable workflow timeline, stage review/regeneration, artifact revision history, and execution logs.
+- Deterministic validation summary with traceability, quality scoring, risk areas, and retry evidence.
 - Backend tests and frontend production build verified.
 
 Verification result during hardening:
 
 ```bash
 python -m pytest -q
-# 103 passed
+# 105 passed
 
 cd frontend
 npm install

@@ -9,6 +9,7 @@ import {
   Code2,
   FileCheck2,
   FileText,
+  Gauge,
   GitCompareArrows,
   Loader2,
   MessageSquare,
@@ -40,7 +41,12 @@ import type {
   WorkflowStageName
 } from "../types";
 
-export type WorkspaceView = "conversation" | "tests" | "artifacts" | "evidence";
+export type WorkspaceView =
+  | "conversation"
+  | "tests"
+  | "artifacts"
+  | "validation"
+  | "evidence";
 
 const STAGES: Array<{ name: WorkflowStageName; label: string }> = [
   { name: "ticket", label: "Ticket" },
@@ -177,6 +183,7 @@ export function ConversationWorkspace({
         <TabButton active={view === "conversation"} icon={<MessageSquare />} label="Activity" onClick={() => onViewChange("conversation")} />
         <TabButton active={view === "tests"} icon={<TestTube2 />} label={`Tests ${context.test_cases.length || ""}`} onClick={() => onViewChange("tests")} />
         <TabButton active={view === "artifacts"} icon={<Code2 />} label="Artifacts" onClick={() => onViewChange("artifacts")} />
+        <TabButton active={view === "validation"} icon={<Gauge />} label="Validation" onClick={() => onViewChange("validation")} />
         <TabButton active={view === "evidence"} icon={<FileText />} label="Evidence" onClick={() => onViewChange("evidence")} />
       </nav>
 
@@ -283,6 +290,18 @@ export function ConversationWorkspace({
           onRegenerateAutomation={(comment) => {
             onRegenerateStage("automation", comment);
           }}
+        />
+      ) : null}
+
+      {view === "validation" ? (
+        <ValidationWorkspace
+          context={context}
+          timeline={displayEvents}
+          busy={busy !== null}
+          onApprove={(comment) => onReviewStage("validation", "approve", comment)}
+          onRequestChanges={(comment) => onReviewStage("validation", "request_changes", comment)}
+          onRegenerate={(comment) => onRegenerateStage("validation", comment)}
+          onEditArtifacts={() => onViewChange("artifacts")}
         />
       ) : null}
 
@@ -530,6 +549,23 @@ function LatestDeliverable({
           <Metric label="Tests" value={String(context.reports.total_test_cases)} />
           <Metric label="Risk" value={context.reports.highest_risk} />
           <Metric label="Confidence" value={`${Math.round(context.reports.confidence * 100)}%`} />
+        </div>
+      </section>
+    );
+  }
+  if (context.validation_summary) {
+    const summary = context.validation_summary;
+    return (
+      <section className="deliverable-block">
+        <div className="deliverable-title"><Gauge /><h2>Validation gate</h2></div>
+        <p>
+          Quality score {summary.quality_score}/100 with{" "}
+          {summary.passed_artifacts}/{summary.total_artifacts} artifacts passing.
+        </p>
+        <div className="deliverable-metrics">
+          <Metric label="Coverage" value={`${summary.requirement_coverage_percent}%`} />
+          <Metric label="Artifacts" value={`${summary.artifact_pass_percent}%`} />
+          <Metric label="Status" value={summary.status} />
         </div>
       </section>
     );
@@ -859,6 +895,258 @@ function ArtifactWorkspace({
   );
 }
 
+function ValidationWorkspace({
+  context,
+  timeline,
+  busy,
+  onApprove,
+  onRequestChanges,
+  onRegenerate,
+  onEditArtifacts
+}: {
+  context: TestContext;
+  timeline: WorkflowEvent[];
+  busy: boolean;
+  onApprove: (comment?: string) => void;
+  onRequestChanges: (comment: string) => void;
+  onRegenerate: (comment: string) => void;
+  onEditArtifacts: () => void;
+}) {
+  const [comment, setComment] = useState("");
+  const summary = context.validation_summary;
+  const validationReview = context.workflow_control.stage_reviews.validation;
+  const reviewPending = (
+    context.workflow_control.state === "waiting_review"
+    && validationReview?.status === "pending"
+  );
+  const retryTrace = context.workflow_trace.filter(
+    (event) => (
+      event.node_name === "validation_retry_gate"
+      && (event.status === "routed" || event.summary?.toLowerCase().includes("validation"))
+    )
+  );
+  const validationEvents = timeline.filter((event) => event.stage === "validation");
+
+  if (!summary) {
+    return (
+      <section className="validation-workspace">
+        <EmptyView
+          icon={<Gauge />}
+          text="Validation evidence appears after the validation stage runs."
+        />
+      </section>
+    );
+  }
+
+  return (
+    <section className="validation-workspace">
+      <header className="validation-header">
+        <div className={`quality-score ${summary.status}`}>
+          <span>Quality score</span>
+          <strong>{summary.quality_score}</strong>
+          <small>out of 100</small>
+        </div>
+        <div className="validation-heading">
+          <span className="panel-kicker">Deterministic validation gate</span>
+          <h2>{validationHeadline(summary.status)}</h2>
+          <p>
+            {summary.passed_artifacts} of {summary.total_artifacts} Robot artifacts
+            passed using {summary.validator_mode.replaceAll("_", " ")} validation.
+          </p>
+        </div>
+        <StatusPill value={summary.status} />
+      </header>
+
+      <div className="validation-metrics">
+        <ValidationMetric
+          label="Requirement coverage"
+          value={summary.requirement_coverage_percent}
+        />
+        <ValidationMetric
+          label="Artifact pass rate"
+          value={summary.artifact_pass_percent}
+        />
+        <ValidationMetric
+          label="Test data references"
+          value={summary.data_reference_percent}
+        />
+        <ValidationMetric
+          label="Requirement completeness"
+          value={summary.requirement_completeness_percent}
+        />
+      </div>
+
+      {reviewPending ? (
+        <section className="validation-decision">
+          <div>
+            <span className="summary-label">Validation review</span>
+            <strong>
+              {summary.status === "failed"
+                ? "Resolve failed checks before approval."
+                : "Approve this evidence package or direct another iteration."}
+            </strong>
+          </div>
+          <textarea
+            rows={2}
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            placeholder="Approval note or required correction..."
+          />
+          <div className="validation-decision-actions">
+            <button
+              className="command-button primary"
+              disabled={busy || summary.status === "failed"}
+              onClick={() => {
+                onApprove(comment.trim() || undefined);
+                setComment("");
+              }}
+            >
+              <Check /> Approve validation
+            </button>
+            <button
+              className="command-button secondary"
+              disabled={busy || !comment.trim()}
+              onClick={() => {
+                onRequestChanges(comment.trim());
+                setComment("");
+              }}
+            >
+              <X /> Request changes
+            </button>
+            <button
+              className="command-button secondary"
+              disabled={busy || !comment.trim()}
+              onClick={() => {
+                onRegenerate(comment.trim());
+                setComment("");
+              }}
+            >
+              <RotateCcw /> Regenerate automation
+            </button>
+            <button className="icon-command" onClick={onEditArtifacts} title="Edit automation artifacts">
+              <Code2 />
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      <div className="validation-columns">
+        <section className="validation-section">
+          <div className="view-heading">
+            <div>
+              <span className="panel-kicker">Per-file evidence</span>
+              <h2>Artifact checks</h2>
+            </div>
+            <span className="count-badge">
+              {summary.passed_artifacts}/{summary.total_artifacts}
+            </span>
+          </div>
+          <div className="validation-artifact-list">
+            {Object.values(context.automation).map((block) => {
+              const passed = (
+                block.validation.artifact_exists
+                && block.data_reference_check_passed
+                && block.validation.dry_run_passed === true
+              );
+              return (
+                <details className={`validation-artifact ${passed ? "passed" : "failed"}`} key={block.test_case_id}>
+                  <summary>
+                    <span className="validation-result-icon">
+                      {passed ? <CheckCircle2 /> : <TriangleAlert />}
+                    </span>
+                    <span>
+                      <strong>{block.test_case_id}</strong>
+                      <small>{block.robot_file.split("/").at(-1)}</small>
+                    </span>
+                    <StatusPill value={passed ? "passed" : "failed"} />
+                  </summary>
+                  <dl className="artifact-check-grid">
+                    <div><dt>Artifact exists</dt><dd>{yesNo(block.validation.artifact_exists)}</dd></div>
+                    <div><dt>Data references</dt><dd>{yesNo(block.data_reference_check_passed)}</dd></div>
+                    <div><dt>Dry run</dt><dd>{validationText(block.validation.dry_run_passed)}</dd></div>
+                    <div><dt>Attempts</dt><dd>{block.validation.validation_attempts}</dd></div>
+                  </dl>
+                  {block.validation.dry_run_skipped_reason ? (
+                    <p className="validation-note">{block.validation.dry_run_skipped_reason}</p>
+                  ) : null}
+                  {block.validation.errors.length ? (
+                    <ul className="validation-errors">
+                      {block.validation.errors.map((error, index) => (
+                        <li key={`${block.test_case_id}-${index}`}>{error}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </details>
+              );
+            })}
+          </div>
+        </section>
+
+        <aside className="validation-side">
+          <section className="validation-section">
+            <div className="view-heading">
+              <div>
+                <span className="panel-kicker">Traceability</span>
+                <h2>Requirements</h2>
+              </div>
+            </div>
+            <div className="traceability-list">
+              {Object.entries(context.coverage_plan?.coverage_matrix ?? {}).map(
+                ([requirement, testIds]) => {
+                  const missing = summary.missing_requirements.includes(requirement);
+                  return (
+                    <div className={`traceability-row ${missing ? "missing" : ""}`} key={requirement}>
+                      <span>{missing ? <TriangleAlert /> : <CheckCircle2 />}</span>
+                      <div><strong>{requirement}</strong><small>{testIds.join(", ")}</small></div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </section>
+
+          <section className="validation-section">
+            <div className="view-heading">
+              <div>
+                <span className="panel-kicker">Risk review</span>
+                <h2>Open areas</h2>
+              </div>
+            </div>
+            {summary.risk_areas.length ? (
+              <ul className="risk-list">
+                {summary.risk_areas.map((risk, index) => <li key={`${risk}-${index}`}>{risk}</li>)}
+              </ul>
+            ) : (
+              <p className="validation-clear"><CheckCircle2 /> No validation risks detected.</p>
+            )}
+          </section>
+
+          <section className="validation-section">
+            <div className="view-heading">
+              <div>
+                <span className="panel-kicker">Execution history</span>
+                <h2>Retries and evidence</h2>
+              </div>
+            </div>
+            <dl className="validation-facts">
+              <div><dt>Validation attempts</dt><dd>{summary.total_attempts}</dd></div>
+              <div><dt>Workflow retries</dt><dd>{summary.retry_count}/{summary.max_retries}</dd></div>
+              <div><dt>Stage revision</dt><dd>{context.workflow_control.stage_revisions.validation ?? 1}</dd></div>
+              <div><dt>Events recorded</dt><dd>{validationEvents.length}</dd></div>
+            </dl>
+            {retryTrace.map((event, index) => (
+              <div className="retry-entry" key={`${event.timestamp}-${index}`}>
+                <RotateCcw />
+                <div><strong>Retry {event.iteration}</strong><small>{event.summary ?? "Validation rerouted to automation."}</small></div>
+              </div>
+            ))}
+          </section>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
 function EvidenceWorkspace({
   context,
   executionRuns,
@@ -957,6 +1245,15 @@ function StatusPill({ value }: { value: string }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return <div className="deliverable-metric"><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function ValidationMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="validation-metric">
+      <div><span>{label}</span><strong>{value}%</strong></div>
+      <span className="metric-track"><span style={{ width: `${value}%` }} /></span>
+    </div>
+  );
 }
 
 function BulletList({ items }: { items: string[] }) {
@@ -1067,6 +1364,16 @@ function validationText(value: boolean | null): string {
   if (value === true) return "Passed";
   if (value === false) return "Failed";
   return "Needs validation";
+}
+
+function validationHeadline(status: "passed" | "warning" | "failed"): string {
+  if (status === "passed") return "Validation passed";
+  if (status === "warning") return "Validation passed with review notes";
+  return "Validation failed";
+}
+
+function yesNo(value: boolean): string {
+  return value ? "Passed" : "Failed";
 }
 
 function formatTime(value: string): string {

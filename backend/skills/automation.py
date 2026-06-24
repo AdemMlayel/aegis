@@ -58,5 +58,6 @@ class GenerateAutomationSkill(BaseSkill):
                 item.status = "applied"
 
         context.automation = automation
+        context.validation_summary = None
         context.mark("automation_generated")
         return context

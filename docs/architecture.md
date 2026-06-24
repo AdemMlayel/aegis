@@ -88,6 +88,12 @@ Robot artifact edits are versioned in `artifact_revisions`. Editing an artifact
 clears its validation result and invalidates downstream approval/report state,
 so manually changed code cannot retain an earlier green status.
 
+Validation produces a deterministic summary in the workflow context. Its
+quality score combines requirement traceability, artifact dry-run results,
+resolved test-data references, and requirement completeness. The dashboard
+shows every score component, validator mode, retry history, missing requirement
+references, and per-artifact errors. Failed validation cannot be approved.
+
 ## Security and RBAC
 
 The API now has a local RBAC scaffold under `backend/security/rbac.py`.
