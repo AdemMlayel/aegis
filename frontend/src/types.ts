@@ -366,6 +366,30 @@ export type ArtifactRevision = {
   created_at: string;
 };
 
+export type ReportPackageFile = {
+  path: string;
+  kind: string;
+  content_type: string;
+  description: string;
+  size_bytes: number;
+  sha256: string;
+};
+
+export type ReportPackageManifest = {
+  context_id: string;
+  ticket_id: string | null;
+  ticket_title: string | null;
+  generated_at: string;
+  package_name: string;
+  package_status: "draft" | "ready_for_approval" | "approved" | "executed";
+  approval_status: string;
+  execution_status: string;
+  validation_status: string;
+  quality_score: number | null;
+  files: ReportPackageFile[];
+  warnings: string[];
+};
+
 export type ProviderCatalogEntry = {
   kind: string;
   name: string;

@@ -94,6 +94,13 @@ resolved test-data references, and requirement completeness. The dashboard
 shows every score component, validator mode, retry history, missing requirement
 references, and per-artifact errors. Failed validation cannot be approved.
 
+Final report exports are assembled by `backend/services/report_packages.py`.
+The controller exposes a manifest, technical Markdown, executive Markdown, and
+an in-memory ZIP. The package includes the typed context, test cases, validation
+summary, decision history, Robot files, and any real execution, investigation,
+memory, or Git handoff evidence. Every manifest entry records its byte size and
+SHA-256 hash, and all filesystem inputs are restricted to generated roots.
+
 ## Security and RBAC
 
 The API now has a local RBAC scaffold under `backend/security/rbac.py`.

@@ -14,6 +14,7 @@ import type {
   OllamaModelProfiles,
   OllamaSmokeTestResult,
   ProviderCatalog,
+  ReportPackageManifest,
   TestContext,
   TicketData,
   TicketStatus,
@@ -298,6 +299,43 @@ export async function getWorkflow(contextId: string): Promise<TestContext> {
   const response = await fetch(`${API_ROOT}/workflows/${contextId}`);
   const body = await parseResponse<{ context: TestContext }>(response);
   return body.context;
+}
+
+export async function getReportPackageManifest(
+  contextId: string
+): Promise<ReportPackageManifest> {
+  const response = await fetch(
+    `${API_ROOT}/workflows/${encodeURIComponent(contextId)}/package/manifest`
+  );
+  return parseResponse<ReportPackageManifest>(response);
+}
+
+export async function downloadWorkflowReport(
+  contextId: string,
+  format: "package" | "technical" | "executive"
+): Promise<void> {
+  const suffix = format === "package"
+    ? "package.zip"
+    : `package/${format}.md`;
+  const response = await fetch(
+    `${API_ROOT}/workflows/${encodeURIComponent(contextId)}/${suffix}`
+  );
+  if (!response.ok) {
+    await parseResponse<never>(response);
+    return;
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const fileName = disposition.match(/filename="([^"]+)"/)?.[1]
+    ?? `aegisqa-${contextId}-${format}`;
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export async function listWorkflows(payload: {

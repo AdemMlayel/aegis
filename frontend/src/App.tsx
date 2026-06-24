@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createWorkflowSession,
   decideApproval,
+  downloadWorkflowReport,
   editAutomationArtifact,
   executeWorkflow,
   getAgentModelProfiles,
@@ -12,6 +13,7 @@ import {
   getOllamaHealth,
   getOllamaProfiles,
   getProviderCatalog,
+  getReportPackageManifest,
   getWorkflow,
   listArtifactRevisions,
   listExecutionEvents,
@@ -48,6 +50,7 @@ import type {
   OllamaHealth,
   OllamaModelProfiles,
   ProviderCatalog,
+  ReportPackageManifest,
   TestContext,
   TicketData,
   WorkflowEvent,
@@ -89,6 +92,7 @@ export default function App() {
   const [artifactRevisions, setArtifactRevisions] = useState<ArtifactRevision[]>([]);
   const [executionRuns, setExecutionRuns] = useState<ExecutionRunRecord[]>([]);
   const [executionEvents, setExecutionEvents] = useState<ExecutionEvent[]>([]);
+  const [reportPackage, setReportPackage] = useState<ReportPackageManifest | null>(null);
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -162,6 +166,29 @@ export default function App() {
     }
     void refreshExecution(context.context_id);
   }, [context?.context_id]);
+
+  useEffect(() => {
+    if (!context?.reports) {
+      setReportPackage(null);
+      return;
+    }
+    let cancelled = false;
+    getReportPackageManifest(context.context_id)
+      .then((manifest) => {
+        if (!cancelled) setReportPackage(manifest);
+      })
+      .catch(() => {
+        if (!cancelled) setReportPackage(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    context?.context_id,
+    context?.updated_at,
+    context?.approval?.status,
+    context?.execution?.status
+  ]);
 
   useEffect(() => {
     if (!context?.ticket || !selectedTest) {
@@ -441,6 +468,15 @@ export default function App() {
     }
   }
 
+  async function downloadReport(
+    format: "package" | "technical" | "executive"
+  ) {
+    if (!context) return;
+    await runAction("download", () =>
+      downloadWorkflowReport(context.context_id, format)
+    );
+  }
+
   async function sendMessage(message: string) {
     if (!context) return;
     const event = await runAction("message", () =>
@@ -581,6 +617,7 @@ export default function App() {
           artifactRevisions={artifactRevisions}
           executionRuns={executionRuns}
           executionEvents={executionEvents}
+          reportPackage={reportPackage}
           busy={busy}
           configCollapsed={configCollapsed}
           onViewChange={setView}
@@ -605,6 +642,7 @@ export default function App() {
           }}
           onArtifactDraftChange={setArtifactDraft}
           onSaveArtifact={(comment) => void saveArtifact(comment)}
+          onDownloadReport={(format) => void downloadReport(format)}
         />
       </div>
 

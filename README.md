@@ -29,13 +29,14 @@ Implemented and verified locally:
 - Controlled workflow sessions with autonomous, approval-required, and step-by-step modes.
 - Pollable workflow timeline, stage review/regeneration, artifact revision history, and execution logs.
 - Deterministic validation summary with traceability, quality scoring, risk areas, and retry evidence.
+- Final technical/executive reports with a hashed ZIP evidence package and export manifest.
 - Backend tests and frontend production build verified.
 
 Verification result during hardening:
 
 ```bash
 python -m pytest -q
-# 105 passed
+# 109 passed
 
 cd frontend
 npm install
@@ -337,6 +338,7 @@ The frontend exposes this flow as one operational workspace:
 - Left workspace queue with ticket search and run-state filters.
 - Central activity timeline with eight workflow stages and approval controls.
 - Dedicated test, automation artifact, and evidence views.
+- Validation and final-report workspaces with approval and export controls.
 - Editable Robot artifact with revision history and downstream invalidation.
 - Right-side execution mode, provider routing, embedding, knowledge, and health controls.
 
@@ -356,6 +358,10 @@ POST /api/v1/workflows/sessions
 POST /api/v1/workflows/{context_id}/resume
 POST /api/v1/workflows/{context_id}/next
 GET  /api/v1/workflows/{context_id}/timeline
+GET  /api/v1/workflows/{context_id}/package/manifest
+GET  /api/v1/workflows/{context_id}/package/technical.md
+GET  /api/v1/workflows/{context_id}/package/executive.md
+GET  /api/v1/workflows/{context_id}/package.zip
 POST /api/v1/workflows/{context_id}/approval
 POST /api/v1/workflows/{context_id}/execute
 POST /api/v1/execute

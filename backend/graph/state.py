@@ -337,6 +337,7 @@ AuditEventType = Literal[
     "workflow_control",
     "stage_review",
     "artifact_revision",
+    "report_package_exported",
 ]
 
 

@@ -7,7 +7,10 @@ import {
   CircleDashed,
   Clock3,
   Code2,
+  Download,
+  FileArchive,
   FileCheck2,
+  FileJson2,
   FileText,
   Gauge,
   GitCompareArrows,
@@ -35,6 +38,7 @@ import type {
   ArtifactRevision,
   ExecutionEvent,
   ExecutionRunRecord,
+  ReportPackageManifest,
   TestCase,
   TestContext,
   WorkflowEvent,
@@ -46,6 +50,7 @@ export type WorkspaceView =
   | "tests"
   | "artifacts"
   | "validation"
+  | "report"
   | "evidence";
 
 const STAGES: Array<{ name: WorkflowStageName; label: string }> = [
@@ -70,6 +75,7 @@ export function ConversationWorkspace({
   artifactRevisions,
   executionRuns,
   executionEvents,
+  reportPackage,
   busy,
   configCollapsed,
   onViewChange,
@@ -87,7 +93,8 @@ export function ConversationWorkspace({
   onStartArtifactEdit,
   onCancelArtifactEdit,
   onArtifactDraftChange,
-  onSaveArtifact
+  onSaveArtifact,
+  onDownloadReport
 }: {
   context: TestContext | null;
   timeline: WorkflowEvent[];
@@ -99,6 +106,7 @@ export function ConversationWorkspace({
   artifactRevisions: ArtifactRevision[];
   executionRuns: ExecutionRunRecord[];
   executionEvents: ExecutionEvent[];
+  reportPackage: ReportPackageManifest | null;
   busy: string | null;
   configCollapsed: boolean;
   onViewChange: (view: WorkspaceView) => void;
@@ -121,6 +129,9 @@ export function ConversationWorkspace({
   onCancelArtifactEdit: () => void;
   onArtifactDraftChange: (value: string) => void;
   onSaveArtifact: (comment?: string) => void;
+  onDownloadReport: (
+    format: "package" | "technical" | "executive"
+  ) => void;
 }) {
   const [message, setMessage] = useState("");
   const [reviewComment, setReviewComment] = useState("");
@@ -184,6 +195,7 @@ export function ConversationWorkspace({
         <TabButton active={view === "tests"} icon={<TestTube2 />} label={`Tests ${context.test_cases.length || ""}`} onClick={() => onViewChange("tests")} />
         <TabButton active={view === "artifacts"} icon={<Code2 />} label="Artifacts" onClick={() => onViewChange("artifacts")} />
         <TabButton active={view === "validation"} icon={<Gauge />} label="Validation" onClick={() => onViewChange("validation")} />
+        <TabButton active={view === "report"} icon={<FileCheck2 />} label="Report" onClick={() => onViewChange("report")} />
         <TabButton active={view === "evidence"} icon={<FileText />} label="Evidence" onClick={() => onViewChange("evidence")} />
       </nav>
 
@@ -302,6 +314,23 @@ export function ConversationWorkspace({
           onRequestChanges={(comment) => onReviewStage("validation", "request_changes", comment)}
           onRegenerate={(comment) => onRegenerateStage("validation", comment)}
           onEditArtifacts={() => onViewChange("artifacts")}
+        />
+      ) : null}
+
+      {view === "report" ? (
+        <ReportWorkspace
+          context={context}
+          manifest={reportPackage}
+          busy={busy !== null}
+          onReviewReport={(decision, comment) => {
+            onReviewStage("report", decision, comment);
+          }}
+          onRegenerateReport={(comment) => {
+            onRegenerateStage("report", comment);
+          }}
+          onApprovePackage={onApproveWorkflow}
+          onExecute={onExecuteWorkflow}
+          onDownload={onDownloadReport}
         />
       ) : null}
 
@@ -1147,6 +1176,324 @@ function ValidationWorkspace({
   );
 }
 
+function ReportWorkspace({
+  context,
+  manifest,
+  busy,
+  onReviewReport,
+  onRegenerateReport,
+  onApprovePackage,
+  onExecute,
+  onDownload
+}: {
+  context: TestContext;
+  manifest: ReportPackageManifest | null;
+  busy: boolean;
+  onReviewReport: (
+    decision: "approve" | "request_changes",
+    comment?: string
+  ) => void;
+  onRegenerateReport: (comment: string) => void;
+  onApprovePackage: () => void;
+  onExecute: () => void;
+  onDownload: (
+    format: "package" | "technical" | "executive"
+  ) => void;
+}) {
+  const [comment, setComment] = useState("");
+  const report = context.reports;
+  const reportReview = context.workflow_control.stage_reviews.report;
+  const reportReviewPending = (
+    context.workflow_control.state === "waiting_review"
+    && reportReview?.status === "pending"
+  );
+  const packageApprovalPending = (
+    context.approval?.status === "pending_review"
+    && context.workflow_control.state === "completed"
+  );
+  const canExecute = context.approval?.status === "approved"
+    && (!context.execution || context.execution.status === "skipped");
+
+  if (!report) {
+    return (
+      <section className="report-workspace">
+        <EmptyView
+          icon={<FileCheck2 />}
+          text="The final package appears after the report stage runs."
+        />
+      </section>
+    );
+  }
+
+  const execution = context.execution;
+  const investigation = context.investigation;
+  const stageReviews = Object.values(context.workflow_control.stage_reviews);
+
+  return (
+    <section className="report-workspace">
+      <header className="report-header">
+        <div className="report-heading">
+          <span className="panel-kicker">Final QA package</span>
+          <h2>{context.ticket?.title ?? "Workflow report"}</h2>
+          <p>{report.summary}</p>
+        </div>
+        <div className="report-header-actions">
+          <StatusPill value={manifest?.package_status ?? "preparing"} />
+          <button
+            className="command-button primary"
+            disabled={busy || !manifest}
+            onClick={() => onDownload("package")}
+          >
+            <FileArchive /> Download package
+          </button>
+        </div>
+      </header>
+
+      <div className="report-metrics">
+        <Metric label="Test cases" value={String(report.total_test_cases)} />
+        <Metric label="Highest risk" value={report.highest_risk} />
+        <Metric
+          label="Quality score"
+          value={
+            context.validation_summary
+              ? `${context.validation_summary.quality_score}/100`
+              : "Pending"
+          }
+        />
+        <Metric
+          label="Execution"
+          value={execution?.status ?? "not started"}
+        />
+        <Metric
+          label="Confidence"
+          value={`${Math.round(report.confidence * 100)}%`}
+        />
+      </div>
+
+      {reportReviewPending ? (
+        <ReportDecision
+          label="Report review"
+          title="Review the final report before package approval."
+          comment={comment}
+          busy={busy}
+          approveLabel="Approve report"
+          onCommentChange={setComment}
+          onApprove={() => {
+            onReviewReport("approve", comment.trim() || undefined);
+            setComment("");
+          }}
+          onRequestChanges={() => {
+            onReviewReport("request_changes", comment.trim());
+            setComment("");
+          }}
+          onRegenerate={() => {
+            onRegenerateReport(comment.trim());
+            setComment("");
+          }}
+        />
+      ) : packageApprovalPending ? (
+        <section className="package-approval-band">
+          <div>
+            <span className="summary-label">Final package approval</span>
+            <strong>All report stages are reviewed. Approve the Git handoff package.</strong>
+            <small>This records the final decision and prepares the approved execution boundary.</small>
+          </div>
+          <button className="command-button primary" disabled={busy} onClick={onApprovePackage}>
+            <ShieldCheck /> Approve package
+          </button>
+        </section>
+      ) : canExecute ? (
+        <section className="package-approval-band approved">
+          <div>
+            <span className="summary-label">Approved package</span>
+            <strong>The package is approved and ready for execution.</strong>
+            <small>Run the local adapter to add execution and investigation evidence.</small>
+          </div>
+          <button className="command-button primary" disabled={busy} onClick={onExecute}>
+            <Play /> Execute approved tests
+          </button>
+        </section>
+      ) : null}
+
+      <div className="report-columns">
+        <div className="report-primary">
+          <section className="report-section">
+            <div className="report-section-heading">
+              <div><span className="panel-kicker">Technical outcome</span><h3>Execution results</h3></div>
+              <button className="command-button subtle" disabled={busy} onClick={() => onDownload("technical")}>
+                <Download /> Technical report
+              </button>
+            </div>
+            {execution && execution.status !== "skipped" ? (
+              <>
+                <div className="execution-summary-strip">
+                  <span><strong>{execution.summary.total}</strong>Total</span>
+                  <span className="passed"><strong>{execution.summary.passed}</strong>Passed</span>
+                  <span className="failed"><strong>{execution.summary.failed}</strong>Failed</span>
+                  <span><strong>{execution.summary.skipped}</strong>Skipped</span>
+                  <span><strong>{formatDuration(execution.summary.duration_ms)}</strong>Duration</span>
+                </div>
+                <div className="report-result-list">
+                  {execution.results.map((result) => (
+                    <div className={`report-result-row ${result.status}`} key={result.test_case_id}>
+                      <span>{result.status === "passed" ? <CheckCircle2 /> : result.status === "failed" ? <TriangleAlert /> : <CircleDashed />}</span>
+                      <div><strong>{result.test_case_id} - {result.title}</strong><small>{result.message}</small></div>
+                      <span>{formatDuration(result.duration_ms)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="report-empty-copy">Execution evidence will be added after the approved package runs.</p>
+            )}
+          </section>
+
+          <section className="report-section">
+            <div className="report-section-heading">
+              <div><span className="panel-kicker">Failure intelligence</span><h3>Investigation findings</h3></div>
+            </div>
+            {investigation?.findings.length ? (
+              <>
+                {investigation.root_cause_summary ? (
+                  <p className="root-cause-summary">{investigation.root_cause_summary}</p>
+                ) : null}
+                <div className="finding-list">
+                  {investigation.findings.map((finding, index) => (
+                    <article className="finding-row" key={`${finding.test_case_id}-${index}`}>
+                      <StatusPill value={finding.severity} />
+                      <div>
+                        <strong>{finding.test_case_id ?? "Workflow"} - {finding.category}</strong>
+                        <p>{finding.summary}</p>
+                        <small>Confidence {Math.round(finding.confidence * 100)}%</small>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="report-empty-copy">No investigation findings are recorded.</p>
+            )}
+          </section>
+
+          <section className="report-section">
+            <div className="report-section-heading">
+              <div><span className="panel-kicker">Recommended follow-up</span><h3>Next actions</h3></div>
+            </div>
+            <ol className="next-action-list">
+              {report.next_actions.map((action, index) => (
+                <li key={`${action}-${index}`}>{action}</li>
+              ))}
+            </ol>
+          </section>
+        </div>
+
+        <aside className="report-side">
+          <section className="report-section">
+            <div className="report-section-heading">
+              <div><span className="panel-kicker">Stakeholder view</span><h3>Executive summary</h3></div>
+              <button className="icon-command" disabled={busy} onClick={() => onDownload("executive")} title="Download executive summary">
+                <Download />
+              </button>
+            </div>
+            <dl className="executive-facts">
+              <div><dt>Ticket</dt><dd>{context.ticket?.id ?? "Untitled"}</dd></div>
+              <div><dt>Package</dt><dd>{manifest?.package_status.replaceAll("_", " ") ?? "preparing"}</dd></div>
+              <div><dt>Risk</dt><dd>{report.highest_risk}</dd></div>
+              <div><dt>Approval</dt><dd>{context.approval?.status.replaceAll("_", " ") ?? "not ready"}</dd></div>
+              <div><dt>Memory</dt><dd>{context.memory_archive?.status.replaceAll("_", " ") ?? "not started"}</dd></div>
+            </dl>
+          </section>
+
+          <section className="report-section">
+            <div className="report-section-heading">
+              <div><span className="panel-kicker">Audit trail</span><h3>Decisions</h3></div>
+            </div>
+            <div className="decision-list">
+              {stageReviews.map((review) => (
+                <div className="decision-row" key={review.stage}>
+                  <span className={`decision-dot ${review.status}`} />
+                  <div>
+                    <strong>{stageLabel(review.stage)}</strong>
+                    <small>{review.status.replaceAll("_", " ")}{review.decided_by ? ` by ${review.decided_by}` : ""}</small>
+                  </div>
+                </div>
+              ))}
+              {context.approval ? (
+                <div className="decision-row">
+                  <span className={`decision-dot ${context.approval.status}`} />
+                  <div>
+                    <strong>Final package</strong>
+                    <small>{context.approval.status.replaceAll("_", " ")}{context.approval.decided_by ? ` by ${context.approval.decided_by}` : ""}</small>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="report-section">
+            <div className="report-section-heading">
+              <div><span className="panel-kicker">Export manifest</span><h3>Package contents</h3></div>
+              <span className="count-badge">{manifest?.files.length ?? 0}</span>
+            </div>
+            <div className="package-file-list">
+              {manifest?.files.map((file) => (
+                <div className="package-file-row" key={file.path}>
+                  <FileJson2 />
+                  <div><strong>{file.path}</strong><small>{file.description}</small></div>
+                  <span>{formatBytes(file.size_bytes)}</span>
+                </div>
+              ))}
+              {!manifest ? <p className="report-empty-copy">Preparing package manifest...</p> : null}
+            </div>
+            {manifest?.warnings.map((warning, index) => (
+              <p className="package-warning" key={`${warning}-${index}`}><TriangleAlert /> {warning}</p>
+            ))}
+          </section>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function ReportDecision({
+  label,
+  title,
+  comment,
+  busy,
+  approveLabel,
+  onCommentChange,
+  onApprove,
+  onRequestChanges,
+  onRegenerate
+}: {
+  label: string;
+  title: string;
+  comment: string;
+  busy: boolean;
+  approveLabel: string;
+  onCommentChange: (value: string) => void;
+  onApprove: () => void;
+  onRequestChanges: () => void;
+  onRegenerate: () => void;
+}) {
+  return (
+    <section className="report-decision">
+      <div><span className="summary-label">{label}</span><strong>{title}</strong></div>
+      <textarea
+        rows={2}
+        value={comment}
+        onChange={(event) => onCommentChange(event.target.value)}
+        placeholder="Optional approval note, or required report correction..."
+      />
+      <div>
+        <button className="command-button primary" disabled={busy} onClick={onApprove}><Check /> {approveLabel}</button>
+        <button className="command-button secondary" disabled={busy || !comment.trim()} onClick={onRequestChanges}><X /> Request changes</button>
+        <button className="icon-command" disabled={busy || !comment.trim()} onClick={onRegenerate} title="Regenerate report"><RotateCcw /></button>
+      </div>
+    </section>
+  );
+}
+
 function EvidenceWorkspace({
   context,
   executionRuns,
@@ -1381,4 +1728,17 @@ function formatTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function formatDuration(durationMs: number): string {
+  if (durationMs < 1000) return `${durationMs} ms`;
+  const seconds = durationMs / 1000;
+  if (seconds < 60) return `${seconds.toFixed(seconds < 10 ? 1 : 0)} s`;
+  return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+}
+
+function formatBytes(size: number): string {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
