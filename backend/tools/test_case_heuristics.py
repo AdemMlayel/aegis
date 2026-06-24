@@ -4,6 +4,8 @@ from typing import Any
 
 from backend.graph.state import CoveragePlan, RequirementAnalysis, TestCase, TestContext, TicketData
 from backend.intelligence.context import (
+    append_feedback_to_prompt,
+    consume_stage_feedback,
     format_knowledge_context,
     format_memory_context,
     complete_with_configured_llm,
@@ -53,6 +55,7 @@ def generate_test_cases(
     evidence_refs = list(coverage_plan.knowledge_refs_used or analysis.knowledge_refs_used)
     memory_refs = list(coverage_plan.memory_refs_used or analysis.memory_refs_used)
     model_guidance: str | None = None
+    reviewer_feedback: list[str] = []
     if ticket is not None:
         knowledge_results = search_knowledge_for_ticket(ticket, limit=3, context=context)
         memory_results = search_memory_for_ticket(ticket, limit=3, context=context)
@@ -63,6 +66,11 @@ def generate_test_cases(
             test_types_required=coverage_plan.test_types_required,
             knowledge_context=format_knowledge_context(knowledge_results),
             memory_context=format_memory_context(memory_results),
+        )
+        reviewer_feedback = consume_stage_feedback(context, "tests")
+        rendered_prompt = append_feedback_to_prompt(
+            rendered_prompt,
+            reviewer_feedback,
         )
         llm_response = complete_with_configured_llm(
             prompt_name=prompt.name,
@@ -173,5 +181,10 @@ def generate_test_cases(
     if model_guidance:
         for test_case in test_cases:
             test_case.generation_notes.append(model_guidance)
+    for comment in reviewer_feedback:
+        for test_case in test_cases:
+            test_case.generation_notes.append(
+                f"Reviewer direction applied: {comment}"
+            )
 
     return test_cases

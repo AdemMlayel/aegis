@@ -24,7 +24,12 @@ class GenerateAutomationSkill(BaseSkill):
             raise ValueError("AutomationGenerator requires context.test_data")
 
         revision = context.automation_revision + 1
-        feedback = [item for item in context.review_feedback if item.status == "open"]
+        feedback = [
+            item
+            for item in context.review_feedback
+            if item.status == "open"
+            and item.stage in {None, "automation", "validation"}
+        ]
         result = self.tool_registry.execute(
             "LocalRobotAutomationTool",
             actor="system",
@@ -46,7 +51,10 @@ class GenerateAutomationSkill(BaseSkill):
 
         context.automation_revision = revision
         for item in context.review_feedback:
-            if item.status == "open":
+            if (
+                item.status == "open"
+                and item.stage in {None, "automation", "validation"}
+            ):
                 item.status = "applied"
 
         context.automation = automation

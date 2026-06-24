@@ -1,4 +1,4 @@
-# AegisQA — Local AI-Native QA Orchestration Demo
+# AegisQA - Local AI-Native QA Orchestration Demo
 
 AegisQA is a local/demo-ready architecture proof for the approved AegisQA v3 blueprint. It demonstrates an AI-native QA orchestration lifecycle from ticket intake to requirement analysis, coverage planning, test case generation, Robot Framework artifact generation, validation, human approval, execution, investigation, reporting, and memory archive.
 
@@ -9,9 +9,9 @@ This repository is intentionally safe for local testing: company systems are not
 Implemented and verified locally:
 
 - FastAPI backend.
-- React PM-facing dashboard.
+- React three-panel agent operations workspace.
 - Agent -> Skill -> Tool architecture.
-- Typed workflow context schema `0.12.0`.
+- Typed workflow context schema `0.13.0`.
 - Full local workflow graph with validation retry, approval, execution, investigation, memory archive, and reporting.
 - Local/mock Jira-style ticket provider.
 - Toolized Git handoff boundary.
@@ -26,13 +26,15 @@ Implemented and verified locally:
 - Mock and local Robot execution adapters.
 - API endpoints for providers, intelligence, workflows, tickets, execution, security, and artifacts.
 - Clean package script.
-- Backend tests and frontend build verified.
+- Controlled workflow sessions with autonomous, approval-required, and step-by-step modes.
+- Pollable workflow timeline, stage review/regeneration, artifact revision history, and execution logs.
+- Backend tests and frontend production build verified.
 
 Verification result during hardening:
 
 ```bash
 python -m pytest -q
-# 95 passed
+# 103 passed
 
 cd frontend
 npm install
@@ -82,7 +84,7 @@ backend/
   graph/               Workflow state, graph, and nodes
   storage/             Local persistence repositories
 frontend/
-  src/                 PM-facing React dashboard
+  src/                 React agent operations workspace
 tests/                 Backend unit/API/workflow tests
 docs/                  Architecture/supporting docs
 scripts/               Clean packaging script
@@ -269,6 +271,52 @@ AEGISQA_OPENAI_COMPATIBLE_CHAT_MODEL=your-default-model
 The API returns provider readiness and required environment-variable names but
 never returns credential values.
 
+## Controlled workflow sessions
+
+The original workflow start APIs remain backward compatible and complete the
+current demo pipeline synchronously. A separate controlled-session API supports
+the future agent workspace:
+
+- `autonomous`: continue through all stages.
+- `approval_required`: pause after each reviewable deliverable.
+- `step_by_step`: execute one logical stage per request.
+
+Logical stages are:
+
+```text
+ticket -> requirements -> coverage -> tests -> automation
+       -> validation -> approval -> report
+```
+
+Core controls:
+
+```http
+POST /api/v1/workflows/sessions
+POST /api/v1/workflows/{context_id}/resume
+POST /api/v1/workflows/{context_id}/next
+POST /api/v1/workflows/{context_id}/pause
+POST /api/v1/workflows/{context_id}/stages/{stage}/review
+POST /api/v1/workflows/{context_id}/stages/{stage}/regenerate
+```
+
+Pause requests are honored at stage boundaries. Individual synchronous Python
+functions are not interrupted mid-call.
+
+Operational events and operator messages share a durable cursor-based timeline:
+
+```http
+GET  /api/v1/workflows/{context_id}/timeline?after_sequence=0
+POST /api/v1/workflows/{context_id}/timeline/messages
+```
+
+Generated Robot artifacts support immutable revision history. Manual edits
+invalidate downstream validation and approval state:
+
+```http
+PUT /api/v1/workflows/{context_id}/artifacts/{test_case_id}
+GET /api/v1/workflows/{context_id}/artifacts/{test_case_id}/revisions
+```
+
 ## Main demo workflow
 
 1. Load a local ticket from the `jira_mock` provider.
@@ -283,18 +331,13 @@ never returns credential values.
 10. Generate investigation/report output.
 11. Archive a local memory entry.
 
-The frontend exposes this flow in readable PM-facing sections:
+The frontend exposes this flow as one operational workspace:
 
-- Demo Ticket
-- Agent Model Routing
-- Workflow Progress
-- Requirement Analysis
-- Coverage Plan
-- Generated Test Cases
-- Automation Output
-- Execution Result
-- Report & Memory
-- Investigation & Events
+- Left workspace queue with ticket search and run-state filters.
+- Central activity timeline with eight workflow stages and approval controls.
+- Dedicated test, automation artifact, and evidence views.
+- Editable Robot artifact with revision history and downstream invalidation.
+- Right-side execution mode, provider routing, embedding, knowledge, and health controls.
 
 ## API highlights
 
@@ -308,6 +351,10 @@ GET  /api/v1/intelligence/agent-model-profiles
 GET  /api/v1/intelligence/ollama/health
 GET  /api/v1/tickets/mock
 POST /api/v1/workflows/start-from-mock-ticket
+POST /api/v1/workflows/sessions
+POST /api/v1/workflows/{context_id}/resume
+POST /api/v1/workflows/{context_id}/next
+GET  /api/v1/workflows/{context_id}/timeline
 POST /api/v1/workflows/{context_id}/approval
 POST /api/v1/workflows/{context_id}/execute
 POST /api/v1/execute

@@ -4,7 +4,13 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from backend.graph import nodes
-from backend.graph.state import ExecutionRequestBlock, IntelligenceConfigBlock, TestContext, TicketData
+from backend.graph.state import (
+    ExecutionRequestBlock,
+    IntelligenceConfigBlock,
+    TestContext,
+    TicketData,
+    WorkflowStageName,
+)
 
 try:
     from langgraph.graph import END, StateGraph
@@ -48,6 +54,28 @@ NODE_SEQUENCE: tuple[tuple[str, WorkflowNode], ...] = (
     *PRE_VALIDATION_NODE_SEQUENCE,
     *VALIDATION_LOOP_NODE_SEQUENCE,
     *POST_VALIDATION_NODE_SEQUENCE,
+)
+
+WORKFLOW_STAGE_SEQUENCE: tuple[WorkflowStageName, ...] = (
+    "ticket",
+    "requirements",
+    "coverage",
+    "tests",
+    "automation",
+    "validation",
+    "approval",
+    "report",
+)
+
+REVIEWABLE_WORKFLOW_STAGES: frozenset[WorkflowStageName] = frozenset(
+    {
+        "requirements",
+        "coverage",
+        "tests",
+        "automation",
+        "validation",
+        "report",
+    }
 )
 
 
@@ -186,8 +214,100 @@ def create_initial_context(
 
 
 def run_workflow(context: TestContext) -> TestContext:
+    context.workflow_control.mode = "autonomous"
+    context.workflow_control.state = "running"
+    context.workflow_control.current_stage = "ticket"
     result = build_workflow().invoke(context)
-    return result if isinstance(result, TestContext) else TestContext.model_validate(result)
+    completed = (
+        result
+        if isinstance(result, TestContext)
+        else TestContext.model_validate(result)
+    )
+    completed.workflow_control.state = "completed"
+    completed.workflow_control.current_stage = None
+    completed.workflow_control.next_stage = None
+    completed.workflow_control.completed_stages = list(WORKFLOW_STAGE_SEQUENCE)
+    completed.workflow_control.stage_revisions = {
+        stage: 1 for stage in WORKFLOW_STAGE_SEQUENCE
+    }
+    return completed
+
+
+def run_workflow_stage(
+    context: TestContext,
+    stage: WorkflowStageName,
+) -> TestContext:
+    if stage == "ticket":
+        return _run_nodes(context, (("load_ticket", nodes.load_ticket),))
+    if stage == "requirements":
+        return _run_nodes(
+            context,
+            (("requirement_agent", nodes.requirement_agent),),
+        )
+    if stage == "coverage":
+        return _run_nodes(
+            context,
+            (("coverage_planner", nodes.coverage_planner),),
+        )
+    if stage == "tests":
+        return _run_nodes(
+            context,
+            (
+                ("test_case_generator", nodes.test_case_generator),
+                ("test_data_resolver", nodes.test_data_resolver),
+            ),
+        )
+    if stage == "automation":
+        return _run_nodes(
+            context,
+            (("automation_generator", nodes.automation_generator),),
+        )
+    if stage == "validation":
+        return _run_validation_stage(context)
+    if stage == "approval":
+        return _run_nodes(
+            context,
+            (("human_approval", nodes.human_approval),),
+        )
+    if stage == "report":
+        sequence: list[tuple[str, WorkflowNode]] = []
+        if context.execution is None:
+            sequence.append(("execution_dispatcher", nodes.execution_dispatcher))
+        if context.investigation is None:
+            sequence.append(
+                ("investigation_coordinator", nodes.investigation_coordinator)
+            )
+        if context.memory_archive is None:
+            sequence.append(("memory_archiver", nodes.memory_archiver))
+        sequence.append(("report_generator", nodes.report_generator))
+        return _run_nodes(context, sequence)
+    raise ValueError(f"Unsupported workflow stage '{stage}'")
+
+
+def next_workflow_stage(
+    stage: WorkflowStageName,
+) -> WorkflowStageName | None:
+    index = WORKFLOW_STAGE_SEQUENCE.index(stage)
+    if index + 1 >= len(WORKFLOW_STAGE_SEQUENCE):
+        return None
+    return WORKFLOW_STAGE_SEQUENCE[index + 1]
+
+
+def _run_validation_stage(context: TestContext) -> TestContext:
+    while True:
+        context = _run_nodes(
+            context,
+            (
+                ("validator", nodes.validator),
+                ("validation_retry_gate", nodes.validation_retry_gate),
+            ),
+        )
+        if context.workflow_status != "automation_regeneration_requested":
+            return context
+        context = _run_nodes(
+            context,
+            (("automation_generator", nodes.automation_generator),),
+        )
 
 
 def run_post_approval_workflow(

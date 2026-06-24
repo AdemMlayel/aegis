@@ -4,6 +4,8 @@ from typing import Any
 
 from backend.graph.state import CompletenessChecklist, RequirementAnalysis, TestContext, TicketData
 from backend.intelligence.context import (
+    append_feedback_to_prompt,
+    consume_stage_feedback,
     format_knowledge_context,
     format_memory_context,
     complete_with_configured_llm,
@@ -81,6 +83,11 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
         knowledge_context=format_knowledge_context(knowledge_results),
         memory_context=format_memory_context(memory_results),
     )
+    reviewer_feedback = consume_stage_feedback(context, "requirements")
+    rendered_prompt = append_feedback_to_prompt(
+        rendered_prompt,
+        reviewer_feedback,
+    )
     llm_response = complete_with_configured_llm(
         prompt_name=prompt.name,
         prompt_version=prompt.version,
@@ -109,7 +116,15 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
         memory_refs_used=memory_refs,
         knowledge_refs_used=knowledge_refs,
         prompt_versions_used=[prompt_version_ref("requirement_analysis_v1")],
-        llm_summary=llm_response.text,
+        llm_summary=" ".join(
+            [
+                llm_response.text,
+                *[
+                    f"Reviewer direction applied: {comment}"
+                    for comment in reviewer_feedback
+                ],
+            ]
+        ),
         confidence=0.82 if has_acceptance_criteria else 0.62,
     )
 

@@ -166,7 +166,9 @@ def load_context(context_id: str) -> TestContext | None:
         ).fetchone()
     if row is None:
         return None
-    return TestContext.model_validate_json(row["payload_json"])
+    return _normalize_legacy_workflow_control(
+        TestContext.model_validate_json(row["payload_json"])
+    )
 
 
 def list_contexts() -> list[TestContext]:
@@ -183,7 +185,38 @@ def list_contexts() -> list[TestContext]:
 
     for row in rows:
         try:
-            contexts.append(TestContext.model_validate_json(row["payload_json"]))
+            contexts.append(
+                _normalize_legacy_workflow_control(
+                    TestContext.model_validate_json(row["payload_json"])
+                )
+            )
         except ValueError:
             continue
     return contexts
+
+
+def _normalize_legacy_workflow_control(context: TestContext) -> TestContext:
+    control = context.workflow_control
+    if (
+        context.reports is not None
+        and control.state == "initialized"
+        and control.next_stage == "ticket"
+        and not control.completed_stages
+    ):
+        stages = [
+            "ticket",
+            "requirements",
+            "coverage",
+            "tests",
+            "automation",
+            "validation",
+            "approval",
+            "report",
+        ]
+        control.mode = "autonomous"
+        control.state = "completed"
+        control.current_stage = None
+        control.next_stage = None
+        control.completed_stages = stages  # type: ignore[assignment]
+        control.stage_revisions = {stage: 1 for stage in stages}
+    return context

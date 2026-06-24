@@ -356,6 +356,7 @@ def test_approval_endpoint_records_requested_changes() -> None:
             "requested_at": context["review_feedback"][0]["requested_at"],
             "requested_by": "qa_reviewer",
             "comment": "Please add an insufficient-funds assertion.",
+            "stage": "automation",
             "status": "applied",
         }
     ]

@@ -6,6 +6,7 @@ from backend.graph.state import (
     PromptUsageRef,
     TestContext,
     TicketData,
+    WorkflowStageName,
 )
 from backend.knowledge import KnowledgeSearchResult, get_local_knowledge_store
 from backend.llm import LLMResponse
@@ -162,6 +163,31 @@ def _embedding_config_for_context(
 def prompt_version_ref(prompt_name: str) -> str:
     prompt = prompt_registry.get(prompt_name)
     return f"{prompt.name}@{prompt.version}"
+
+
+def consume_stage_feedback(
+    context: TestContext | None,
+    stage: WorkflowStageName,
+) -> list[str]:
+    if context is None:
+        return []
+    comments: list[str] = []
+    for item in context.review_feedback:
+        if item.status != "open" or item.stage not in {None, stage}:
+            continue
+        comments.append(item.comment)
+        item.status = "applied"
+    return comments
+
+
+def append_feedback_to_prompt(
+    rendered_prompt: str,
+    comments: list[str],
+) -> str:
+    if not comments:
+        return rendered_prompt
+    feedback = "\n".join(f"- {comment}" for comment in comments)
+    return f"{rendered_prompt}\n\nReviewer feedback for this revision:\n{feedback}"
 
 
 def complete_with_configured_llm(

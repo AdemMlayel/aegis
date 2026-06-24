@@ -45,6 +45,7 @@ def validation_retry_gate(context: TestContext) -> TestContext:
                     f"{context.max_validation_retries}: regenerate or repair "
                     f"failed automation artifacts: {', '.join(failed_files)}"
                 ),
+                stage="validation",
             )
         )
         context.record_event(

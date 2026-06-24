@@ -16,6 +16,7 @@ class Capability(StrEnum):
     APPROVE_WORKFLOW = "approve:workflow"
     EXECUTE_WORKFLOW = "execute:workflow"
     READ_ARTIFACTS = "read:artifacts"
+    EDIT_ARTIFACTS = "edit:artifacts"
     READ_AUDIT = "read:audit"
 
 
@@ -39,6 +40,7 @@ ROLE_CAPABILITIES: dict[Role, set[Capability]] = {
         Capability.READ_WORKFLOW,
         Capability.EXECUTE_WORKFLOW,
         Capability.READ_ARTIFACTS,
+        Capability.EDIT_ARTIFACTS,
     },
     Role.QA_LEAD: {
         Capability.READ_TICKETS,
@@ -48,6 +50,7 @@ ROLE_CAPABILITIES: dict[Role, set[Capability]] = {
         Capability.APPROVE_WORKFLOW,
         Capability.EXECUTE_WORKFLOW,
         Capability.READ_ARTIFACTS,
+        Capability.EDIT_ARTIFACTS,
         Capability.READ_AUDIT,
     },
     Role.ADMIN: set(Capability),

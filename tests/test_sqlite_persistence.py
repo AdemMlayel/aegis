@@ -17,6 +17,7 @@ from backend.graph.state import (
 from backend.storage.audit import append_audit_event, list_audit_events
 from backend.storage.contexts import list_contexts, load_context, save_context
 from backend.storage.database import SQLITE_DB_PATH, initialize_database
+from backend.storage.migrations import list_applied_migrations
 from backend.storage.execution_events import (
     append_execution_event,
     list_execution_events,
@@ -193,3 +194,15 @@ def test_execution_events_are_persisted_to_sqlite() -> None:
         "TC002",
         "Negative case failed.",
     )
+
+
+def test_workflow_control_migration_is_recorded() -> None:
+    initialize_database()
+    with sqlite3.connect(SQLITE_DB_PATH) as connection:
+        migrations = list_applied_migrations(connection)
+
+    applied = {(version, name) for version, name, _ in migrations}
+    assert {
+        (1, "initial_local_schema"),
+        (2, "workflow_control_and_artifact_revisions"),
+    } <= applied

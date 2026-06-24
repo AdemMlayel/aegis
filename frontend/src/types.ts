@@ -4,6 +4,23 @@ export type ApprovalStatus = "not_ready" | "pending_review" | "approved" | "chan
 export type ExecutionStatus = "passed" | "failed" | "skipped" | "blocked";
 export type ExecutionResultStatus = "passed" | "failed" | "skipped";
 export type ExecutionRunStatus = ExecutionStatus | "queued" | "running";
+export type WorkflowStageName =
+  | "ticket"
+  | "requirements"
+  | "coverage"
+  | "tests"
+  | "automation"
+  | "validation"
+  | "approval"
+  | "report";
+export type WorkflowMode = "autonomous" | "approval_required" | "step_by_step";
+export type WorkflowControlState =
+  | "initialized"
+  | "running"
+  | "paused"
+  | "waiting_review"
+  | "completed"
+  | "failed";
 
 export type TicketData = {
   id: string;
@@ -208,6 +225,29 @@ export type AuditEvent = {
   metadata: Record<string, unknown>;
 };
 
+export type StageReview = {
+  stage: WorkflowStageName;
+  revision: number;
+  status: "not_requested" | "pending" | "approved" | "changes_requested";
+  requested_at: string | null;
+  requested_by: string | null;
+  decided_at: string | null;
+  decided_by: string | null;
+  comments: string[];
+};
+
+export type WorkflowControl = {
+  mode: WorkflowMode;
+  state: WorkflowControlState;
+  current_stage: WorkflowStageName | null;
+  next_stage: WorkflowStageName | null;
+  pause_requested: boolean;
+  completed_stages: WorkflowStageName[];
+  stage_revisions: Record<string, number>;
+  stage_reviews: Record<string, StageReview>;
+  last_error: string | null;
+};
+
 export type WorkflowSummary = {
   context_id: string;
   ticket_id: string | null;
@@ -232,7 +272,19 @@ export type TestContext = {
   context_id: string;
   schema_version: string;
   created_by: string;
+  created_at: string;
+  updated_at: string;
   workflow_status: string;
+  current_node: string | null;
+  workflow_trace: Array<{
+    node_name: string;
+    status: "started" | "completed" | "failed" | "routed";
+    timestamp: string;
+    iteration: number;
+    summary: string | null;
+    metadata: Record<string, unknown>;
+  }>;
+  workflow_control: WorkflowControl;
   integration_profile: IntegrationProfile | null;
   intelligence_config: IntelligenceConfig;
   intelligence_trace: IntelligenceTrace;
@@ -247,6 +299,13 @@ export type TestContext = {
   memory_archive: MemoryArchiveBlock | null;
   approval: ApprovalBlock | null;
   audit_log: AuditEvent[];
+  review_feedback: Array<{
+    requested_at: string;
+    requested_by: string;
+    comment: string;
+    stage: WorkflowStageName | null;
+    status: "open" | "applied";
+  }>;
   reports: {
     summary: string;
     total_test_cases: number;
@@ -257,6 +316,32 @@ export type TestContext = {
     prompt_versions_used: string[];
     confidence: number;
   } | null;
+};
+
+export type WorkflowEvent = {
+  sequence: number;
+  id: string;
+  context_id: string;
+  kind: "session" | "control" | "stage" | "review" | "artifact" | "message" | "error";
+  stage: WorkflowStageName | null;
+  status: string | null;
+  actor: string;
+  message: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export type ArtifactRevision = {
+  id: string;
+  context_id: string;
+  test_case_id: string;
+  artifact_path: string;
+  version: number;
+  source: "generated" | "manual";
+  actor: string;
+  comment: string | null;
+  content: string;
+  created_at: string;
 };
 
 export type ProviderCatalogEntry = {

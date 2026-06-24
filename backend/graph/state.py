@@ -243,11 +243,59 @@ class MemoryArchiveBlock(StrictModel):
     indexed_refs: list[str] = Field(default_factory=list)
 
 
+WorkflowStageName = Literal[
+    "ticket",
+    "requirements",
+    "coverage",
+    "tests",
+    "automation",
+    "validation",
+    "approval",
+    "report",
+]
+
+
 class ReviewFeedback(StrictModel):
     requested_at: datetime = Field(default_factory=utc_now)
     requested_by: str
     comment: str
+    stage: WorkflowStageName | None = None
     status: Literal["open", "applied"] = "open"
+
+
+class StageReviewBlock(StrictModel):
+    stage: WorkflowStageName
+    revision: int = Field(default=1, ge=1)
+    status: Literal[
+        "not_requested",
+        "pending",
+        "approved",
+        "changes_requested",
+    ] = "not_requested"
+    requested_at: datetime | None = None
+    requested_by: str | None = None
+    decided_at: datetime | None = None
+    decided_by: str | None = None
+    comments: list[str] = Field(default_factory=list)
+
+
+class WorkflowControlBlock(StrictModel):
+    mode: Literal["autonomous", "approval_required", "step_by_step"] = "autonomous"
+    state: Literal[
+        "initialized",
+        "running",
+        "paused",
+        "waiting_review",
+        "completed",
+        "failed",
+    ] = "initialized"
+    current_stage: WorkflowStageName | None = None
+    next_stage: WorkflowStageName | None = "ticket"
+    pause_requested: bool = False
+    completed_stages: list[WorkflowStageName] = Field(default_factory=list)
+    stage_revisions: dict[str, int] = Field(default_factory=dict)
+    stage_reviews: dict[str, StageReviewBlock] = Field(default_factory=dict)
+    last_error: str | None = None
 
 
 AuditEventType = Literal[
@@ -262,6 +310,9 @@ AuditEventType = Literal[
     "investigation_completed",
     "memory_archived",
     "tool_invoked",
+    "workflow_control",
+    "stage_review",
+    "artifact_revision",
 ]
 
 
@@ -349,6 +400,7 @@ class TestContext(StrictModel):
     validation_retry_count: int = Field(default=0, ge=0)
     max_validation_retries: int = Field(default=2, ge=0, le=5)
     workflow_trace: list[WorkflowTraceEvent] = Field(default_factory=list)
+    workflow_control: WorkflowControlBlock = Field(default_factory=WorkflowControlBlock)
 
     integration_profile: IntegrationProfileBlock | None = None
     intelligence_config: IntelligenceConfigBlock = Field(default_factory=IntelligenceConfigBlock)

@@ -392,6 +392,7 @@ def decide_workflow_approval(
             ReviewFeedback(
                 requested_by=request.reviewed_by,
                 comment=request.comment,
+                stage="automation",
             )
         )
         context.approval.status = "changes_requested"

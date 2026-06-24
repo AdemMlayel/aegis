@@ -1,0 +1,927 @@
+import {
+  Activity,
+  Bot,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  CircleDashed,
+  Clock3,
+  Code2,
+  FileCheck2,
+  FileText,
+  GitCompareArrows,
+  Loader2,
+  MessageSquare,
+  PanelRightOpen,
+  Pause,
+  Play,
+  RotateCcw,
+  Save,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  TestTube2,
+  TriangleAlert,
+  X
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import type {
+  ArtifactRevision,
+  ExecutionEvent,
+  ExecutionRunRecord,
+  TestCase,
+  TestContext,
+  WorkflowEvent,
+  WorkflowStageName
+} from "../types";
+
+export type WorkspaceView = "conversation" | "tests" | "artifacts" | "evidence";
+
+const STAGES: Array<{ name: WorkflowStageName; label: string }> = [
+  { name: "ticket", label: "Ticket" },
+  { name: "requirements", label: "Requirements" },
+  { name: "coverage", label: "Coverage" },
+  { name: "tests", label: "Tests" },
+  { name: "automation", label: "Automation" },
+  { name: "validation", label: "Validation" },
+  { name: "approval", label: "Approval" },
+  { name: "report", label: "Report" }
+];
+
+export function ConversationWorkspace({
+  context,
+  timeline,
+  view,
+  selectedTestId,
+  artifactContent,
+  artifactDraft,
+  artifactEditing,
+  artifactRevisions,
+  executionRuns,
+  executionEvents,
+  busy,
+  configCollapsed,
+  onViewChange,
+  onSelectTest,
+  onOpenConfig,
+  onCreateWorkspace,
+  onResume,
+  onNext,
+  onPause,
+  onReviewStage,
+  onRegenerateStage,
+  onApproveWorkflow,
+  onExecuteWorkflow,
+  onSendMessage,
+  onStartArtifactEdit,
+  onCancelArtifactEdit,
+  onArtifactDraftChange,
+  onSaveArtifact
+}: {
+  context: TestContext | null;
+  timeline: WorkflowEvent[];
+  view: WorkspaceView;
+  selectedTestId: string;
+  artifactContent: string;
+  artifactDraft: string;
+  artifactEditing: boolean;
+  artifactRevisions: ArtifactRevision[];
+  executionRuns: ExecutionRunRecord[];
+  executionEvents: ExecutionEvent[];
+  busy: string | null;
+  configCollapsed: boolean;
+  onViewChange: (view: WorkspaceView) => void;
+  onSelectTest: (testId: string) => void;
+  onOpenConfig: () => void;
+  onCreateWorkspace: () => void;
+  onResume: () => void;
+  onNext: () => void;
+  onPause: () => void;
+  onReviewStage: (
+    stage: WorkflowStageName,
+    decision: "approve" | "request_changes",
+    comment?: string
+  ) => void;
+  onRegenerateStage: (stage: WorkflowStageName, comment: string) => void;
+  onApproveWorkflow: () => void;
+  onExecuteWorkflow: () => void;
+  onSendMessage: (message: string) => void;
+  onStartArtifactEdit: () => void;
+  onCancelArtifactEdit: () => void;
+  onArtifactDraftChange: (value: string) => void;
+  onSaveArtifact: (comment?: string) => void;
+}) {
+  const [message, setMessage] = useState("");
+  const [reviewComment, setReviewComment] = useState("");
+  const [artifactComment, setArtifactComment] = useState("");
+  const pendingReview = pendingStageReview(context);
+  const selectedTest = context?.test_cases.find((test) => test.id === selectedTestId)
+    ?? context?.test_cases[0]
+    ?? null;
+
+  if (!context) {
+    return (
+      <main className="operations-workspace empty-workspace">
+        <div className="empty-workspace-content">
+          <span className="empty-workspace-icon"><Bot /></span>
+          <h1>Choose a ticket workspace</h1>
+          <p>Create a controlled session to begin requirement analysis, coverage planning, and automation.</p>
+          <button className="command-button primary" onClick={onCreateWorkspace}>
+            <Play /> Start selected ticket
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  const control = context.workflow_control;
+  const displayEvents = timeline.length ? timeline : eventsFromTrace(context);
+
+  return (
+    <main className="operations-workspace">
+      <header className="workspace-header">
+        <div className="workspace-heading">
+          <div className="workspace-title-row">
+            <span className="ticket-key">{context.ticket?.id ?? "UNTITLED"}</span>
+            <StatusPill value={control.state} />
+          </div>
+          <h1>{context.ticket?.title ?? "Untitled workflow"}</h1>
+          <p>{context.ticket?.description || "No ticket description available."}</p>
+        </div>
+        <div className="workspace-header-actions">
+          <WorkflowControls
+            context={context}
+            busy={busy}
+            onResume={onResume}
+            onNext={onNext}
+            onPause={onPause}
+            onApprove={onApproveWorkflow}
+            onExecute={onExecuteWorkflow}
+          />
+          {configCollapsed ? (
+            <button className="icon-command" onClick={onOpenConfig} title="Open agent configuration">
+              <PanelRightOpen />
+            </button>
+          ) : null}
+        </div>
+      </header>
+
+      <AgentActivityRail context={context} timeline={displayEvents} />
+
+      <nav className="workspace-tabs" aria-label="Workspace views">
+        <TabButton active={view === "conversation"} icon={<MessageSquare />} label="Activity" onClick={() => onViewChange("conversation")} />
+        <TabButton active={view === "tests"} icon={<TestTube2 />} label={`Tests ${context.test_cases.length || ""}`} onClick={() => onViewChange("tests")} />
+        <TabButton active={view === "artifacts"} icon={<Code2 />} label="Artifacts" onClick={() => onViewChange("artifacts")} />
+        <TabButton active={view === "evidence"} icon={<FileText />} label="Evidence" onClick={() => onViewChange("evidence")} />
+      </nav>
+
+      {view === "conversation" ? (
+        <section className="conversation-view">
+          <OperationalSummary context={context} timeline={displayEvents} />
+
+          {pendingReview ? (
+            <ApprovalRequest
+              stage={pendingReview}
+              comment={reviewComment}
+              busy={busy !== null}
+              onCommentChange={setReviewComment}
+              onApprove={() => {
+                onReviewStage(pendingReview, "approve", reviewComment);
+                setReviewComment("");
+              }}
+              onRequestChanges={() => {
+                if (!reviewComment.trim()) return;
+                onReviewStage(pendingReview, "request_changes", reviewComment);
+                setReviewComment("");
+              }}
+              onRegenerate={() => {
+                if (!reviewComment.trim()) return;
+                onRegenerateStage(pendingReview, reviewComment);
+                setReviewComment("");
+              }}
+            />
+          ) : null}
+
+          <div className="conversation-stream">
+            {displayEvents.map((event) => (
+              <TimelineEntry event={event} key={`${event.sequence}-${event.id}`} />
+            ))}
+            {!displayEvents.length ? (
+              <div className="conversation-empty">
+                <CircleDashed />
+                <span>No operational events yet. Start or resume the workflow.</span>
+              </div>
+            ) : null}
+          </div>
+
+          <LatestDeliverable context={context} />
+
+          <form
+            className="message-composer"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!message.trim()) return;
+              onSendMessage(message.trim());
+              setMessage("");
+            }}
+          >
+            <textarea
+              aria-label="Message the workflow"
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Add guidance or a decision note to this workspace..."
+              rows={2}
+            />
+            <button className="composer-send" type="submit" disabled={!message.trim() || busy !== null} title="Send message">
+              <Send />
+            </button>
+          </form>
+        </section>
+      ) : null}
+
+      {view === "tests" ? (
+        <TestCaseWorkspace
+          tests={context.test_cases}
+          selectedTest={selectedTest}
+          onSelect={onSelectTest}
+        />
+      ) : null}
+
+      {view === "artifacts" ? (
+        <ArtifactWorkspace
+          context={context}
+          selectedTest={selectedTest}
+          artifactContent={artifactContent}
+          draft={artifactDraft}
+          editing={artifactEditing}
+          revisions={artifactRevisions}
+          comment={artifactComment}
+          busy={busy !== null}
+          onSelectTest={onSelectTest}
+          onStartEdit={onStartArtifactEdit}
+          onCancelEdit={() => {
+            setArtifactComment("");
+            onCancelArtifactEdit();
+          }}
+          onDraftChange={onArtifactDraftChange}
+          onCommentChange={setArtifactComment}
+          onSave={() => {
+            onSaveArtifact(artifactComment.trim() || undefined);
+            setArtifactComment("");
+          }}
+        />
+      ) : null}
+
+      {view === "evidence" ? (
+        <EvidenceWorkspace
+          context={context}
+          executionRuns={executionRuns}
+          executionEvents={executionEvents}
+        />
+      ) : null}
+    </main>
+  );
+}
+
+function WorkflowControls({
+  context,
+  busy,
+  onResume,
+  onNext,
+  onPause,
+  onApprove,
+  onExecute
+}: {
+  context: TestContext;
+  busy: string | null;
+  onResume: () => void;
+  onNext: () => void;
+  onPause: () => void;
+  onApprove: () => void;
+  onExecute: () => void;
+}) {
+  const control = context.workflow_control;
+  const running = busy === "resume" || busy === "next";
+  if (context.approval?.status === "approved") {
+    return (
+      <button className="command-button primary" onClick={onExecute} disabled={busy !== null}>
+        {busy === "execution" ? <Loader2 className="spin" /> : <Activity />} Execute
+      </button>
+    );
+  }
+  if (context.approval?.status === "pending_review" && control.state === "completed") {
+    return (
+      <button className="command-button primary" onClick={onApprove} disabled={busy !== null}>
+        {busy === "approval" ? <Loader2 className="spin" /> : <ShieldCheck />} Approve package
+      </button>
+    );
+  }
+  if (control.state === "running") {
+    return (
+      <button className="command-button secondary" onClick={onPause} disabled={busy === "pause"}>
+        <Pause /> Pause
+      </button>
+    );
+  }
+  if (control.state === "waiting_review") {
+    return <span className="waiting-label"><Clock3 /> Review required</span>;
+  }
+  if (control.state === "completed") {
+    return <span className="waiting-label complete"><CheckCircle2 /> Workflow complete</span>;
+  }
+  if (control.mode === "step_by_step") {
+    return (
+      <button className="command-button primary" onClick={onNext} disabled={busy !== null}>
+        {running ? <Loader2 className="spin" /> : <Play />} Run next stage
+      </button>
+    );
+  }
+  return (
+    <button className="command-button primary" onClick={onResume} disabled={busy !== null}>
+      {running ? <Loader2 className="spin" /> : <Play />} Resume workflow
+    </button>
+  );
+}
+
+function AgentActivityRail({
+  context,
+  timeline
+}: {
+  context: TestContext;
+  timeline: WorkflowEvent[];
+}) {
+  const latestByStage = new Map<WorkflowStageName, WorkflowEvent>();
+  for (const event of timeline) {
+    if (event.stage) latestByStage.set(event.stage, event);
+  }
+  return (
+    <section className="activity-rail" aria-label="Agent activity timeline">
+      {STAGES.map((stage) => {
+        const state = stageState(context, stage.name);
+        const event = latestByStage.get(stage.name);
+        const Icon = state === "completed"
+          ? Check
+          : state === "active"
+            ? Activity
+            : state === "blocked"
+              ? TriangleAlert
+              : CircleDashed;
+        return (
+          <div className={`activity-step ${state}`} key={stage.name}>
+            <span className="activity-icon"><Icon /></span>
+            <span className="activity-copy">
+              <strong>{stage.label}</strong>
+              <small>{activityDetail(context, stage.name, event)}</small>
+            </span>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+function OperationalSummary({
+  context,
+  timeline
+}: {
+  context: TestContext;
+  timeline: WorkflowEvent[];
+}) {
+  const latest = timeline.at(-1);
+  const activeStage = context.workflow_control.current_stage
+    ?? context.workflow_control.next_stage
+    ?? context.workflow_control.completed_stages.at(-1)
+    ?? "ticket";
+  return (
+    <section className="operational-summary">
+      <div className="summary-agent">
+        <span><Sparkles /></span>
+        <div>
+          <span className="summary-label">Operational summary</span>
+          <strong>{stageLabel(activeStage)}</strong>
+        </div>
+      </div>
+      <dl>
+        <div>
+          <dt>Current task</dt>
+          <dd>{latest?.message ?? "Ready to begin controlled execution."}</dd>
+        </div>
+        <div>
+          <dt>Inputs</dt>
+          <dd>{summaryInputs(context, activeStage)}</dd>
+        </div>
+        <div>
+          <dt>Progress</dt>
+          <dd>{context.workflow_control.completed_stages.length} of {STAGES.length} stages</dd>
+        </div>
+        <div>
+          <dt>Mode</dt>
+          <dd>{context.workflow_control.mode.replaceAll("_", " ")}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+function ApprovalRequest({
+  stage,
+  comment,
+  busy,
+  onCommentChange,
+  onApprove,
+  onRequestChanges,
+  onRegenerate
+}: {
+  stage: WorkflowStageName;
+  comment: string;
+  busy: boolean;
+  onCommentChange: (value: string) => void;
+  onApprove: () => void;
+  onRequestChanges: () => void;
+  onRegenerate: () => void;
+}) {
+  return (
+    <section className="approval-request">
+      <div className="approval-heading">
+        <span><ShieldCheck /></span>
+        <div>
+          <span className="summary-label">Human review</span>
+          <h2>{stageLabel(stage)} deliverable is ready</h2>
+          <p>Approve the current revision or add specific direction before regeneration.</p>
+        </div>
+      </div>
+      <textarea
+        rows={2}
+        value={comment}
+        onChange={(event) => onCommentChange(event.target.value)}
+        placeholder="Optional approval note, or required change request..."
+      />
+      <div className="approval-actions">
+        <button className="command-button primary" onClick={onApprove} disabled={busy}>
+          <Check /> Approve
+        </button>
+        <button className="command-button secondary" onClick={onRequestChanges} disabled={busy || !comment.trim()}>
+          <X /> Request changes
+        </button>
+        <button className="icon-command" onClick={onRegenerate} disabled={busy || !comment.trim()} title="Regenerate this stage">
+          <RotateCcw />
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function TimelineEntry({ event }: { event: WorkflowEvent }) {
+  const userMessage = event.kind === "message";
+  const Icon = event.kind === "error"
+    ? TriangleAlert
+    : event.kind === "review"
+      ? ShieldCheck
+      : event.kind === "artifact"
+        ? Code2
+        : event.kind === "message"
+          ? MessageSquare
+          : Bot;
+  return (
+    <article className={`timeline-entry ${userMessage ? "user-entry" : ""}`}>
+      <span className="timeline-avatar"><Icon /></span>
+      <div className="timeline-body">
+        <div className="timeline-meta">
+          <strong>{userMessage ? event.actor : event.stage ? `${stageLabel(event.stage)} agent` : "Aegis orchestrator"}</strong>
+          <span>{formatTime(event.created_at)}</span>
+        </div>
+        <p>{event.message}</p>
+        {event.status ? <span className={`event-status ${event.status}`}>{event.status.replaceAll("_", " ")}</span> : null}
+        {event.metadata.duration_ms ? (
+          <small>{String(event.metadata.duration_ms)} ms</small>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function LatestDeliverable({ context }: { context: TestContext }) {
+  if (context.reports) {
+    return (
+      <section className="deliverable-block">
+        <div className="deliverable-title"><FileCheck2 /><h2>Final report</h2></div>
+        <p>{context.reports.summary}</p>
+        <div className="deliverable-metrics">
+          <Metric label="Tests" value={String(context.reports.total_test_cases)} />
+          <Metric label="Risk" value={context.reports.highest_risk} />
+          <Metric label="Confidence" value={`${Math.round(context.reports.confidence * 100)}%`} />
+        </div>
+      </section>
+    );
+  }
+  if (context.coverage_plan) {
+    return (
+      <section className="deliverable-block">
+        <div className="deliverable-title"><ShieldCheck /><h2>Coverage plan</h2></div>
+        <div className="deliverable-metrics">
+          <Metric label="Risk" value={context.coverage_plan.risk_level} />
+          <Metric label="Criticality" value={`${context.coverage_plan.business_criticality}/10`} />
+          <Metric label="Scenarios" value={String(context.test_cases.length)} />
+        </div>
+        <BulletList items={context.coverage_plan.risk_rationale} />
+      </section>
+    );
+  }
+  if (context.requirement_analysis) {
+    return (
+      <section className="deliverable-block">
+        <div className="deliverable-title"><FileText /><h2>Requirement analysis</h2></div>
+        <p>{context.requirement_analysis.llm_summary}</p>
+        <BulletList items={context.requirement_analysis.expected_results} />
+      </section>
+    );
+  }
+  return null;
+}
+
+function TestCaseWorkspace({
+  tests,
+  selectedTest,
+  onSelect
+}: {
+  tests: TestCase[];
+  selectedTest: TestCase | null;
+  onSelect: (testId: string) => void;
+}) {
+  return (
+    <section className="split-workspace">
+      <div className="item-index">
+        <div className="view-heading">
+          <div><span className="panel-kicker">Generated output</span><h2>Test scenarios</h2></div>
+          <span className="count-badge">{tests.length}</span>
+        </div>
+        {tests.map((test) => (
+          <button
+            className={selectedTest?.id === test.id ? "selected" : ""}
+            key={test.id}
+            onClick={() => onSelect(test.id)}
+          >
+            <span>{test.id}</span>
+            <strong>{test.title}</strong>
+            <small>{test.type} - {test.priority}</small>
+          </button>
+        ))}
+      </div>
+      <div className="item-detail">
+        {selectedTest ? (
+          <>
+            <div className="detail-title">
+              <div><span className="panel-kicker">{selectedTest.id}</span><h2>{selectedTest.title}</h2></div>
+              <StatusPill value={selectedTest.priority} />
+            </div>
+            <DetailSection title="Preconditions" items={selectedTest.preconditions} />
+            <DetailSection title="Steps" items={selectedTest.steps} ordered />
+            <section className="expected-output">
+              <span>Expected outcome</span>
+              <p>{selectedTest.expected_outcome}</p>
+            </section>
+            <DetailSection title="Evidence" items={[...selectedTest.evidence_refs, ...selectedTest.memory_refs]} />
+            <DetailSection title="Generation notes" items={selectedTest.generation_notes} />
+          </>
+        ) : <EmptyView icon={<TestTube2 />} text="Test scenarios appear after the tests stage." />}
+      </div>
+    </section>
+  );
+}
+
+function ArtifactWorkspace({
+  context,
+  selectedTest,
+  artifactContent,
+  draft,
+  editing,
+  revisions,
+  comment,
+  busy,
+  onSelectTest,
+  onStartEdit,
+  onCancelEdit,
+  onDraftChange,
+  onCommentChange,
+  onSave
+}: {
+  context: TestContext;
+  selectedTest: TestCase | null;
+  artifactContent: string;
+  draft: string;
+  editing: boolean;
+  revisions: ArtifactRevision[];
+  comment: string;
+  busy: boolean;
+  onSelectTest: (testId: string) => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onDraftChange: (value: string) => void;
+  onCommentChange: (value: string) => void;
+  onSave: () => void;
+}) {
+  const block = selectedTest ? context.automation[selectedTest.id] : null;
+  const baseline = revisions.at(-1)?.content ?? artifactContent;
+  const diff = lineDiffSummary(baseline, draft);
+  return (
+    <section className="artifact-workspace">
+      <div className="artifact-toolbar">
+        <div className="artifact-selector">
+          {context.test_cases.map((test) => (
+            <button
+              key={test.id}
+              className={selectedTest?.id === test.id ? "active" : ""}
+              onClick={() => onSelectTest(test.id)}
+            >
+              {test.id}
+            </button>
+          ))}
+        </div>
+        <div className="artifact-actions">
+          {editing ? (
+            <>
+              <button className="icon-command" onClick={onCancelEdit} title="Cancel editing"><X /></button>
+              <button className="command-button primary" onClick={onSave} disabled={busy || !draft.trim()}>
+                <Save /> Save revision
+              </button>
+            </>
+          ) : (
+            <button className="command-button secondary" onClick={onStartEdit} disabled={!block}>
+              <Code2 /> Edit artifact
+            </button>
+          )}
+        </div>
+      </div>
+
+      {block && selectedTest ? (
+        <>
+          <div className="artifact-meta">
+            <div><span>File</span><strong>{block.robot_file.split("/").at(-1)}</strong></div>
+            <div><span>Revision</span><strong>{block.revision}</strong></div>
+            <div><span>Validation</span><strong>{validationText(block.validation.dry_run_passed)}</strong></div>
+            {editing ? (
+              <div><span>Changes</span><strong><GitCompareArrows /> +{diff.added} / -{diff.removed}</strong></div>
+            ) : null}
+          </div>
+          {editing ? (
+            <>
+              <textarea
+                className="code-editor"
+                value={draft}
+                onChange={(event) => onDraftChange(event.target.value)}
+                spellCheck={false}
+                aria-label="Robot Framework artifact editor"
+              />
+              <input
+                className="revision-comment"
+                value={comment}
+                onChange={(event) => onCommentChange(event.target.value)}
+                placeholder="Revision note"
+              />
+            </>
+          ) : (
+            <pre className="code-viewer">{artifactContent || "Artifact content is loading..."}</pre>
+          )}
+          <div className="revision-history">
+            <div className="view-heading">
+              <div><span className="panel-kicker">Audit history</span><h2>Artifact revisions</h2></div>
+              <span className="count-badge">{revisions.length || block.revision}</span>
+            </div>
+            {revisions.length ? revisions.map((revision) => (
+              <div className="revision-row" key={revision.id}>
+                <span>v{revision.version}</span>
+                <div><strong>{revision.source === "manual" ? "Manual edit" : "Generated"}</strong><small>{revision.comment ?? "No revision note"} - {formatTime(revision.created_at)}</small></div>
+              </div>
+            )) : <p className="muted-copy">Revision history starts after the first manual edit.</p>}
+          </div>
+        </>
+      ) : <EmptyView icon={<Code2 />} text="Automation artifacts appear after generation." />}
+    </section>
+  );
+}
+
+function EvidenceWorkspace({
+  context,
+  executionRuns,
+  executionEvents
+}: {
+  context: TestContext;
+  executionRuns: ExecutionRunRecord[];
+  executionEvents: ExecutionEvent[];
+}) {
+  return (
+    <section className="evidence-workspace">
+      <EvidenceSection title="Knowledge evidence" icon={<FileText />}>
+        {context.intelligence_trace.knowledge_refs.map((ref) => (
+          <EvidenceRow key={ref.ref_id} title={ref.title} detail={`${ref.ref_id} - ${Math.round(ref.score * 100)}%`} body={ref.excerpt} />
+        ))}
+      </EvidenceSection>
+      <EvidenceSection title="Agent memory" icon={<Sparkles />}>
+        {context.intelligence_trace.memory_refs.map((ref) => (
+          <EvidenceRow key={ref.ref_id} title={ref.title} detail={`${ref.ref_id} - ${Math.round(ref.score * 100)}%`} body={ref.excerpt} />
+        ))}
+        {context.memory_archive?.summary ? <p className="evidence-summary">{context.memory_archive.summary}</p> : null}
+      </EvidenceSection>
+      <EvidenceSection title="Model trace" icon={<Bot />}>
+        {context.intelligence_trace.llm_calls.map((call, index) => (
+          <EvidenceRow
+            key={`${call.prompt_name}-${index}`}
+            title={call.agent_name?.replace("Agent", "") ?? call.prompt_name}
+            detail={`${call.provider} - ${call.model}`}
+            body={call.summary}
+          />
+        ))}
+      </EvidenceSection>
+      <EvidenceSection title="Execution logs" icon={<Activity />}>
+        {executionEvents.slice(-12).map((event) => (
+          <EvidenceRow key={event.id} title={event.phase} detail={event.status ?? event.level} body={event.message} />
+        ))}
+        {!executionEvents.length && executionRuns.length ? (
+          <p className="evidence-summary">Latest run: {executionRuns[0].run_id} - {executionRuns[0].status}</p>
+        ) : null}
+      </EvidenceSection>
+    </section>
+  );
+}
+
+function EvidenceSection({
+  title,
+  icon,
+  children
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="evidence-section">
+      <div className="deliverable-title">{icon}<h2>{title}</h2></div>
+      <div className="evidence-list">{children}</div>
+    </section>
+  );
+}
+
+function EvidenceRow({
+  title,
+  detail,
+  body
+}: {
+  title: string;
+  detail: string;
+  body: string;
+}) {
+  return (
+    <article className="evidence-row">
+      <div><strong>{title}</strong><span>{detail}</span></div>
+      <p>{body}</p>
+    </article>
+  );
+}
+
+function TabButton({
+  active,
+  icon,
+  label,
+  onClick
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return <button className={active ? "active" : ""} onClick={onClick}>{icon}{label}</button>;
+}
+
+function StatusPill({ value }: { value: string }) {
+  return <span className={`status-pill ${value}`}>{value.replaceAll("_", " ")}</span>;
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return <div className="deliverable-metric"><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function BulletList({ items }: { items: string[] }) {
+  return items.length ? <ul className="bullet-list">{items.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null;
+}
+
+function DetailSection({
+  title,
+  items,
+  ordered = false
+}: {
+  title: string;
+  items: string[];
+  ordered?: boolean;
+}) {
+  const List = ordered ? "ol" : "ul";
+  return (
+    <section className="detail-section">
+      <h3>{title}</h3>
+      {items.length ? <List>{items.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</List> : <p className="muted-copy">None recorded.</p>}
+    </section>
+  );
+}
+
+function EmptyView({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return <div className="view-empty"><span>{icon}</span><p>{text}</p></div>;
+}
+
+function pendingStageReview(context: TestContext | null): WorkflowStageName | null {
+  if (!context || context.workflow_control.state !== "waiting_review") return null;
+  const review = Object.values(context.workflow_control.stage_reviews).find(
+    (item) => item.status === "pending"
+  );
+  return review?.stage ?? null;
+}
+
+function stageState(
+  context: TestContext,
+  stage: WorkflowStageName
+): "completed" | "active" | "blocked" | "waiting" {
+  if (context.workflow_control.last_error && context.workflow_control.current_stage === stage) return "blocked";
+  if (context.workflow_control.current_stage === stage || context.workflow_control.next_stage === stage) return "active";
+  if (context.workflow_control.completed_stages.includes(stage)) return "completed";
+  return "waiting";
+}
+
+function activityDetail(
+  context: TestContext,
+  stage: WorkflowStageName,
+  event?: WorkflowEvent
+): string {
+  if (context.workflow_control.current_stage === stage) return "Running";
+  const review = context.workflow_control.stage_reviews[stage];
+  if (review?.status === "pending") return "Waiting review";
+  if (review?.status === "changes_requested") return "Changes requested";
+  if (context.workflow_control.completed_stages.includes(stage)) {
+    const duration = event?.metadata.duration_ms;
+    return duration ? `${String(duration)} ms` : `Revision ${context.workflow_control.stage_revisions[stage] ?? 1}`;
+  }
+  return "Pending";
+}
+
+function summaryInputs(context: TestContext, stage: WorkflowStageName): string {
+  if (stage === "requirements") return context.ticket?.id ?? "Ticket";
+  if (stage === "coverage") return "Approved requirements and memory";
+  if (stage === "tests") return "Coverage plan and evidence";
+  if (stage === "automation") return `${context.test_cases.length} test scenarios`;
+  if (stage === "validation") return `${Object.keys(context.automation).length} Robot artifacts`;
+  if (stage === "approval") return "Validated automation package";
+  if (stage === "report") return "Workflow evidence and execution state";
+  return "Selected ticket";
+}
+
+function eventsFromTrace(context: TestContext): WorkflowEvent[] {
+  return context.workflow_trace
+    .filter((trace) => trace.status === "completed" || trace.status === "failed")
+    .map((trace, index) => ({
+      sequence: index + 1,
+      id: `${trace.node_name}-${index}`,
+      context_id: context.context_id,
+      kind: trace.status === "failed" ? "error" : "stage",
+      stage: nodeStage(trace.node_name),
+      status: trace.status,
+      actor: "system",
+      message: trace.summary ?? `${trace.node_name.replaceAll("_", " ")} ${trace.status}.`,
+      metadata: trace.metadata,
+      created_at: trace.timestamp
+    }));
+}
+
+function nodeStage(nodeName: string): WorkflowStageName | null {
+  if (nodeName === "load_ticket") return "ticket";
+  if (nodeName === "requirement_agent") return "requirements";
+  if (nodeName === "coverage_planner") return "coverage";
+  if (nodeName === "test_case_generator" || nodeName === "test_data_resolver") return "tests";
+  if (nodeName === "automation_generator") return "automation";
+  if (nodeName === "validator" || nodeName === "validation_retry_gate") return "validation";
+  if (nodeName === "human_approval") return "approval";
+  if (["execution_dispatcher", "investigation_coordinator", "memory_archiver", "report_generator"].includes(nodeName)) return "report";
+  return null;
+}
+
+function stageLabel(stage: WorkflowStageName): string {
+  return STAGES.find((item) => item.name === stage)?.label ?? stage;
+}
+
+function validationText(value: boolean | null): string {
+  if (value === true) return "Passed";
+  if (value === false) return "Failed";
+  return "Needs validation";
+}
+
+function formatTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
+function lineDiffSummary(before: string, after: string): { added: number; removed: number } {
+  const beforeLines = new Set(before.split(/\r?\n/));
+  const afterLines = new Set(after.split(/\r?\n/));
+  return {
+    added: [...afterLines].filter((line) => !beforeLines.has(line)).length,
+    removed: [...beforeLines].filter((line) => !afterLines.has(line)).length
+  };
+}

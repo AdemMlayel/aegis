@@ -4,6 +4,7 @@ import sqlite3
 from pathlib import Path
 
 from backend.graph.artifacts import GENERATED_STORAGE_ROOT
+from backend.storage.migrations import run_migrations
 
 
 SQLITE_DB_PATH = GENERATED_STORAGE_ROOT / "aegisqa.sqlite3"
@@ -130,8 +131,44 @@ def initialize_database(db_path: Path = SQLITE_DB_PATH) -> Path:
                 ON execution_events(context_id);
             CREATE INDEX IF NOT EXISTS idx_execution_events_phase
                 ON execution_events(phase);
+
+            CREATE TABLE IF NOT EXISTS workflow_events (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                id TEXT NOT NULL UNIQUE,
+                context_id TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                stage TEXT,
+                status TEXT,
+                actor TEXT NOT NULL,
+                message TEXT NOT NULL,
+                metadata_json TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_workflow_events_context_sequence
+                ON workflow_events(context_id, sequence ASC);
+            CREATE INDEX IF NOT EXISTS idx_workflow_events_kind
+                ON workflow_events(kind);
+
+            CREATE TABLE IF NOT EXISTS artifact_revisions (
+                id TEXT PRIMARY KEY,
+                context_id TEXT NOT NULL,
+                test_case_id TEXT NOT NULL,
+                artifact_path TEXT NOT NULL,
+                version INTEGER NOT NULL,
+                source TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                comment TEXT,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(context_id, test_case_id, version)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_artifact_revisions_context_case
+                ON artifact_revisions(context_id, test_case_id, version ASC);
             """
         )
+        run_migrations(connection)
     return db_path
 
 

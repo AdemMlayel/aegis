@@ -4,6 +4,8 @@ from typing import Any
 
 from backend.graph.state import CoveragePlan, RequirementAnalysis, TestContext, TicketData
 from backend.intelligence.context import (
+    append_feedback_to_prompt,
+    consume_stage_feedback,
     format_knowledge_context,
     format_memory_context,
     complete_with_configured_llm,
@@ -72,6 +74,11 @@ def plan_coverage(
         knowledge_context=format_knowledge_context(knowledge_results),
         memory_context=format_memory_context(memory_results),
     )
+    reviewer_feedback = consume_stage_feedback(context, "coverage")
+    rendered_prompt = append_feedback_to_prompt(
+        rendered_prompt,
+        reviewer_feedback,
+    )
     llm_response = complete_with_configured_llm(
         prompt_name=prompt.name,
         prompt_version=prompt.version,
@@ -100,6 +107,10 @@ def plan_coverage(
         risk_rationale.append(f"Knowledge evidence considered: {', '.join(knowledge_refs)}.")
     if memory_refs:
         risk_rationale.append(f"Episodic memory considered: {', '.join(memory_refs)}.")
+    risk_rationale.extend(
+        f"Reviewer direction applied: {comment}"
+        for comment in reviewer_feedback
+    )
     if llm_response.provider != "mock_llm" and llm_response.text:
         risk_rationale.append(f"Model guidance: {llm_response.text[:1200]}")
 

@@ -2,6 +2,7 @@ import type {
   AgentModelRoute,
   AgentRoutingCatalog,
   ApprovalStatus,
+  ArtifactRevision,
   EmbeddingProvider,
   ExecuteRunResponse,
   ExecutionEvent,
@@ -16,6 +17,9 @@ import type {
   TestContext,
   TicketData,
   TicketStatus,
+  WorkflowEvent,
+  WorkflowMode,
+  WorkflowStageName,
   WorkflowSummary
 } from "./types";
 
@@ -114,6 +118,180 @@ export async function startWorkflowFromMockTicket(payload: {
   });
   const body = await parseResponse<{ context: TestContext }>(response);
   return body.context;
+}
+
+export async function createWorkflowSession(payload: {
+  created_by: string;
+  ticket: TicketData;
+  mode: WorkflowMode;
+  intelligence?: IntelligenceConfigPayload;
+}): Promise<TestContext> {
+  const ticket = {
+    id: payload.ticket.id,
+    title: payload.ticket.title,
+    description: payload.ticket.description,
+    acceptance_criteria: payload.ticket.acceptance_criteria,
+    priority: payload.ticket.priority,
+    labels: payload.ticket.labels,
+    assignee: payload.ticket.assignee ?? null,
+    source: payload.ticket.source ?? "fake",
+    raw_url: payload.ticket.raw_url ?? null
+  };
+  const response = await fetch(`${API_ROOT}/workflows/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...payload, ticket })
+  });
+  const body = await parseResponse<{ context: TestContext }>(response);
+  return body.context;
+}
+
+export async function resumeWorkflowSession(payload: {
+  contextId: string;
+  actor: string;
+}): Promise<TestContext> {
+  const response = await fetch(`${API_ROOT}/workflows/${payload.contextId}/resume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ actor: payload.actor })
+  });
+  const body = await parseResponse<{ context: TestContext }>(response);
+  return body.context;
+}
+
+export async function runNextWorkflowStage(payload: {
+  contextId: string;
+  actor: string;
+}): Promise<TestContext> {
+  const response = await fetch(`${API_ROOT}/workflows/${payload.contextId}/next`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ actor: payload.actor })
+  });
+  const body = await parseResponse<{ context: TestContext }>(response);
+  return body.context;
+}
+
+export async function pauseWorkflowSession(payload: {
+  contextId: string;
+  actor: string;
+}): Promise<TestContext> {
+  const response = await fetch(`${API_ROOT}/workflows/${payload.contextId}/pause`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ actor: payload.actor })
+  });
+  const body = await parseResponse<{ context: TestContext }>(response);
+  return body.context;
+}
+
+export async function reviewWorkflowStage(payload: {
+  contextId: string;
+  stage: WorkflowStageName;
+  decision: "approve" | "request_changes";
+  reviewedBy: string;
+  comment?: string;
+}): Promise<TestContext> {
+  const response = await fetch(
+    `${API_ROOT}/workflows/${payload.contextId}/stages/${payload.stage}/review`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        decision: payload.decision,
+        reviewed_by: payload.reviewedBy,
+        comment: payload.comment || null
+      })
+    }
+  );
+  const body = await parseResponse<{ context: TestContext }>(response);
+  return body.context;
+}
+
+export async function regenerateWorkflowStage(payload: {
+  contextId: string;
+  stage: WorkflowStageName;
+  actor: string;
+  comment: string;
+}): Promise<TestContext> {
+  const response = await fetch(
+    `${API_ROOT}/workflows/${payload.contextId}/stages/${payload.stage}/regenerate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actor: payload.actor,
+        comment: payload.comment
+      })
+    }
+  );
+  const body = await parseResponse<{ context: TestContext }>(response);
+  return body.context;
+}
+
+export async function listWorkflowTimeline(
+  contextId: string,
+  afterSequence = 0,
+  limit = 200
+): Promise<{ events: WorkflowEvent[]; next_sequence: number }> {
+  const params = new URLSearchParams({
+    after_sequence: String(afterSequence),
+    limit: String(limit)
+  });
+  const response = await fetch(
+    `${API_ROOT}/workflows/${contextId}/timeline?${params.toString()}`
+  );
+  return parseResponse<{ events: WorkflowEvent[]; next_sequence: number }>(response);
+}
+
+export async function sendWorkflowMessage(payload: {
+  contextId: string;
+  actor: string;
+  message: string;
+}): Promise<WorkflowEvent> {
+  const response = await fetch(
+    `${API_ROOT}/workflows/${payload.contextId}/timeline/messages`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actor: payload.actor, message: payload.message })
+    }
+  );
+  const body = await parseResponse<{ event: WorkflowEvent }>(response);
+  return body.event;
+}
+
+export async function editAutomationArtifact(payload: {
+  contextId: string;
+  testCaseId: string;
+  actor: string;
+  content: string;
+  comment?: string;
+}): Promise<{ context: TestContext; revision: ArtifactRevision }> {
+  const response = await fetch(
+    `${API_ROOT}/workflows/${payload.contextId}/artifacts/${payload.testCaseId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actor: payload.actor,
+        content: payload.content,
+        comment: payload.comment || null
+      })
+    }
+  );
+  return parseResponse<{ context: TestContext; revision: ArtifactRevision }>(response);
+}
+
+export async function listArtifactRevisions(
+  contextId: string,
+  testCaseId: string
+): Promise<ArtifactRevision[]> {
+  const response = await fetch(
+    `${API_ROOT}/workflows/${contextId}/artifacts/${testCaseId}/revisions`
+  );
+  const body = await parseResponse<{ revisions: ArtifactRevision[] }>(response);
+  return body.revisions;
 }
 
 export async function getWorkflow(contextId: string): Promise<TestContext> {

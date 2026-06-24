@@ -69,6 +69,25 @@ invocation with:
 Direct `tool.invoke(...)` remains available for tests and backward-compatible
 low-level use, but workflow skills call tools through the contract wrapper.
 
+## Controlled Workflow Sessions
+
+`backend/services/workflow_control.py` adds a persisted logical-stage layer over
+the existing graph nodes. It does not replace the graph or duplicate agent
+logic. Each stage delegates to the same node functions used by the synchronous
+workflow.
+
+The supported modes are autonomous, approval-required, and step-by-step.
+Control state, stage revisions, and review decisions live in
+`TestContext.workflow_control`. Operational events are stored separately in
+SQLite with a monotonic sequence cursor so dashboards can poll incrementally.
+
+Pause requests take effect between logical stages. Long-running provider or
+tool calls finish before the pause is observed.
+
+Robot artifact edits are versioned in `artifact_revisions`. Editing an artifact
+clears its validation result and invalidates downstream approval/report state,
+so manually changed code cannot retain an earlier green status.
+
 ## Security and RBAC
 
 The API now has a local RBAC scaffold under `backend/security/rbac.py`.
@@ -85,7 +104,7 @@ Supported roles:
 - `admin`
 
 Supported capabilities include ticket read/write, workflow start/read/approve,
-workflow execution, artifact read, and audit read.  Routes are protected through
+workflow execution, artifact read/edit, and audit read. Routes are protected through
 FastAPI dependencies while keeping local mock workflows easy to run.
 
 ## Ticket Connectors

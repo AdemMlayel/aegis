@@ -22,7 +22,7 @@ class Settings(BaseModel):
 
     app_name: str = "AegisQA"
     environment: str = Field(default_factory=lambda: os.getenv("AEGISQA_ENV", "local"))
-    workflow_schema_version: str = "0.12.0"
+    workflow_schema_version: str = "0.13.0"
 
     auth_mode: str = Field(default_factory=lambda: os.getenv("AEGISQA_AUTH_MODE", "permissive"))
     local_user: str = Field(default_factory=lambda: os.getenv("AEGISQA_LOCAL_USER", "local-user"))

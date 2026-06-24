@@ -15,7 +15,11 @@ from backend.graph.state import (
     TestCase,
     TicketData,
 )
-from backend.intelligence.context import complete_with_configured_llm
+from backend.intelligence.context import (
+    append_feedback_to_prompt,
+    complete_with_configured_llm,
+    consume_stage_feedback,
+)
 from backend.prompts import prompt_registry
 from backend.tools.base import BaseTool, tool_registry
 
@@ -107,6 +111,7 @@ def generate_report(
     memory_refs = [ref.ref_id for ref in intelligence_trace.memory_refs] if intelligence_trace else []
     prompt_refs = [f"{ref.name}@{ref.version}" for ref in intelligence_trace.prompt_versions] if intelligence_trace else []
     model_summary: str | None = None
+    reviewer_feedback: list[str] = []
 
     if ticket is not None:
         prompt = prompt_registry.get("report_generation_v1")
@@ -118,6 +123,11 @@ def generate_report(
             execution_status=execution_status,
             knowledge_refs=knowledge_refs,
             memory_refs=memory_refs,
+        )
+        reviewer_feedback = consume_stage_feedback(context, "report")
+        rendered_prompt = append_feedback_to_prompt(
+            rendered_prompt,
+            reviewer_feedback,
         )
         llm_response = complete_with_configured_llm(
             prompt_name=prompt.name,
@@ -153,6 +163,10 @@ def generate_report(
             "Review generated Robot files through the automation file endpoint",
             "Execute approved automation through the mock or Robot execution adapter",
             "Review investigation and archived-memory payloads before promoting to external systems",
+            *[
+                f"Reviewer direction applied: {comment}"
+                for comment in reviewer_feedback
+            ],
         ],
         knowledge_refs_used=knowledge_refs,
         memory_refs_used=memory_refs,
