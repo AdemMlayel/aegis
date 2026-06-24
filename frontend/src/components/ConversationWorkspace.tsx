@@ -25,6 +25,11 @@ import {
   X
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import {
+  lineDiffSummary,
+  RobotCodeView,
+  RobotDiffView
+} from "./RobotArtifactViewer";
 import type {
   ArtifactRevision,
   ExecutionEvent,
@@ -214,7 +219,10 @@ export function ConversationWorkspace({
             ) : null}
           </div>
 
-          <LatestDeliverable context={context} />
+          <LatestDeliverable
+            context={context}
+            onOpenArtifacts={() => onViewChange("artifacts")}
+          />
 
           <form
             className="message-composer"
@@ -268,6 +276,12 @@ export function ConversationWorkspace({
           onSave={() => {
             onSaveArtifact(artifactComment.trim() || undefined);
             setArtifactComment("");
+          }}
+          onReviewAutomation={(comment) => {
+            onReviewStage("automation", "approve", comment);
+          }}
+          onRegenerateAutomation={(comment) => {
+            onRegenerateStage("automation", comment);
           }}
         />
       ) : null}
@@ -500,7 +514,13 @@ function TimelineEntry({ event }: { event: WorkflowEvent }) {
   );
 }
 
-function LatestDeliverable({ context }: { context: TestContext }) {
+function LatestDeliverable({
+  context,
+  onOpenArtifacts
+}: {
+  context: TestContext;
+  onOpenArtifacts: () => void;
+}) {
   if (context.reports) {
     return (
       <section className="deliverable-block">
@@ -511,6 +531,29 @@ function LatestDeliverable({ context }: { context: TestContext }) {
           <Metric label="Risk" value={context.reports.highest_risk} />
           <Metric label="Confidence" value={`${Math.round(context.reports.confidence * 100)}%`} />
         </div>
+      </section>
+    );
+  }
+  const automationBlocks = Object.values(context.automation);
+  if (automationBlocks.length) {
+    const validated = automationBlocks.filter(
+      (block) => block.validation.dry_run_passed === true
+    ).length;
+    return (
+      <section className="deliverable-block">
+        <div className="deliverable-title"><Code2 /><h2>Automation scripts</h2></div>
+        <p>
+          {automationBlocks.length} Robot Framework artifact
+          {automationBlocks.length === 1 ? "" : "s"} generated and ready for review.
+        </p>
+        <div className="deliverable-metrics">
+          <Metric label="Files" value={String(automationBlocks.length)} />
+          <Metric label="Validated" value={`${validated}/${automationBlocks.length}`} />
+          <Metric label="Revision" value={`v${context.automation_revision}`} />
+        </div>
+        <button className="command-button secondary" onClick={onOpenArtifacts}>
+          <GitCompareArrows /> Review scripts
+        </button>
       </section>
     );
   }
@@ -603,7 +646,9 @@ function ArtifactWorkspace({
   onCancelEdit,
   onDraftChange,
   onCommentChange,
-  onSave
+  onSave,
+  onReviewAutomation,
+  onRegenerateAutomation
 }: {
   context: TestContext;
   selectedTest: TestCase | null;
@@ -619,10 +664,39 @@ function ArtifactWorkspace({
   onDraftChange: (value: string) => void;
   onCommentChange: (value: string) => void;
   onSave: () => void;
+  onReviewAutomation: (comment?: string) => void;
+  onRegenerateAutomation: (comment: string) => void;
 }) {
+  const [sourceView, setSourceView] = useState<"source" | "diff">("source");
+  const [selectedRevisionVersion, setSelectedRevisionVersion] = useState<number | null>(null);
+  const [reviewComment, setReviewComment] = useState("");
   const block = selectedTest ? context.automation[selectedTest.id] : null;
-  const baseline = revisions.at(-1)?.content ?? artifactContent;
+  const selectedRevision = selectedRevisionVersion === null
+    ? null
+    : revisions.find((revision) => revision.version === selectedRevisionVersion) ?? null;
+  const selectedRevisionIndex = selectedRevision
+    ? revisions.findIndex((revision) => revision.id === selectedRevision.id)
+    : -1;
+  const previousRevision = selectedRevisionIndex > 0
+    ? revisions[selectedRevisionIndex - 1]
+    : null;
+  const baseline = editing
+    ? artifactContent
+    : previousRevision?.content ?? selectedRevision?.content ?? artifactContent;
+  const comparison = editing
+    ? draft
+    : selectedRevision?.content ?? artifactContent;
   const diff = lineDiffSummary(baseline, draft);
+  const automationReview = context.workflow_control.stage_reviews.automation;
+  const automationReviewPending = (
+    context.workflow_control.state === "waiting_review"
+    && automationReview?.status === "pending"
+  );
+  const needsValidation = (
+    block !== null
+    && block.validation.dry_run_passed === null
+    && context.workflow_control.next_stage === "validation"
+  );
   return (
     <section className="artifact-workspace">
       <div className="artifact-toolbar">
@@ -638,6 +712,22 @@ function ArtifactWorkspace({
           ))}
         </div>
         <div className="artifact-actions">
+          <div className="artifact-view-switch" aria-label="Artifact view">
+            <button
+              className={sourceView === "source" ? "active" : ""}
+              onClick={() => setSourceView("source")}
+              type="button"
+            >
+              <Code2 /> Source
+            </button>
+            <button
+              className={sourceView === "diff" ? "active" : ""}
+              onClick={() => setSourceView("diff")}
+              type="button"
+            >
+              <GitCompareArrows /> Changes
+            </button>
+          </div>
           {editing ? (
             <>
               <button className="icon-command" onClick={onCancelEdit} title="Cancel editing"><X /></button>
@@ -646,7 +736,15 @@ function ArtifactWorkspace({
               </button>
             </>
           ) : (
-            <button className="command-button secondary" onClick={onStartEdit} disabled={!block}>
+            <button
+              className="command-button secondary"
+              onClick={() => {
+                setSelectedRevisionVersion(null);
+                setSourceView("source");
+                onStartEdit();
+              }}
+              disabled={!block}
+            >
               <Code2 /> Edit artifact
             </button>
           )}
@@ -661,9 +759,59 @@ function ArtifactWorkspace({
             <div><span>Validation</span><strong>{validationText(block.validation.dry_run_passed)}</strong></div>
             {editing ? (
               <div><span>Changes</span><strong><GitCompareArrows /> +{diff.added} / -{diff.removed}</strong></div>
-            ) : null}
+            ) : (
+              <div>
+                <span>Review</span>
+                <strong>{automationReview?.status?.replaceAll("_", " ") ?? "not requested"}</strong>
+              </div>
+            )}
           </div>
-          {editing ? (
+          {automationReviewPending ? (
+            <section className="artifact-review-bar">
+              <div>
+                <span className="summary-label">Automation review</span>
+                <strong>Approve the generated scripts or request a new revision.</strong>
+              </div>
+              <input
+                value={reviewComment}
+                onChange={(event) => setReviewComment(event.target.value)}
+                placeholder="Approval note or regeneration direction"
+              />
+              <div className="artifact-review-actions">
+                <button
+                  className="command-button primary"
+                  disabled={busy}
+                  onClick={() => {
+                    onReviewAutomation(reviewComment.trim() || undefined);
+                    setReviewComment("");
+                  }}
+                >
+                  <Check /> Approve scripts
+                </button>
+                <button
+                  className="command-button secondary"
+                  disabled={busy || !reviewComment.trim()}
+                  onClick={() => {
+                    onRegenerateAutomation(reviewComment.trim());
+                    setReviewComment("");
+                  }}
+                >
+                  <RotateCcw /> Regenerate
+                </button>
+              </div>
+            </section>
+          ) : needsValidation ? (
+            <div className="artifact-review-status warning">
+              <TriangleAlert />
+              <span>Manual edits saved. Validation must run again before approval.</span>
+            </div>
+          ) : automationReview?.status === "approved" ? (
+            <div className="artifact-review-status approved">
+              <CheckCircle2 />
+              <span>Automation scripts approved for downstream validation.</span>
+            </div>
+          ) : null}
+          {editing && sourceView === "source" ? (
             <>
               <textarea
                 className="code-editor"
@@ -679,8 +827,10 @@ function ArtifactWorkspace({
                 placeholder="Revision note"
               />
             </>
+          ) : sourceView === "diff" ? (
+            <RobotDiffView before={baseline} after={comparison} />
           ) : (
-            <pre className="code-viewer">{artifactContent || "Artifact content is loading..."}</pre>
+            <RobotCodeView content={selectedRevision?.content ?? artifactContent} />
           )}
           <div className="revision-history">
             <div className="view-heading">
@@ -688,10 +838,19 @@ function ArtifactWorkspace({
               <span className="count-badge">{revisions.length || block.revision}</span>
             </div>
             {revisions.length ? revisions.map((revision) => (
-              <div className="revision-row" key={revision.id}>
+              <button
+                className={`revision-row ${selectedRevisionVersion === revision.version ? "selected" : ""}`}
+                key={revision.id}
+                onClick={() => {
+                  setSelectedRevisionVersion(revision.version);
+                  setSourceView("diff");
+                }}
+                type="button"
+              >
                 <span>v{revision.version}</span>
                 <div><strong>{revision.source === "manual" ? "Manual edit" : "Generated"}</strong><small>{revision.comment ?? "No revision note"} - {formatTime(revision.created_at)}</small></div>
-              </div>
+                <GitCompareArrows />
+              </button>
             )) : <p className="muted-copy">Revision history starts after the first manual edit.</p>}
           </div>
         </>
@@ -915,13 +1074,4 @@ function formatTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
-}
-
-function lineDiffSummary(before: string, after: string): { added: number; removed: number } {
-  const beforeLines = new Set(before.split(/\r?\n/));
-  const afterLines = new Set(after.split(/\r?\n/));
-  return {
-    added: [...afterLines].filter((line) => !beforeLines.has(line)).length,
-    removed: [...beforeLines].filter((line) => !afterLines.has(line)).length
-  };
 }

@@ -486,13 +486,43 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .artifact-selector { display: flex; gap: 4px; overflow-x: auto; }
 .artifact-selector button { min-width: 58px; height: 30px; border: 1px solid #d7dce4; border-radius: 6px; background: white; color: #566175; font-size: 10px; font-weight: 800; }
 .artifact-selector button.active { color: white; border-color: var(--accent); background: var(--accent); }
-.artifact-actions { display: flex; gap: 6px; }
+.artifact-actions { display: flex; align-items: center; gap: 6px; }
+.artifact-view-switch {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid #d8dde5;
+  border-radius: 7px;
+  background: #eef1f5;
+}
+.artifact-view-switch button {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 5px;
+  padding: 0 9px;
+  color: #697487;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 800;
+}
+.artifact-view-switch button.active {
+  color: #303b50;
+  background: white;
+  box-shadow: 0 1px 3px rgba(24, 32, 51, 0.1);
+}
+.artifact-view-switch svg { width: 13px; }
 .artifact-meta { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 1px; border: 1px solid #dfe3e9; background: #dfe3e9; }
 .artifact-meta > div { min-width: 0; padding: 9px 10px; background: white; }
 .artifact-meta span { display: block; color: #7d8796; font-size: 8px; text-transform: uppercase; font-weight: 800; }
 .artifact-meta strong { display: flex; align-items: center; gap: 5px; margin-top: 3px; color: #334056; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .artifact-meta svg { width: 12px; }
-.code-viewer, .code-editor {
+.code-editor,
+.robot-code-view,
+.robot-diff-view {
   width: 100%;
   height: min(52vh, 560px);
   min-height: 340px;
@@ -506,17 +536,124 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   font-size: 11px;
   line-height: 1.6;
-  white-space: pre;
   tab-size: 2;
 }
 .code-editor { resize: vertical; }
+.robot-code-view,
+.robot-diff-view {
+  padding: 12px 0;
+  white-space: pre;
+}
+.robot-code-line {
+  min-width: max-content;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  min-height: 18px;
+  padding-right: 18px;
+}
+.robot-code-line:hover { background: rgba(255, 255, 255, 0.035); }
+.robot-line-number {
+  display: block;
+  padding: 0 12px 0 8px;
+  color: #667085;
+  text-align: right;
+  user-select: none;
+}
+.robot-code-line code,
+.robot-diff-line code {
+  color: #dbe4ee;
+  font: inherit;
+}
+.robot-token.comment { color: #82907c; font-style: italic; }
+.robot-token.section { color: #ffcf70; font-weight: 800; }
+.robot-token.keyword { color: #80c7ff; }
+.robot-token.variable { color: #f0a8c0; }
+.robot-token.setting { color: #99dfb7; }
+.robot-diff-line {
+  min-width: max-content;
+  display: grid;
+  grid-template-columns: 26px 42px 42px minmax(0, 1fr);
+  min-height: 18px;
+  padding-right: 18px;
+}
+.robot-diff-line.added { background: rgba(40, 167, 118, 0.16); }
+.robot-diff-line.removed { background: rgba(218, 80, 72, 0.15); }
+.robot-diff-line.added code { color: #d9f7e8; }
+.robot-diff-line.removed code { color: #ffdeda; }
+.diff-marker {
+  display: block;
+  color: #7e8998;
+  text-align: center;
+  user-select: none;
+}
+.robot-diff-line.added .diff-marker { color: #6dd5a6; }
+.robot-diff-line.removed .diff-marker { color: #ff8e86; }
+.robot-diff-empty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #8c98a9;
+}
 .revision-comment { width: 100%; height: 38px; margin-top: 8px; border: 1px solid #d6dce4; border-radius: 7px; padding: 0 10px; background: white; font-size: 11px; }
+.artifact-review-bar {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #dcdcf3;
+  background: #f7f7ff;
+}
+.artifact-review-bar strong { display: block; margin-top: 3px; color: #30394d; font-size: 11px; }
+.artifact-review-bar input {
+  min-width: 0;
+  height: 36px;
+  border: 1px solid #d5d9e3;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: white;
+  font-size: 10px;
+}
+.artifact-review-actions { display: flex; gap: 6px; }
+.artifact-review-status {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid #d7e8e1;
+  color: #216850;
+  background: #f2faf7;
+  font-size: 10px;
+  font-weight: 750;
+}
+.artifact-review-status.warning {
+  border-color: #ead9b9;
+  color: #805716;
+  background: #fff9ed;
+}
+.artifact-review-status svg { width: 15px; }
 .revision-history { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
-.revision-row { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 8px; align-items: center; min-height: 48px; border-top: 1px solid #e5e9ee; }
+.revision-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 24px;
+  gap: 8px;
+  align-items: center;
+  min-height: 48px;
+  border: 0;
+  border-top: 1px solid #e5e9ee;
+  padding: 0 8px 0 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+.revision-row:hover, .revision-row.selected { background: #f0f1fa; }
 .revision-row > span { color: var(--accent); font-size: 11px; font-weight: 850; }
 .revision-row strong, .revision-row small { display: block; }
 .revision-row strong { font-size: 11px; }
 .revision-row small { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.revision-row > svg { width: 14px; color: #7a8494; }
 
 .evidence-workspace { max-width: 980px; margin: 0 auto; padding: 24px 30px 40px; }
 .evidence-section { padding: 18px 0; border-bottom: 1px solid var(--border); }
@@ -663,8 +800,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .item-detail { padding: 20px 16px 32px; }
   .artifact-workspace { padding: 14px 10px 28px; }
   .artifact-toolbar { align-items: flex-start; flex-direction: column; }
+  .artifact-actions { width: 100%; justify-content: space-between; flex-wrap: wrap; }
   .artifact-meta { grid-template-columns: repeat(2, 1fr); }
-  .code-viewer, .code-editor { min-height: 300px; height: 50vh; }
+  .artifact-review-bar { grid-template-columns: 1fr; }
+  .artifact-review-actions { flex-wrap: wrap; }
+  .robot-code-view, .robot-diff-view, .code-editor { min-height: 300px; height: 50vh; }
   .evidence-row { grid-template-columns: 1fr; gap: 5px; }
   .config-panel { width: min(360px, 100vw); }
 }
