@@ -3,7 +3,6 @@ import {
   Bot,
   Check,
   CheckCircle2,
-  ChevronRight,
   CircleDashed,
   Clock3,
   Code2,
@@ -28,7 +27,7 @@ import {
   TriangleAlert,
   X
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   lineDiffSummary,
   RobotCodeView,

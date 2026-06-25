@@ -42,6 +42,7 @@ import {
   WorkspaceNav,
   type WorkspaceFilter
 } from "./components/WorkspaceNav";
+import { OPERATOR_ID } from "./config";
 import type {
   AgentModelProfile,
   AgentModelRoute,
@@ -67,13 +68,11 @@ import type {
   WorkflowSummary
 } from "./types";
 
-const OPERATOR = "demo-qa-lead";
-
 export default function App() {
   const [tickets, setTickets] = useState<TicketData[]>([]);
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
   const [context, setContext] = useState<TestContext | null>(null);
-  const [selectedTicketId, setSelectedTicketId] = useState("MOCK-101");
+  const [selectedTicketId, setSelectedTicketId] = useState("");
   const [workspaceQuery, setWorkspaceQuery] = useState("");
   const [workspaceFilter, setWorkspaceFilter] = useState<WorkspaceFilter>("all");
   const [view, setView] = useState<WorkspaceView>("conversation");
@@ -89,7 +88,7 @@ export default function App() {
   const [operationalHealth, setOperationalHealth] = useState<OperationalHealth | null>(null);
   const [agentRoutes, setAgentRoutes] = useState<Record<string, AgentModelRoute>>({});
   const [workflowMode, setWorkflowMode] = useState<WorkflowMode>("approval_required");
-  const [selectedLlmProvider, setSelectedLlmProvider] = useState("openai_compatible");
+  const [selectedLlmProvider, setSelectedLlmProvider] = useState("");
   const [selectedEmbeddingProvider, setSelectedEmbeddingProvider] = useState("local_hash_embeddings");
   const [embeddingModel, setEmbeddingModel] = useState("");
   const [ollamaHealth, setOllamaHealth] = useState<OllamaHealth | null>(null);
@@ -320,14 +319,16 @@ export default function App() {
     const externalReady = providers.some(
       (provider) => provider.name === "openai_compatible" && provider.selectable
     );
-    const localReady = providers.some(
-      (provider) => provider.name === "ollama" && provider.selectable
-    );
+    const localReady = health.available
+      && health.chat_model_ready
+      && providers.some(
+        (provider) => provider.name === "ollama" && provider.selectable
+      );
     const defaultProvider = externalReady
       ? "openai_compatible"
       : localReady
         ? "ollama"
-        : "mock_llm";
+        : "";
     const localEmbeddingReady = health.available && health.embedding_model_ready
       && embeddings.some(
         (provider) => provider.name === "ollama_nomic_embed_text" && provider.selectable
@@ -340,6 +341,7 @@ export default function App() {
     setEmbeddingModel(localEmbeddingReady ? health.embedding_model : "");
     setAgentRoutes((current) => {
       if (Object.keys(current).length) return current;
+      if (!defaultProvider) return {};
       return Object.fromEntries(
         routing.agents
           .filter((profile) => profile.uses_llm)
@@ -390,9 +392,13 @@ export default function App() {
 
   async function createWorkspace() {
     if (!selectedTicket) return;
+    if (!selectedLlmProvider) {
+      setError("Configure a ready external or local model before starting the workflow.");
+      return;
+    }
     const created = await runAction("create", () =>
       createWorkflowSession({
-        created_by: OPERATOR,
+        created_by: OPERATOR_ID,
         ticket: selectedTicket,
         mode: workflowMode,
         intelligence: intelligencePayload()
@@ -427,7 +433,7 @@ export default function App() {
   async function resume() {
     if (!context) return;
     const next = await runAction("resume", () =>
-      resumeWorkflowSession({ contextId: context.context_id, actor: OPERATOR })
+      resumeWorkflowSession({ contextId: context.context_id, actor: OPERATOR_ID })
     );
     if (next) {
       applyContext(next);
@@ -438,7 +444,7 @@ export default function App() {
   async function runNext() {
     if (!context) return;
     const next = await runAction("next", () =>
-      runNextWorkflowStage({ contextId: context.context_id, actor: OPERATOR })
+      runNextWorkflowStage({ contextId: context.context_id, actor: OPERATOR_ID })
     );
     if (next) {
       applyContext(next);
@@ -449,7 +455,7 @@ export default function App() {
   async function pause() {
     if (!context) return;
     const next = await runAction("pause", () =>
-      pauseWorkflowSession({ contextId: context.context_id, actor: OPERATOR })
+      pauseWorkflowSession({ contextId: context.context_id, actor: OPERATOR_ID })
     );
     if (next) applyContext(next);
   }
@@ -465,7 +471,7 @@ export default function App() {
         contextId: context.context_id,
         stage,
         decision,
-        reviewedBy: OPERATOR,
+        reviewedBy: OPERATOR_ID,
         comment
       })
     );
@@ -481,7 +487,7 @@ export default function App() {
       regenerateWorkflowStage({
         contextId: context.context_id,
         stage,
-        actor: OPERATOR,
+        actor: OPERATOR_ID,
         comment
       })
     );
@@ -497,7 +503,7 @@ export default function App() {
       decideApproval({
         contextId: context.context_id,
         decision: "approve",
-        reviewed_by: OPERATOR,
+        reviewed_by: OPERATOR_ID,
         comment: "Approved from the agent operations workspace."
       })
     );
@@ -512,7 +518,7 @@ export default function App() {
     const next = await runAction("execution", () =>
       executeWorkflow({
         contextId: context.context_id,
-        run_by: OPERATOR
+        run_by: OPERATOR_ID
       })
     );
     if (next) {
@@ -538,7 +544,7 @@ export default function App() {
     const event = await runAction("message", () =>
       sendWorkflowMessage({
         contextId: context.context_id,
-        actor: OPERATOR,
+        actor: OPERATOR_ID,
         message
       })
     );
@@ -554,7 +560,7 @@ export default function App() {
       editAutomationArtifact({
         contextId: context.context_id,
         testCaseId: selectedTest.id,
-        actor: OPERATOR,
+        actor: OPERATOR_ID,
         content: artifactDraft,
         comment
       })
@@ -579,12 +585,21 @@ export default function App() {
   }
 
   function updateAgentModel(profile: AgentModelProfile, model: string) {
+    const recommendedProvider = llmProviders.find(
+      (provider) =>
+        provider.name === profile.recommended_provider
+        && provider.name !== "mock_llm"
+        && provider.selectable
+    )?.name;
+    const fallbackProvider = llmProviders.find(
+      (provider) => provider.name !== "mock_llm" && provider.selectable
+    )?.name ?? "";
     setAgentRoutes((current) => ({
       ...current,
       [profile.agent_name]: {
         provider: current[profile.agent_name]?.provider
-          ?? profile.recommended_provider
-          ?? "mock_llm",
+          ?? recommendedProvider
+          ?? fallbackProvider,
         model: model.trim() || null
       }
     }));
@@ -594,21 +609,39 @@ export default function App() {
     const externalReady = llmProviders.some(
       (provider) => provider.name === "openai_compatible" && provider.selectable
     );
+    const localReady = Boolean(
+      ollamaHealth?.available
+      && ollamaHealth.chat_model_ready
+      && llmProviders.some(
+        (provider) => provider.name === "ollama" && provider.selectable
+      )
+    );
+    const targetProvider = preset === "external"
+      ? externalReady
+        ? "openai_compatible"
+        : localReady
+          ? "ollama"
+          : ""
+      : localReady
+        ? "ollama"
+        : externalReady
+          ? "openai_compatible"
+          : "";
     const nextRoutes: Record<string, AgentModelRoute> = {};
     for (const profile of (agentRouting?.agents ?? []).filter((item) => item.uses_llm)) {
-      if (preset === "local" || !externalReady) {
-        nextRoutes[profile.agent_name] = { provider: "ollama", model: null };
-      } else {
-        nextRoutes[profile.agent_name] = {
-          provider: "openai_compatible",
-          model: profile.external_model
-        };
-      }
+      if (!targetProvider) continue;
+      nextRoutes[profile.agent_name] = {
+        provider: targetProvider,
+        model: targetProvider === "openai_compatible"
+          ? profile.external_model
+          : null
+      };
     }
     setAgentRoutes(nextRoutes);
-    setSelectedLlmProvider(
-      preset === "external" && externalReady ? "openai_compatible" : "ollama"
-    );
+    setSelectedLlmProvider(targetProvider);
+    if (!targetProvider) {
+      setError("No real LLM provider is ready. Configure OpenAI-compatible access or start Ollama.");
+    }
     const localEmbeddingReady = ollamaHealth?.available
       && ollamaHealth.embedding_model_ready;
     setSelectedEmbeddingProvider(

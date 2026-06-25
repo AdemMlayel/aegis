@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, ClassVar
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from backend.graph.state import StrictModel, utc_now
 

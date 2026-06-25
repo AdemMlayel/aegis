@@ -1,4 +1,4 @@
-import backend.agents.requirement_agent  # Registers RequirementAgent.
+import backend.agents.requirement_agent  # noqa: F401 - registers RequirementAgent
 from backend.agents.base import agent_registry
 from backend.graph.state import TestContext
 

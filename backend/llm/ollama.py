@@ -50,7 +50,7 @@ class OllamaLLMProvider(BaseLLMProvider):
         except OllamaUnavailableError as exc:
             raise OllamaUnavailableError(
                 "Ollama is not available. Start Ollama, pull the configured chat model, "
-                f"or set AEGISQA_DEFAULT_LLM_PROVIDER=mock_llm. Details: {exc}"
+                f"or select a configured external provider. Details: {exc}"
             ) from exc
         text = str(raw.get("response") or "").strip()
         if not text:
@@ -100,7 +100,7 @@ def ollama_health() -> dict[str, object]:
 
 def _health_message(models: list[str], chat_model: str, embedding_model: str) -> str:
     if not models:
-        return "Ollama is not reachable. Start Ollama or keep using mock_llm/local_hash_embeddings."
+        return "Ollama is not reachable. Start Ollama or use a configured external LLM provider."
     missing = [model for model in (chat_model, embedding_model) if model not in models]
     if missing:
         return "Ollama is reachable, but missing model(s): " + ", ".join(missing)

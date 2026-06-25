@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from fastapi.testclient import TestClient
 
 from backend.config.settings import settings
@@ -109,7 +107,7 @@ def test_integration_endpoints_expose_local_providers_only(
     profile_response = client.get("/api/v1/integrations/profile")
     assert profile_response.status_code == 200
     profile = profile_response.json()["profile"]
-    assert profile["policy"] == "mock_only"
+    assert profile["policy"] == "local_only"
     assert profile["ticket_connector"]["name"] == "jira_mock"
     assert profile["artifact_store"]["name"] == "local_fs"
     assert profile["secret_provider"]["name"] == "mock_vault"
@@ -143,4 +141,4 @@ def test_start_workflow_from_connector_uses_mock_jira_boundary(
     assert context["ticket"]["source"] == "jira"
     assert context["ticket"]["raw_url"].startswith("mock://jira/")
     assert context["integration_profile"]["ticket_connector"]["name"] == "jira_mock"
-    assert context["integration_profile"]["policy"] == "mock_only"
+    assert context["integration_profile"]["policy"] == "local_only"

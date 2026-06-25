@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.skills.coverage  # Registers PlanCoverageSkill.
+import backend.skills.coverage  # noqa: F401 - registers PlanCoverageSkill
 from backend.agents.base import BaseAgent, agent_registry
 from backend.graph.state import TestContext
 from backend.skills.base import SkillRegistry, skill_registry as default_skill_registry

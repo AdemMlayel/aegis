@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.tools.automation_heuristics  # Registers LocalRobotAutomationTool.
+import backend.tools.automation_heuristics  # noqa: F401 - registers LocalRobotAutomationTool
 from backend.graph.state import AutomationBlock, TestContext
 from backend.skills.base import BaseSkill, skill_registry
 from backend.tools.base import ToolRegistry, tool_registry as default_tool_registry

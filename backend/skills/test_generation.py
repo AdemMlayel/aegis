@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.tools.test_case_heuristics  # Registers LocalTestCaseHeuristicTool.
+import backend.tools.test_case_heuristics  # noqa: F401 - registers LocalTestCaseHeuristicTool
 from backend.graph.state import PromptUsageRef, TestCase, TestContext
 from backend.skills.base import BaseSkill, skill_registry
 from backend.tools.base import ToolRegistry, tool_registry as default_tool_registry

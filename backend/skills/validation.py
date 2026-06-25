@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import backend.tools.robot_validation  # Registers LocalRobotValidationTool.
-import backend.tools.validation_summary  # Registers ValidationSummaryTool.
+import backend.tools.validation_summary  # noqa: F401 - registers ValidationSummaryTool
 from backend.graph.state import AutomationBlock, TestContext, ValidationSummary
 from backend.skills.base import BaseSkill, skill_registry
 from backend.tools.base import ToolRegistry, tool_registry as default_tool_registry

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.skills.human_approval  # Registers RequestHumanApprovalSkill.
+import backend.skills.human_approval  # noqa: F401 - registers RequestHumanApprovalSkill
 from backend.agents.base import BaseAgent, agent_registry
 from backend.graph.state import TestContext
 from backend.skills.base import SkillRegistry, skill_registry as default_skill_registry

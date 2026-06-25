@@ -210,6 +210,16 @@ def test_manual_llm_model_override_bypasses_prompt_role_routing(monkeypatch) -> 
 
 
 def test_workflow_uses_selected_embedding_provider_with_local_fallback(monkeypatch) -> None:
+    from backend.memory import get_local_memory_store
+
+    get_local_memory_store().archive(
+        title="Previous transfer balance validation",
+        summary="A completed transfer run required balance consistency regression coverage.",
+        tags=["banking", "payments", "transfer", "balance"],
+        source_refs=["test://workflow/embedding-fallback-memory"],
+        outcome="failed",
+    )
+
     def fail_embedding_request(*args, **kwargs):
         raise RuntimeError("ollama offline in test")
 

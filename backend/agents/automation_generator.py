@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.skills.automation  # Registers GenerateAutomationSkill.
+import backend.skills.automation  # noqa: F401 - registers GenerateAutomationSkill
 from backend.agents.base import BaseAgent, agent_registry
 from backend.graph.state import TestContext
 from backend.skills.base import SkillRegistry, skill_registry as default_skill_registry

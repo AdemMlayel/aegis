@@ -5,7 +5,6 @@ import subprocess
 import sys
 from collections.abc import Iterable
 from importlib.util import find_spec
-from pathlib import Path
 
 from backend.execution.base import BaseExecutionAdapter, execution_adapter_registry
 from backend.graph.artifacts import PROJECT_ROOT, execution_output_dir, relative_to_project
@@ -38,7 +37,8 @@ class RobotExecutionAdapter(BaseExecutionAdapter):
         command = _robot_command()
         if command is None:
             raise ValueError(
-                "Robot Framework CLI is not installed; use adapter='mock' for local architecture proofs"
+                "Robot Framework CLI is not installed; install the project dependencies "
+                "or use the mock adapter only for automated tests"
             )
         if not context.test_cases or not context.automation:
             raise ValueError("Workflow has no generated automation to execute")

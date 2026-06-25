@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.tools.human_approval_policy  # Registers LocalHumanApprovalPolicyTool.
+import backend.tools.human_approval_policy  # noqa: F401 - registers LocalHumanApprovalPolicyTool
 from backend.graph.state import ApprovalBlock, TestContext
 from backend.skills.base import BaseSkill, skill_registry
 from backend.tools.base import ToolRegistry, tool_registry as default_tool_registry

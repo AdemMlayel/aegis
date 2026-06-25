@@ -5,10 +5,8 @@ import type {
   ApprovalStatus,
   ArtifactRevision,
   EmbeddingProvider,
-  ExecuteRunResponse,
   ExecutionEvent,
   ExecutionRunRecord,
-  ExecutionRunRequest,
   ExecutionRunStatus,
   LLMProvider,
   OllamaHealth,
@@ -27,6 +25,7 @@ import type {
   WorkflowStageName,
   WorkflowSummary
 } from "./types";
+import { API_ROOT } from "./config";
 
 type IntelligenceConfigPayload = {
   llm_provider?: string;
@@ -35,8 +34,6 @@ type IntelligenceConfigPayload = {
   embedding_model?: string | null;
   agent_routes?: Record<string, AgentModelRoute>;
 };
-
-const API_ROOT = "/api/v1";
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -129,20 +126,6 @@ export async function listMockTickets(payload: {
   const response = await fetch(`${API_ROOT}/tickets/mock${params.toString() ? `?${params}` : ""}`);
   const body = await parseResponse<{ tickets: TicketData[] }>(response);
   return body.tickets;
-}
-
-export async function startWorkflowFromMockTicket(payload: {
-  created_by: string;
-  ticket_id: string;
-  intelligence?: IntelligenceConfigPayload;
-}): Promise<TestContext> {
-  const response = await fetch(`${API_ROOT}/workflows/start-from-mock-ticket`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  const body = await parseResponse<{ context: TestContext }>(response);
-  return body.context;
 }
 
 export async function createWorkflowSession(payload: {
@@ -406,15 +389,6 @@ export async function executeWorkflow(payload: {
   });
   const body = await parseResponse<{ context: TestContext }>(response);
   return body.context;
-}
-
-export async function executeSuite(payload: ExecutionRunRequest): Promise<ExecuteRunResponse> {
-  const response = await fetch(`${API_ROOT}/execute`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  return parseResponse<ExecuteRunResponse>(response);
 }
 
 export async function listExecutionRuns(payload: {

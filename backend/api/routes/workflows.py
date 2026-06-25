@@ -4,9 +4,8 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-import backend.tools.git_handoff  # Registers LocalGitHandoffTool.
+import backend.tools.git_handoff  # noqa: F401 - registers LocalGitHandoffTool
 from backend.config.settings import settings
-from backend.embeddings import embedding_provider_registry
 from backend.tools.git_handoff import GitExecutionResult
 from backend.tools.base import tool_registry
 from backend.graph.artifacts import relative_to_project, resolve_robot_file
@@ -330,14 +329,17 @@ def execute_workflow(
     context = run_post_approval_workflow(
         context,
         requested_by=request.run_by,
-        adapter="mock",
+        adapter=settings.default_execution_adapter,
         env="local",
     )
     execution = context.execution
     append_audit_event(
         actor=request.run_by,
         event_type="execution_completed",
-        summary=f"Mock execution {execution.status if execution else 'completed'}.",
+        summary=(
+            f"{settings.default_execution_adapter} execution "
+            f"{execution.status if execution else 'completed'}."
+        ),
         metadata={
             "context_id": context.context_id,
             "ticket_id": context.ticket.id if context.ticket else None,

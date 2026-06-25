@@ -6,7 +6,7 @@ from backend.graph.state import ReviewFeedback, TestContext
 def validation_retry_gate(context: TestContext) -> TestContext:
     """Route failed automation validation back to generation up to a fixed limit.
 
-    This keeps the local architecture proof aligned with the blueprint's
+    This keeps the local workflow aligned with the blueprint's
     generate -> validate -> repair loop without relying on external LLMs or
     company APIs. The actual repair signal is stored as review feedback so the
     automation generator receives a deterministic correction request on retry.

@@ -1,11 +1,10 @@
 # AegisQA Review Dashboard
 
-React dashboard for reviewing generated AegisQA automation.
+React dashboard for operating and reviewing AegisQA workflows.
 
-The dashboard can browse the backend mock ticket database and start workflows
-from those seeded tickets when live ticket-data endpoints are unavailable. It
-also includes a workflow queue/history panel backed by saved workflow contexts
-and a mock execution panel for generated automation results.
+The dashboard browses the backend demo ticket store, starts controlled agent
+workflows, exposes approval and artifact-edit checkpoints, and displays local
+Robot execution results.
 
 ## Commands
 
@@ -15,4 +14,12 @@ npm.cmd run dev
 npm.cmd run build
 ```
 
-The Vite dev server proxies `/api` to `http://127.0.0.1:8000`.
+Runtime variables:
+
+```text
+VITE_API_ROOT=/api/v1
+VITE_API_PROXY_TARGET=http://127.0.0.1:8000
+VITE_DEV_HOST=127.0.0.1
+VITE_DEV_PORT=5173
+VITE_OPERATOR_ID=demo-qa-lead
+```

@@ -41,9 +41,9 @@ def _env_bool(name: str, default: bool = False) -> bool:
 class Settings(BaseModel):
     """Central environment-driven settings for local/demo operation.
 
-    The defaults are intentionally safe: no company APIs, no real secrets, and
-    deterministic local providers. Real providers can be enabled later through
-    explicit environment variables.
+    The defaults are intentionally local: no company APIs or embedded secrets.
+    Ollama provides real local inference, while external providers require
+    explicit server-side configuration.
     """
 
     app_name: str = "AegisQA"
@@ -52,19 +52,22 @@ class Settings(BaseModel):
     sqlite_db_path: str | None = Field(
         default_factory=lambda: os.getenv("AEGISQA_SQLITE_DB_PATH")
     )
+    generated_root: str | None = Field(
+        default_factory=lambda: os.getenv("AEGISQA_GENERATED_ROOT")
+    )
 
     auth_mode: str = Field(default_factory=lambda: os.getenv("AEGISQA_AUTH_MODE", "permissive"))
     local_user: str = Field(default_factory=lambda: os.getenv("AEGISQA_LOCAL_USER", "local-user"))
     local_role: str = Field(default_factory=lambda: os.getenv("AEGISQA_LOCAL_ROLE", "qa_lead"))
 
     default_ticket_connector: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_TICKET_CONNECTOR", "jira_mock"))
-    default_execution_adapter: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_EXECUTION_ADAPTER", "mock"))
+    default_execution_adapter: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_EXECUTION_ADAPTER", "robot"))
     default_artifact_store: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_ARTIFACT_STORE", "local_fs"))
     default_secret_provider: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_SECRET_PROVIDER", "mock_vault"))
     external_connectors_enabled: bool = Field(default_factory=lambda: _env_bool("AEGISQA_EXTERNAL_CONNECTORS_ENABLED", False))
 
-    default_llm_provider: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_LLM_PROVIDER", "mock_llm"))
-    default_embedding_provider: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_EMBEDDING_PROVIDER", "local_hash_embeddings"))
+    default_llm_provider: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_LLM_PROVIDER", "ollama"))
+    default_embedding_provider: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_EMBEDDING_PROVIDER", "ollama_nomic_embed_text"))
     default_knowledge_store: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_KNOWLEDGE_STORE", "local_knowledge"))
     default_memory_store: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_MEMORY_STORE", "local_episodic_memory"))
 
@@ -89,6 +92,10 @@ class Settings(BaseModel):
     openai_compatible_chat_model: str = Field(default_factory=lambda: os.getenv("AEGISQA_OPENAI_COMPATIBLE_CHAT_MODEL", "gpt-4o-mini"))
 
     execution_worker_backend: str = Field(default_factory=lambda: os.getenv("AEGISQA_EXECUTION_WORKER_BACKEND", "local"))
+    execution_worker_batch_size: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_EXECUTION_WORKER_BATCH_SIZE", "10")))
+    execution_worker_poll_interval_seconds: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_EXECUTION_WORKER_POLL_INTERVAL_SECONDS", "1")))
+    celery_broker_url: str = Field(default_factory=lambda: os.getenv("AEGISQA_CELERY_BROKER_URL", "redis://127.0.0.1:6379/0"))
+    celery_result_backend: str = Field(default_factory=lambda: os.getenv("AEGISQA_CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/1"))
     celery_task_name: str = Field(default_factory=lambda: os.getenv("AEGISQA_CELERY_EXECUTION_TASK", "aegisqa.execution.process_run"))
     celery_fallback_to_local: bool = Field(default_factory=lambda: _env_bool("AEGISQA_CELERY_FALLBACK_TO_LOCAL", True))
 

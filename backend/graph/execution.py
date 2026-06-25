@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-import backend.artifacts  # Registers local artifact stores.
+import backend.artifacts  # noqa: F401 - registers local artifact stores
 from backend.artifacts import artifact_store_registry
 from backend.config.settings import settings
 from backend.graph.state import (

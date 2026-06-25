@@ -592,23 +592,6 @@ export type ExecutionRunRequest = {
   actor: string;
 };
 
-export type ExecuteRunResponse = {
-  run_id: string;
-  context_id: string;
-  status: ExecutionRunStatus;
-  worker_backend: string;
-  worker_durable: boolean;
-  worker_task_id: string | null;
-  worker_fallback_used: boolean;
-  worker_message: string;
-  status_url: string;
-  summary_url: string;
-  junit_url: string;
-  report_url: string;
-  logs_url: string;
-  websocket_url: string | null;
-};
-
 export type ExecutionRunRecord = {
   run_id: string;
   context_id: string;

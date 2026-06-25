@@ -10,7 +10,7 @@ import backend.secrets  # Registers mock Vault provider.
 import backend.tickets  # Registers local ticket connectors.
 import backend.llm  # Registers local LLM providers.
 import backend.embeddings  # Registers local embedding providers.
-import backend.tools.git_handoff  # Registers local Git handoff tool.
+import backend.tools.git_handoff  # noqa: F401 - registers local Git handoff tool
 from backend.artifacts import artifact_store_registry
 from backend.config.settings import settings
 from backend.execution import execution_adapter_registry
@@ -206,7 +206,7 @@ def build_provider_catalog() -> ProviderCatalog:
             kind=ProviderKind.KNOWLEDGE_STORE,
             name="local_knowledge",
             mode=ProviderMode.LOCAL,
-            description="Local deterministic knowledge store for RAG architecture proofs.",
+            description="Built-in local QA knowledge store for RAG retrieval.",
             version="0.1.0",
             requires_external_api=False,
             enabled=True,
@@ -220,7 +220,7 @@ def build_provider_catalog() -> ProviderCatalog:
             kind=ProviderKind.MEMORY_STORE,
             name="local_episodic_memory",
             mode=ProviderMode.LOCAL,
-            description="Local seeded episodic memory store for previous-failure retrieval and archive proofs.",
+            description="Local episodic memory rebuilt from completed workflow archives.",
             version="0.1.0",
             requires_external_api=False,
             enabled=True,

@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from typing import Any
 
+from backend.config.settings import settings
 from backend.graph import nodes
 from backend.graph.state import (
     ExecutionRequestBlock,
@@ -314,7 +315,7 @@ def run_post_approval_workflow(
     context: TestContext,
     *,
     requested_by: str,
-    adapter: str = "mock",
+    adapter: str | None = None,
     env: str = "local",
     branch: str | None = None,
     tags: Iterable[str] = (),
@@ -328,7 +329,7 @@ def run_post_approval_workflow(
     """
     context.execution_request = ExecutionRequestBlock(
         requested_by=requested_by,
-        adapter=adapter,
+        adapter=adapter or settings.default_execution_adapter,
         env=env,
         branch=branch,
         tags=list(tags),

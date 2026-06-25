@@ -1,4 +1,4 @@
-import backend.agents.validator  # Registers ValidatorAgent.
+import backend.agents.validator  # noqa: F401 - registers ValidatorAgent
 from backend.agents.base import agent_registry
 from backend.graph.state import TestContext
 

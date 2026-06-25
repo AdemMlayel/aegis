@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.tools.requirement_heuristics  # Registers LocalRequirementHeuristicTool.
+import backend.tools.requirement_heuristics  # noqa: F401 - registers LocalRequirementHeuristicTool
 from backend.graph.state import PromptUsageRef, RequirementAnalysis, TestContext
 from backend.intelligence.context import record_knowledge_refs, record_memory_refs, search_knowledge_for_ticket, search_memory_for_ticket
 from backend.skills.base import BaseSkill, skill_registry

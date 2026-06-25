@@ -115,7 +115,7 @@ export function AgentConfigPanel({
         <div className="preset-list">
           <button type="button" onClick={() => onApplyPreset("external")}>
             <Cloud />
-            <span><strong>External live</strong><small>OpenAI for every LLM agent</small></span>
+            <span><strong>External live</strong><small>External model for every LLM agent</small></span>
           </button>
           <button type="button" onClick={() => onApplyPreset("local")}>
             <Cpu />
@@ -127,9 +127,19 @@ export function AgentConfigPanel({
       <ConfigSection icon={<Cpu />} title="Agent models">
         <div className="agent-config-list">
           {(routing?.agents ?? []).map((profile) => {
+            const recommendedProvider = providers.find(
+              (provider) =>
+                provider.name === profile.recommended_provider
+                && provider.name !== "mock_llm"
+                && provider.selectable
+            );
+            const fallbackProvider = providers.find(
+              (provider) =>
+                provider.name !== "mock_llm" && provider.selectable
+            )?.name;
             const route = routes[profile.agent_name] ?? {
-              provider: profile.recommended_provider ?? "mock_llm",
-              model: profile.recommended_model
+              provider: recommendedProvider?.name ?? fallbackProvider ?? "",
+              model: recommendedProvider ? profile.recommended_model : null
             };
             return (
               <div className="agent-config-row" key={profile.agent_name}>
@@ -147,6 +157,9 @@ export function AgentConfigPanel({
                       value={route.provider}
                       onChange={(event) => onProviderChange(profile, event.target.value)}
                     >
+                      {!route.provider ? (
+                        <option value="">No real provider ready</option>
+                      ) : null}
                       {providers
                         .filter((provider) => provider.name !== "mock_llm")
                         .map((provider) => (

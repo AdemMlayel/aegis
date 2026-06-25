@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.tools.reporting  # Registers LocalReportGenerationTool.
+import backend.tools.reporting  # noqa: F401 - registers LocalReportGenerationTool
 from backend.graph.state import PromptUsageRef, ReportBlock, TestContext
 from backend.skills.base import BaseSkill, skill_registry
 from backend.tools.base import ToolRegistry, tool_registry as default_tool_registry

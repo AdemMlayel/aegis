@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.tools.coverage_heuristics  # Registers LocalCoverageHeuristicTool.
+import backend.tools.coverage_heuristics  # noqa: F401 - registers LocalCoverageHeuristicTool
 from backend.graph.state import CoveragePlan, PromptUsageRef, TestContext
 from backend.skills.base import BaseSkill, skill_registry
 from backend.tools.base import ToolRegistry, tool_registry as default_tool_registry

@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXCLUDE_DIRS = {
     ".git",
     ".pytest_cache",
+    ".ruff_cache",
     ".tools",
     ".venv",
     "__pycache__",
@@ -18,10 +19,15 @@ EXCLUDE_DIRS = {
     "aegisqa.egg-info",
 }
 EXCLUDE_SUFFIXES = {".pyc", ".pyo"}
+EXCLUDE_FILES = {".env"}
 
 
 def should_skip(path: Path) -> bool:
-    return any(part in EXCLUDE_DIRS for part in path.parts) or path.suffix in EXCLUDE_SUFFIXES
+    return (
+        path.name in EXCLUDE_FILES
+        or any(part in EXCLUDE_DIRS for part in path.parts)
+        or path.suffix in EXCLUDE_SUFFIXES
+    )
 
 
 def default_target() -> Path:

@@ -10,6 +10,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from pydantic import Field
 
 from backend.graph.artifacts import (
+    GENERATED_ROOT,
     GENERATED_ROBOT_ROOT,
     PROJECT_ROOT,
     slug,
@@ -511,8 +512,7 @@ def _add_optional_file(
     if not source_path:
         return
     path = (PROJECT_ROOT / source_path).resolve()
-    generated_root = (PROJECT_ROOT / "generated").resolve()
-    if not _is_within(path, generated_root):
+    if not _is_within(path, GENERATED_ROOT.resolve()):
         warnings.append(f"Skipped file outside generated root: {source_path}")
         return
     if not path.is_file():

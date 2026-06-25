@@ -20,8 +20,7 @@ def memory_archiver(context: TestContext) -> TestContext:
         context.coverage_plan.risk_level if context.coverage_plan else "unknown-risk",
         context.ticket.priority if context.ticket else "unknown-priority",
         context.requirement_analysis.domain if context.requirement_analysis else "unknown-domain",
-        "mock-data",
-        "local-architecture-proof",
+        "workflow-archive",
     ]
     if context.ticket:
         tags.extend(context.ticket.labels)
@@ -46,6 +45,11 @@ def memory_archiver(context: TestContext) -> TestContext:
     memory_file = output_dir / f"{slug(ticket_id)}_{memory_entry.memory_id}.json"
     payload = {
         "memory_id": memory_entry.memory_id,
+        "title": memory_entry.title,
+        "summary": memory_entry.summary,
+        "tags": list(memory_entry.tags),
+        "source_refs": list(memory_entry.source_refs),
+        "outcome": memory_entry.outcome,
         "context_id": context.context_id,
         "ticket_id": ticket_id,
         "ticket_title": context.ticket.title if context.ticket else None,

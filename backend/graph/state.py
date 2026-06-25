@@ -74,7 +74,7 @@ class AgentModelRouteBlock(StrictModel):
 
 
 class IntelligenceTraceBlock(StrictModel):
-    llm_provider: str = "mock_llm"
+    llm_provider: str = Field(default_factory=lambda: settings.default_llm_provider)
     configured_llm_provider: str = Field(default_factory=lambda: settings.default_llm_provider)
     configured_embedding_provider: str = Field(default_factory=lambda: settings.default_embedding_provider)
     configured_llm_model: str | None = None
@@ -226,7 +226,7 @@ class ExecutionArtifact(StrictModel):
 class ExecutionRequestBlock(StrictModel):
     requested_by: str = "system"
     requested_at: datetime = Field(default_factory=utc_now)
-    adapter: str = "mock"
+    adapter: str = Field(default_factory=lambda: settings.default_execution_adapter)
     env: str = "local"
     branch: str | None = None
     tags: list[str] = Field(default_factory=list)
@@ -241,7 +241,7 @@ class ExecutionBlock(StrictModel):
     finished_at: datetime
     summary: ExecutionSummary
     results: list[ExecutionCaseResult] = Field(default_factory=list)
-    adapter: str = "mock"
+    adapter: str = Field(default_factory=lambda: settings.default_execution_adapter)
     env: str = "local"
     artifacts: list[ExecutionArtifact] = Field(default_factory=list)
 
@@ -415,7 +415,7 @@ class IntegrationProfileBlock(StrictModel):
     knowledge_store: IntegrationProviderRef | None = None
     memory_store: IntegrationProviderRef | None = None
     embedding_provider: IntegrationProviderRef | None = None
-    policy: Literal["mock_only", "local_only", "external_allowed"] = "mock_only"
+    policy: Literal["mock_only", "local_only", "external_allowed"] = "local_only"
     external_connectors_enabled: bool = False
 
 

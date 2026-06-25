@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.tools.test_data_heuristics  # Registers LocalTestDataHeuristicTool.
+import backend.tools.test_data_heuristics  # noqa: F401 - registers LocalTestDataHeuristicTool
 from backend.graph.state import TestContext, TestDataBlock
 from backend.skills.base import BaseSkill, skill_registry
 from backend.tools.base import ToolRegistry, tool_registry as default_tool_registry

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.skills.reporting  # Registers GenerateReportSkill.
+import backend.skills.reporting  # noqa: F401 - registers GenerateReportSkill
 from backend.agents.base import BaseAgent, agent_registry
 from backend.graph.state import TestContext
 from backend.skills.base import SkillRegistry, skill_registry as default_skill_registry

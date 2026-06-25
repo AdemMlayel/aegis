@@ -1,4 +1,4 @@
-import backend.agents.coverage_planner  # Registers CoveragePlannerAgent.
+import backend.agents.coverage_planner  # noqa: F401 - registers CoveragePlannerAgent
 from backend.agents.base import agent_registry
 from backend.graph.state import TestContext
 

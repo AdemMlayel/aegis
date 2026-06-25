@@ -18,7 +18,7 @@ def build_integration_profile() -> IntegrationProfileBlock:
         knowledge_store=_to_ref(entries.get(ProviderKind.KNOWLEDGE_STORE)),
         memory_store=_to_ref(entries.get(ProviderKind.MEMORY_STORE)),
         embedding_provider=_to_ref(entries.get(ProviderKind.EMBEDDING_PROVIDER)),
-        policy="external_allowed" if external_enabled else "mock_only",
+        policy="external_allowed" if external_enabled else "local_only",
         external_connectors_enabled=bool(external_enabled),
     )
 
@@ -30,7 +30,7 @@ def _to_ref(entry: ProviderCatalogEntry | None) -> IntegrationProviderRef | None
     if entry.requires_external_api and not entry.enabled:
         notes.append("Provider requires external API configuration and is disabled in local mode.")
     if entry.mode in {ProviderMode.MOCK, ProviderMode.LOCAL}:
-        notes.append("Provider is safe for local architecture proofs.")
+        notes.append("Provider runs locally and does not require a company API.")
     return IntegrationProviderRef(
         kind=entry.kind.value,
         name=entry.name,

@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from backend.agents import agent_registry
-from backend.graph.artifacts import PROJECT_ROOT
+from backend.graph.artifacts import PROJECT_ROOT, relative_to_project, robot_output_dir
 from backend.graph.nodes.automation_generator import (
     automation_generator as run_automation_generator,
 )
@@ -70,7 +70,7 @@ def test_automation_graph_node_preserves_existing_robot_generation() -> None:
     robot_file = PROJECT_ROOT / context.automation["TC001"].robot_file
     assert robot_file.is_file()
     assert Path(context.automation["TC001"].robot_file).as_posix() == (
-        "generated/robot/auto_boundary_1/"
+        f"{relative_to_project(robot_output_dir('AUTO-BOUNDARY-1'))}/"
         "TC001_money_transfer_feature_happy_path.robot"
     )
 

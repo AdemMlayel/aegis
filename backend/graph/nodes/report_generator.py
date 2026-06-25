@@ -1,4 +1,4 @@
-import backend.agents.report_generator  # Registers ReportGeneratorAgent.
+import backend.agents.report_generator  # noqa: F401 - registers ReportGeneratorAgent
 from backend.agents.base import agent_registry
 from backend.graph.state import TestContext
 

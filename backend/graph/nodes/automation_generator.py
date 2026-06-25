@@ -1,4 +1,4 @@
-import backend.agents.automation_generator  # Registers AutomationGeneratorAgent.
+import backend.agents.automation_generator  # noqa: F401 - registers AutomationGeneratorAgent
 from backend.agents.base import agent_registry
 from backend.graph.state import TestContext
 

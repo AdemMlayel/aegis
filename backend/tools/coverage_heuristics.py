@@ -9,7 +9,6 @@ from backend.intelligence.context import (
     format_knowledge_context,
     format_memory_context,
     complete_with_configured_llm,
-    prompt_version_ref,
     search_knowledge_for_ticket,
     search_memory_for_ticket,
 )
@@ -93,11 +92,26 @@ def plan_coverage(
 
     knowledge_refs = [result.chunk.chunk_id for result in knowledge_results]
     memory_refs = [result.entry.memory_id for result in memory_results]
+    memory_evidence = [
+        " ".join(
+            [
+                result.entry.title,
+                result.entry.summary,
+                *result.entry.tags,
+            ]
+        ).lower()
+        for result in memory_results
+    ]
 
     regression_tests: list[str] = []
-    if any("transfer" in ref.lower() for ref in memory_refs) and ticket.id.startswith("AI-"):
+    if any(
+        "transfer" in evidence and "balance" in evidence
+        for evidence in memory_evidence
+    ) and ticket.id.startswith("AI-"):
         regression_tests.append("REG-BALANCE-CONSISTENCY")
-    if any("authorization" in ref.lower() for ref in memory_refs) and ticket.id.startswith("AI-"):
+    if any("authorization" in evidence for evidence in memory_evidence) and ticket.id.startswith(
+        "AI-"
+    ):
         regression_tests.append("REG-AUTH-NEGATIVE-PATHS")
 
     risk_rationale = [

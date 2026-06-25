@@ -1,4 +1,4 @@
-import backend.agents.test_case_generator  # Registers TestCaseGeneratorAgent.
+import backend.agents.test_case_generator  # noqa: F401 - registers TestCaseGeneratorAgent
 from backend.agents.base import agent_registry
 from backend.graph.state import TestContext
 

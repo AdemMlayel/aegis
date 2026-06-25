@@ -9,19 +9,24 @@ from backend.artifacts.base import (
     BaseArtifactStore,
     artifact_store_registry,
 )
-from backend.graph.artifacts import PROJECT_ROOT, relative_to_project, slug
+from backend.graph.artifacts import (
+    GENERATED_ARTIFACT_ROOT,
+    PROJECT_ROOT,
+    relative_to_project,
+    slug,
+)
 
 
 @artifact_store_registry.register(
     name="local_fs",
     mode=ArtifactStoreMode.LOCAL,
-    description="Local filesystem artifact store for architecture proofs and mock executions.",
-    root="generated/artifacts",
+    description="Local filesystem artifact store for workflow execution evidence.",
+    root="configured-generated-root/artifacts",
     requires_external_api=False,
 )
 class LocalFilesystemArtifactStore(BaseArtifactStore):
     def __init__(self, root: Path | None = None) -> None:
-        self.root = (root or PROJECT_ROOT / "generated" / "artifacts").resolve()
+        self.root = (root or GENERATED_ARTIFACT_ROOT).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.index_path = self.root / "index.jsonl"
 

@@ -29,7 +29,7 @@ class OpenAICompatibleLLMProvider(BaseLLMProvider):
         if not settings.openai_compatible_base_url or not settings.openai_compatible_api_key:
             raise RuntimeError(
                 "OpenAI-compatible provider is not configured. Set AEGISQA_OPENAI_COMPATIBLE_BASE_URL "
-                "and AEGISQA_OPENAI_COMPATIBLE_API_KEY, or use mock_llm/ollama."
+                "and AEGISQA_OPENAI_COMPATIBLE_API_KEY, or use a configured Ollama provider."
             )
         model = model_override or settings.openai_compatible_chat_model
         payload = {

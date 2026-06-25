@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import backend.execution  # Registers local execution adapters.
+import backend.execution  # noqa: F401 - registers local execution adapters
+from backend.config.settings import settings
 from backend.execution import execution_adapter_registry
 from backend.graph.state import (
     ExecutionBlock,
@@ -62,7 +63,7 @@ def execution_dispatcher(context: TestContext) -> TestContext:
 
     request = context.execution_request or ExecutionRequestBlock(
         requested_by="system",
-        adapter="mock",
+        adapter=settings.default_execution_adapter,
         env="local",
     )
     context.execution_request = request

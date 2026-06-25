@@ -1,4 +1,4 @@
-import backend.agents.human_approval  # Registers HumanApprovalAgent.
+import backend.agents.human_approval  # noqa: F401 - registers HumanApprovalAgent
 from backend.agents.base import agent_registry
 from backend.graph.state import TestContext
 

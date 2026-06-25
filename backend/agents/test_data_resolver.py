@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import backend.skills.test_data  # Registers ResolveTestDataSkill.
+import backend.skills.test_data  # noqa: F401 - registers ResolveTestDataSkill
 from backend.agents.base import BaseAgent, agent_registry
 from backend.graph.state import TestContext
 from backend.skills.base import SkillRegistry, skill_registry as default_skill_registry
