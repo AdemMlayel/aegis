@@ -11,7 +11,7 @@ from backend.api.routes.workflows import (
 )
 from backend.graph.state import TestContext, TicketData
 from backend.security import Capability, Principal, require_capability
-from backend.tickets import ticket_connector_registry
+from backend.tickets import get_ticket_source, ticket_connector_registry
 from backend.storage.mock_tickets import (
     MockTicketRecord,
     MockTicketStatus,
@@ -20,9 +20,6 @@ from backend.storage.mock_tickets import (
     add_mock_ticket_comment,
     create_mock_ticket,
     delete_mock_ticket,
-    get_mock_ticket,
-    get_mock_ticket_record,
-    list_mock_tickets,
     update_mock_ticket,
 )
 
@@ -36,6 +33,14 @@ class MockTicketsResponse(BaseModel):
 
 
 class MockTicketResponse(BaseModel):
+    ticket: MockTicketRecord
+
+
+class DemoTicketsResponse(BaseModel):
+    tickets: list[MockTicketRecord]
+
+
+class DemoTicketResponse(BaseModel):
     ticket: MockTicketRecord
 
 
@@ -66,6 +71,12 @@ class StartConnectorTicketWorkflowRequest(BaseModel):
 
 
 class StartMockTicketWorkflowRequest(BaseModel):
+    created_by: str = Field(default="local-user", min_length=1)
+    ticket_id: str = Field(min_length=1)
+    intelligence: IntelligenceConfigRequest | None = None
+
+
+class StartDemoTicketWorkflowRequest(BaseModel):
     created_by: str = Field(default="local-user", min_length=1)
     ticket_id: str = Field(min_length=1)
     intelligence: IntelligenceConfigRequest | None = None
@@ -152,7 +163,27 @@ def read_mock_tickets(
     label: str | None = Query(default=None, min_length=1),
 ) -> MockTicketsResponse:
     return MockTicketsResponse(
-        tickets=list_mock_tickets(
+        tickets=get_ticket_source().list(
+            query=q,
+            priority=priority,
+            status=status,
+            assignee=assignee,
+            label=label,
+        )
+    )
+
+
+@router.get("/tickets/demo", response_model=DemoTicketsResponse)
+def read_demo_tickets(
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_TICKETS))],
+    q: str | None = Query(default=None, min_length=1),
+    priority: TicketPriority | None = None,
+    status: MockTicketStatus | None = None,
+    assignee: str | None = Query(default=None, min_length=1),
+    label: str | None = Query(default=None, min_length=1),
+) -> DemoTicketsResponse:
+    return DemoTicketsResponse(
+        tickets=get_ticket_source().list(
             query=q,
             priority=priority,
             status=status,
@@ -167,13 +198,27 @@ def read_mock_ticket(
     ticket_id: str,
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_TICKETS))],
 ) -> MockTicketResponse:
-    ticket = get_mock_ticket_record(ticket_id)
+    ticket = get_ticket_source().fetch_record(ticket_id)
     if ticket is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Mock ticket was not found",
         )
     return MockTicketResponse(ticket=ticket)
+
+
+@router.get("/tickets/demo/{ticket_id}", response_model=DemoTicketResponse)
+def read_demo_ticket(
+    ticket_id: str,
+    principal: Annotated[Principal, Depends(require_capability(Capability.READ_TICKETS))],
+) -> DemoTicketResponse:
+    ticket = get_ticket_source().fetch_record(ticket_id)
+    if ticket is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Demo ticket was not found",
+        )
+    return DemoTicketResponse(ticket=ticket)
 
 
 @router.post(
@@ -288,11 +333,34 @@ def start_workflow_from_mock_ticket(
     request: StartMockTicketWorkflowRequest,
     principal: Annotated[Principal, Depends(require_capability(Capability.START_WORKFLOW))],
 ) -> StartWorkflowResponse:
-    ticket = get_mock_ticket(request.ticket_id)
+    ticket = get_ticket_source().fetch(request.ticket_id)
     if ticket is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Mock ticket was not found",
+        )
+    context: TestContext = run_and_persist_workflow_start(
+        created_by=request.created_by,
+        ticket=ticket,
+        intelligence=request.intelligence,
+    )
+    return StartWorkflowResponse(context=context)
+
+
+@router.post(
+    "/workflows/start-from-demo-ticket",
+    response_model=StartWorkflowResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def start_workflow_from_demo_ticket(
+    request: StartDemoTicketWorkflowRequest,
+    principal: Annotated[Principal, Depends(require_capability(Capability.START_WORKFLOW))],
+) -> StartWorkflowResponse:
+    ticket = get_ticket_source().fetch(request.ticket_id)
+    if ticket is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Demo ticket was not found",
         )
     context: TestContext = run_and_persist_workflow_start(
         created_by=request.created_by,

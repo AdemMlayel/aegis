@@ -33,6 +33,30 @@ import {
   RobotCodeView,
   RobotDiffView
 } from "./RobotArtifactViewer";
+import {
+  BulletList,
+  DetailSection,
+  EmptyView,
+  Metric,
+  StatusPill,
+  TabButton,
+  ValidationMetric
+} from "./WorkspacePrimitives";
+import {
+  STAGES,
+  activityDetail,
+  eventsFromTrace,
+  formatBytes,
+  formatDuration,
+  formatTime,
+  pendingStageReview,
+  stageLabel,
+  stageState,
+  summaryInputs,
+  validationHeadline,
+  validationText,
+  yesNo
+} from "./WorkspaceUtils";
 import type {
   ArtifactRevision,
   ExecutionEvent,
@@ -40,6 +64,7 @@ import type {
   ReportPackageManifest,
   TestCase,
   TestContext,
+  TicketData,
   WorkflowEvent,
   WorkflowStageName
 } from "../types";
@@ -52,19 +77,9 @@ export type WorkspaceView =
   | "report"
   | "evidence";
 
-const STAGES: Array<{ name: WorkflowStageName; label: string }> = [
-  { name: "ticket", label: "Ticket" },
-  { name: "requirements", label: "Requirements" },
-  { name: "coverage", label: "Coverage" },
-  { name: "tests", label: "Tests" },
-  { name: "automation", label: "Automation" },
-  { name: "validation", label: "Validation" },
-  { name: "approval", label: "Approval" },
-  { name: "report", label: "Report" }
-];
-
 export function ConversationWorkspace({
   context,
+  selectedTicket,
   timeline,
   view,
   selectedTestId,
@@ -96,6 +111,7 @@ export function ConversationWorkspace({
   onDownloadReport
 }: {
   context: TestContext | null;
+  selectedTicket: TicketData | null;
   timeline: WorkflowEvent[];
   view: WorkspaceView;
   selectedTestId: string;
@@ -145,12 +161,18 @@ export function ConversationWorkspace({
       <main className="operations-workspace empty-workspace">
         <div className="empty-workspace-content">
           <span className="empty-workspace-icon"><Bot /></span>
-          <h1>Choose a ticket workspace</h1>
-          <p>Create a controlled session to begin requirement analysis, coverage planning, and automation.</p>
+          <span className="ticket-key">{selectedTicket?.id ?? "NO TICKET SELECTED"}</span>
+          <h1>{selectedTicket?.title ?? "Choose a ticket workspace"}</h1>
+          <p>
+            {selectedTicket?.test_objective
+              || selectedTicket?.description
+              || "Create a controlled session to begin requirement analysis, coverage planning, and automation."}
+          </p>
           <button className="command-button primary" onClick={onCreateWorkspace}>
             <Play /> Start selected ticket
           </button>
         </div>
+        <TicketStructuredPanel ticket={selectedTicket} />
       </main>
     );
   }
@@ -188,6 +210,8 @@ export function ConversationWorkspace({
       </header>
 
       <AgentActivityRail context={context} timeline={displayEvents} />
+
+      <TicketStructuredPanel ticket={context.ticket} />
 
       <nav className="workspace-tabs" aria-label="Workspace views">
         <TabButton active={view === "conversation"} icon={<MessageSquare />} label="Activity" onClick={() => onViewChange("conversation")} />
@@ -644,6 +668,52 @@ function LatestDeliverable({
     );
   }
   return null;
+}
+
+function TicketStructuredPanel({ ticket }: { ticket: TicketData | null }) {
+  if (!ticket) return null;
+  const interactions = ticket.technical.api_or_service_interactions.map(
+    (interaction) =>
+      `${interaction.name}: ${interaction.source} -> ${interaction.target} (${interaction.protocol} ${interaction.operation})`
+  );
+  const validationRules = ticket.validation_rules.map(
+    (rule) => `${rule.id}: ${rule.description}`
+  );
+  const testSteps = ticket.test_steps.map(
+    (step) => `${step.action} Expected: ${step.expected_result}`
+  );
+  return (
+    <section className="ticket-context-panel">
+      <div className="deliverable-title"><FileJson2 /><h2>Structured ticket context</h2></div>
+      <div className="ticket-context-grid">
+        <Metric label="System" value={ticket.system_under_test || "TEST_ENVIRONMENT"} />
+        <Metric label="Service" value={ticket.feature_or_service_name || "Not specified"} />
+        <Metric label="Priority" value={ticket.priority} />
+        <Metric label="Environment" value={ticket.environment} />
+      </div>
+      <div className="ticket-context-copy">
+        <section>
+          <h3>Objectives</h3>
+          <p>{ticket.business_objective || ticket.description}</p>
+          <p>{ticket.test_objective || "No test objective recorded."}</p>
+        </section>
+        <section>
+          <h3>Technical Architecture</h3>
+          <p>{ticket.technical.architecture_summary || "No architecture summary recorded."}</p>
+        </section>
+      </div>
+      <div className="ticket-context-columns">
+        <DetailSection title="Scope" items={ticket.test_scope} />
+        <DetailSection title="Preconditions" items={ticket.preconditions} />
+        <DetailSection title="Interfaces" items={ticket.interfaces_involved} />
+        <DetailSection title="Validation rules" items={validationRules} />
+        <DetailSection title="Test steps" items={testSteps} ordered />
+        <DetailSection title="Service interactions" items={interactions} />
+        <DetailSection title="Required tools" items={ticket.required_tools} />
+        <DetailSection title="Risks and constraints" items={ticket.risks_or_constraints} />
+      </div>
+    </section>
+  );
 }
 
 function TestCaseWorkspace({
@@ -1525,6 +1595,19 @@ function EvidenceWorkspace({
           />
         ))}
       </EvidenceSection>
+      <EvidenceSection title="Investigation evidence" icon={<FileJson2 />}>
+        {context.investigation?.evidence_items?.slice(0, 12).map((item) => (
+          <EvidenceRow
+            key={item.evidence_id}
+            title={item.summary}
+            detail={`${item.kind} - ${item.severity_hint}`}
+            body={item.content_excerpt || item.source}
+          />
+        ))}
+        {!context.investigation?.evidence_items?.length ? (
+          <p className="evidence-summary">Investigation evidence will appear after execution.</p>
+        ) : null}
+      </EvidenceSection>
       <EvidenceSection title="Execution logs" icon={<Activity />}>
         {executionEvents.slice(-12).map((event) => (
           <EvidenceRow key={event.id} title={event.phase} detail={event.status ?? event.level} body={event.message} />
@@ -1569,175 +1652,4 @@ function EvidenceRow({
       <p>{body}</p>
     </article>
   );
-}
-
-function TabButton({
-  active,
-  icon,
-  label,
-  onClick
-}: {
-  active: boolean;
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return <button className={active ? "active" : ""} onClick={onClick}>{icon}{label}</button>;
-}
-
-function StatusPill({ value }: { value: string }) {
-  return <span className={`status-pill ${value}`}>{value.replaceAll("_", " ")}</span>;
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return <div className="deliverable-metric"><span>{label}</span><strong>{value}</strong></div>;
-}
-
-function ValidationMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="validation-metric">
-      <div><span>{label}</span><strong>{value}%</strong></div>
-      <span className="metric-track"><span style={{ width: `${value}%` }} /></span>
-    </div>
-  );
-}
-
-function BulletList({ items }: { items: string[] }) {
-  return items.length ? <ul className="bullet-list">{items.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null;
-}
-
-function DetailSection({
-  title,
-  items,
-  ordered = false
-}: {
-  title: string;
-  items: string[];
-  ordered?: boolean;
-}) {
-  const List = ordered ? "ol" : "ul";
-  return (
-    <section className="detail-section">
-      <h3>{title}</h3>
-      {items.length ? <List>{items.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</List> : <p className="muted-copy">None recorded.</p>}
-    </section>
-  );
-}
-
-function EmptyView({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return <div className="view-empty"><span>{icon}</span><p>{text}</p></div>;
-}
-
-function pendingStageReview(context: TestContext | null): WorkflowStageName | null {
-  if (!context || context.workflow_control.state !== "waiting_review") return null;
-  const review = Object.values(context.workflow_control.stage_reviews).find(
-    (item) => item.status === "pending"
-  );
-  return review?.stage ?? null;
-}
-
-function stageState(
-  context: TestContext,
-  stage: WorkflowStageName
-): "completed" | "active" | "blocked" | "waiting" {
-  if (context.workflow_control.last_error && context.workflow_control.current_stage === stage) return "blocked";
-  if (context.workflow_control.current_stage === stage || context.workflow_control.next_stage === stage) return "active";
-  if (context.workflow_control.completed_stages.includes(stage)) return "completed";
-  return "waiting";
-}
-
-function activityDetail(
-  context: TestContext,
-  stage: WorkflowStageName,
-  event?: WorkflowEvent
-): string {
-  if (context.workflow_control.current_stage === stage) return "Running";
-  const review = context.workflow_control.stage_reviews[stage];
-  if (review?.status === "pending") return "Waiting review";
-  if (review?.status === "changes_requested") return "Changes requested";
-  if (context.workflow_control.completed_stages.includes(stage)) {
-    const duration = event?.metadata.duration_ms;
-    return duration ? `${String(duration)} ms` : `Revision ${context.workflow_control.stage_revisions[stage] ?? 1}`;
-  }
-  return "Pending";
-}
-
-function summaryInputs(context: TestContext, stage: WorkflowStageName): string {
-  if (stage === "requirements") return context.ticket?.id ?? "Ticket";
-  if (stage === "coverage") return "Approved requirements and memory";
-  if (stage === "tests") return "Coverage plan and evidence";
-  if (stage === "automation") return `${context.test_cases.length} test scenarios`;
-  if (stage === "validation") return `${Object.keys(context.automation).length} Robot artifacts`;
-  if (stage === "approval") return "Validated automation package";
-  if (stage === "report") return "Workflow evidence and execution state";
-  return "Selected ticket";
-}
-
-function eventsFromTrace(context: TestContext): WorkflowEvent[] {
-  return context.workflow_trace
-    .filter((trace) => trace.status === "completed" || trace.status === "failed")
-    .map((trace, index) => ({
-      sequence: index + 1,
-      id: `${trace.node_name}-${index}`,
-      context_id: context.context_id,
-      kind: trace.status === "failed" ? "error" : "stage",
-      stage: nodeStage(trace.node_name),
-      status: trace.status,
-      actor: "system",
-      message: trace.summary ?? `${trace.node_name.replaceAll("_", " ")} ${trace.status}.`,
-      metadata: trace.metadata,
-      created_at: trace.timestamp
-    }));
-}
-
-function nodeStage(nodeName: string): WorkflowStageName | null {
-  if (nodeName === "load_ticket") return "ticket";
-  if (nodeName === "requirement_agent") return "requirements";
-  if (nodeName === "coverage_planner") return "coverage";
-  if (nodeName === "test_case_generator" || nodeName === "test_data_resolver") return "tests";
-  if (nodeName === "automation_generator") return "automation";
-  if (nodeName === "validator" || nodeName === "validation_retry_gate") return "validation";
-  if (nodeName === "human_approval") return "approval";
-  if (["execution_dispatcher", "investigation_coordinator", "memory_archiver", "report_generator"].includes(nodeName)) return "report";
-  return null;
-}
-
-function stageLabel(stage: WorkflowStageName): string {
-  return STAGES.find((item) => item.name === stage)?.label ?? stage;
-}
-
-function validationText(value: boolean | null): string {
-  if (value === true) return "Passed";
-  if (value === false) return "Failed";
-  return "Needs validation";
-}
-
-function validationHeadline(status: "passed" | "warning" | "failed"): string {
-  if (status === "passed") return "Validation passed";
-  if (status === "warning") return "Validation passed with review notes";
-  return "Validation failed";
-}
-
-function yesNo(value: boolean): string {
-  return value ? "Passed" : "Failed";
-}
-
-function formatTime(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date(value));
-}
-
-function formatDuration(durationMs: number): string {
-  if (durationMs < 1000) return `${durationMs} ms`;
-  const seconds = durationMs / 1000;
-  if (seconds < 60) return `${seconds.toFixed(seconds < 10 ? 1 : 0)} s`;
-  return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
-}
-
-function formatBytes(size: number): string {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }

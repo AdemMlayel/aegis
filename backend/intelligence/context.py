@@ -44,7 +44,41 @@ def build_ticket_query(ticket: TicketData) -> str:
             ticket.id,
             ticket.title,
             ticket.description,
+            ticket.business_objective,
+            ticket.test_objective,
+            ticket.system_under_test,
+            ticket.feature_or_service_name,
+            ticket.environment,
+            " ".join(ticket.test_scope),
+            " ".join(ticket.preconditions),
+            " ".join(ticket.assumptions),
+            " ".join(ticket.interfaces_involved),
+            " ".join(item.value for item in ticket.input_data),
+            " ".join(item.description for item in ticket.input_data),
+            " ".join(ticket.expected_outputs),
+            " ".join(rule.description for rule in ticket.validation_rules),
+            " ".join(step.action for step in ticket.test_steps),
+            " ".join(step.expected_result for step in ticket.test_steps),
             " ".join(ticket.acceptance_criteria),
+            " ".join(ticket.risks_or_constraints),
+            " ".join(ticket.dependencies),
+            " ".join(ticket.required_tools),
+            ticket.technical.architecture_summary,
+            " ".join(ticket.technical.components_involved),
+            " ".join(ticket.technical.data_flow),
+            " ".join(
+                " ".join(
+                    [
+                        interaction.name,
+                        interaction.source,
+                        interaction.target,
+                        interaction.protocol,
+                        interaction.operation,
+                        interaction.expected_result,
+                    ]
+                )
+                for interaction in ticket.technical.api_or_service_interactions
+            ),
             " ".join(ticket.labels),
             ticket.priority,
         ]

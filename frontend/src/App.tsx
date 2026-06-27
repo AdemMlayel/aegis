@@ -20,9 +20,9 @@ import {
   getTokenBudgetStatus,
   getWorkflow,
   listArtifactRevisions,
+  listDemoTickets,
   listExecutionEvents,
   listExecutionRuns,
-  listMockTickets,
   listWorkflowTimeline,
   listWorkflows,
   pauseWorkflowSession,
@@ -271,7 +271,7 @@ export default function App() {
         budget,
         serviceHealth
       ] = await Promise.all([
-        listMockTickets(),
+        listDemoTickets(),
         listWorkflows({ limit: 20 }),
         getProviderCatalog(),
         getLLMProviders(),
@@ -693,6 +693,7 @@ export default function App() {
         ) : null}
         <ConversationWorkspace
           context={context}
+          selectedTicket={selectedTicket}
           timeline={timeline}
           view={view}
           selectedTestId={selectedTestId}

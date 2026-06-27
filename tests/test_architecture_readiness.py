@@ -7,7 +7,11 @@ from backend.execution import RobotExecutionAdapter, execution_adapter_registry
 from backend.main import app
 from backend.security import Capability, Role
 from backend.security.rbac import ROLE_CAPABILITIES
-from backend.tickets import MockJiraTicketConnector, ticket_connector_registry
+from backend.tickets import (
+    DemoTicketConnector,
+    MockJiraTicketConnector,
+    ticket_connector_registry,
+)
 from backend.tools.base import BaseTool, ToolRegistry
 
 
@@ -29,6 +33,12 @@ def test_security_rbac_matrix_and_strict_mode(monkeypatch) -> None:
 
 
 def test_mock_jira_connector_boundary_is_registered_and_local() -> None:
+    assert ticket_connector_registry.has("demo") is True
+    assert ticket_connector_registry.get("demo") is DemoTicketConnector
+    demo_spec = ticket_connector_registry.get("demo").spec
+    assert demo_spec.source == "demo"
+    assert demo_spec.requires_external_api is False
+
     assert ticket_connector_registry.has("jira_mock") is True
     assert ticket_connector_registry.get("jira_mock") is MockJiraTicketConnector
     spec = ticket_connector_registry.get("jira_mock").spec
@@ -83,7 +93,7 @@ def test_milestone3_provider_catalog_is_local_and_swappable() -> None:
     assert all(provider.requires_external_api is False for provider in providers)
 
     selected = {selection.kind: selection.selected for selection in catalog.selections()}
-    assert selected[ProviderKind.TICKET_CONNECTOR] == "jira_mock"
+    assert selected[ProviderKind.TICKET_CONNECTOR] == "demo"
     assert selected[ProviderKind.ARTIFACT_STORE] == "local_fs"
     assert selected[ProviderKind.SECRET_PROVIDER] == "mock_vault"
     assert selected[ProviderKind.EXECUTION_ADAPTER] == "mock"
@@ -101,14 +111,14 @@ def test_integration_endpoints_expose_local_providers_only(
     body = response.json()
     assert body["external_connectors_enabled"] is False
     provider_names = {provider["name"] for provider in body["providers"]}
-    assert {"jira_mock", "mock", "robot", "local_fs", "mock_vault"} <= provider_names
+    assert {"demo", "jira_mock", "mock", "robot", "local_fs", "mock_vault"} <= provider_names
     assert all(provider["requires_external_api"] is False for provider in body["providers"])
 
     profile_response = client.get("/api/v1/integrations/profile")
     assert profile_response.status_code == 200
     profile = profile_response.json()["profile"]
     assert profile["policy"] == "local_only"
-    assert profile["ticket_connector"]["name"] == "jira_mock"
+    assert profile["ticket_connector"]["name"] == "demo"
     assert profile["artifact_store"]["name"] == "local_fs"
     assert profile["secret_provider"]["name"] == "mock_vault"
 
@@ -125,7 +135,7 @@ def test_mock_vault_returns_references_without_secret_values() -> None:
     assert all(ref["masked_value"] == "********" for ref in body["references"])
 
 
-def test_start_workflow_from_connector_uses_mock_jira_boundary(
+def test_start_workflow_from_connector_uses_demo_boundary(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(settings, "external_connectors_enabled", False)
@@ -134,11 +144,15 @@ def test_start_workflow_from_connector_uses_mock_jira_boundary(
 
     response = client.post(
         "/api/v1/workflows/start-from-ticket-connector",
-        json={"created_by": "pytest", "connector": "jira_mock", "ticket_id": "MOCK-101"},
+        json={
+            "created_by": "pytest",
+            "connector": "demo",
+            "ticket_id": "DEMO-TELCO-IMS-001",
+        },
     )
     assert response.status_code == 202
     context = response.json()["context"]
-    assert context["ticket"]["source"] == "jira"
-    assert context["ticket"]["raw_url"].startswith("mock://jira/")
-    assert context["integration_profile"]["ticket_connector"]["name"] == "jira_mock"
+    assert context["ticket"]["source"] == "demo"
+    assert context["ticket"]["raw_url"].startswith("demo://tickets/")
+    assert context["integration_profile"]["ticket_connector"]["name"] == "demo"
     assert context["integration_profile"]["policy"] == "local_only"

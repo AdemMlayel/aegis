@@ -13,6 +13,10 @@ from backend.intelligence.context import (
     search_memory_for_ticket,
 )
 from backend.prompts import prompt_registry
+from backend.intelligence.structured_outputs import (
+    CoverageLLMOutput,
+    parse_structured_llm_response,
+)
 from backend.tools.base import BaseTool, tool_registry
 
 
@@ -90,6 +94,11 @@ def plan_coverage(
         model_role="reasoning",
     )
 
+    structured_output = parse_structured_llm_response(
+        response=llm_response,
+        schema=CoverageLLMOutput,
+        context=context,
+    )
     knowledge_refs = [result.chunk.chunk_id for result in knowledge_results]
     memory_refs = [result.entry.memory_id for result in memory_results]
     memory_evidence = [
@@ -125,7 +134,14 @@ def plan_coverage(
         f"Reviewer direction applied: {comment}"
         for comment in reviewer_feedback
     )
-    if llm_response.provider != "mock_llm" and llm_response.text:
+    if structured_output is not None:
+        risk_rationale.extend(structured_output.risk_notes)
+        regression_tests.extend(
+            regression
+            for regression in structured_output.suggested_regressions
+            if regression and regression not in regression_tests
+        )
+    elif llm_response.provider != "mock_llm" and llm_response.text:
         risk_rationale.append(f"Model guidance: {llm_response.text[:1200]}")
 
     return CoveragePlan(

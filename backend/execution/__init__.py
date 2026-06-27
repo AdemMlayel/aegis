@@ -7,6 +7,7 @@ from backend.execution.base import (
 )
 from backend.execution.mock import MockExecutionAdapter
 from backend.execution.robot import RobotExecutionAdapter
+from backend.execution.robot_docker import DockerRobotExecutionAdapter
 
 __all__ = [
     "BaseExecutionAdapter",
@@ -15,5 +16,6 @@ __all__ = [
     "ExecutionAdapterSpec",
     "MockExecutionAdapter",
     "RobotExecutionAdapter",
+    "DockerRobotExecutionAdapter",
     "execution_adapter_registry",
 ]

@@ -1,10 +1,17 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath, URL } from "node:url";
+
+const frontendRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, ".", "");
+  const env = loadEnv(mode, frontendRoot, "");
   return {
+    root: frontendRoot,
     plugins: [react()],
+    build: {
+      outDir: "dist"
+    },
     server: {
       host: env.VITE_DEV_HOST ?? "127.0.0.1",
       port: Number(env.VITE_DEV_PORT ?? 5173),

@@ -38,6 +38,16 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _deterministic_demo_mode() -> bool:
+    return _env_bool("AEGISQA_DETERMINISTIC_DEMO_MODE", False)
+
+
+def _provider_default(env_name: str, normal_default: str, deterministic_default: str) -> str:
+    if _deterministic_demo_mode():
+        return deterministic_default
+    return os.getenv(env_name, normal_default)
+
+
 class Settings(BaseModel):
     """Central environment-driven settings for local/demo operation.
 
@@ -48,6 +58,7 @@ class Settings(BaseModel):
 
     app_name: str = "AegisQA"
     environment: str = Field(default_factory=lambda: os.getenv("AEGISQA_ENV", "local"))
+    deterministic_demo_mode: bool = Field(default_factory=_deterministic_demo_mode)
     workflow_schema_version: str = "0.15.0"
     sqlite_db_path: str | None = Field(
         default_factory=lambda: os.getenv("AEGISQA_SQLITE_DB_PATH")
@@ -55,21 +66,28 @@ class Settings(BaseModel):
     generated_root: str | None = Field(
         default_factory=lambda: os.getenv("AEGISQA_GENERATED_ROOT")
     )
+    knowledge_documents_dir: str | None = Field(
+        default_factory=lambda: os.getenv("AEGISQA_KNOWLEDGE_DOCUMENTS_DIR")
+    )
+    storage_backend: str = Field(default_factory=lambda: os.getenv("AEGISQA_STORAGE_BACKEND", "sqlite"))
+    database_url: str | None = Field(default_factory=lambda: os.getenv("AEGISQA_DATABASE_URL"))
+    robot_docker_image: str = Field(default_factory=lambda: os.getenv("AEGISQA_ROBOT_DOCKER_IMAGE", "aegisqa-robot-runner:local"))
+    robot_docker_timeout_seconds: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_ROBOT_DOCKER_TIMEOUT_SECONDS", "180")))
 
     auth_mode: str = Field(default_factory=lambda: os.getenv("AEGISQA_AUTH_MODE", "permissive"))
     local_user: str = Field(default_factory=lambda: os.getenv("AEGISQA_LOCAL_USER", "local-user"))
     local_role: str = Field(default_factory=lambda: os.getenv("AEGISQA_LOCAL_ROLE", "qa_lead"))
 
-    default_ticket_connector: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_TICKET_CONNECTOR", "jira_mock"))
-    default_execution_adapter: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_EXECUTION_ADAPTER", "robot"))
-    default_artifact_store: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_ARTIFACT_STORE", "local_fs"))
-    default_secret_provider: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_SECRET_PROVIDER", "mock_vault"))
+    default_ticket_connector: str = Field(default_factory=lambda: _provider_default("AEGISQA_DEFAULT_TICKET_CONNECTOR", "demo", "demo"))
+    default_execution_adapter: str = Field(default_factory=lambda: _provider_default("AEGISQA_DEFAULT_EXECUTION_ADAPTER", "robot", "mock"))
+    default_artifact_store: str = Field(default_factory=lambda: _provider_default("AEGISQA_DEFAULT_ARTIFACT_STORE", "local_fs", "local_fs"))
+    default_secret_provider: str = Field(default_factory=lambda: _provider_default("AEGISQA_DEFAULT_SECRET_PROVIDER", "mock_vault", "mock_vault"))
     external_connectors_enabled: bool = Field(default_factory=lambda: _env_bool("AEGISQA_EXTERNAL_CONNECTORS_ENABLED", False))
 
-    default_llm_provider: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_LLM_PROVIDER", "ollama"))
-    default_embedding_provider: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_EMBEDDING_PROVIDER", "ollama_nomic_embed_text"))
-    default_knowledge_store: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_KNOWLEDGE_STORE", "local_knowledge"))
-    default_memory_store: str = Field(default_factory=lambda: os.getenv("AEGISQA_DEFAULT_MEMORY_STORE", "local_episodic_memory"))
+    default_llm_provider: str = Field(default_factory=lambda: _provider_default("AEGISQA_DEFAULT_LLM_PROVIDER", "ollama", "mock_llm"))
+    default_embedding_provider: str = Field(default_factory=lambda: _provider_default("AEGISQA_DEFAULT_EMBEDDING_PROVIDER", "ollama_nomic_embed_text", "local_hash_embeddings"))
+    default_knowledge_store: str = Field(default_factory=lambda: _provider_default("AEGISQA_DEFAULT_KNOWLEDGE_STORE", "local_knowledge", "local_knowledge"))
+    default_memory_store: str = Field(default_factory=lambda: _provider_default("AEGISQA_DEFAULT_MEMORY_STORE", "local_episodic_memory", "local_episodic_memory"))
 
     ollama_base_url: str = Field(default_factory=lambda: os.getenv("AEGISQA_OLLAMA_BASE_URL", "http://127.0.0.1:11434"))
     ollama_chat_model: str = Field(default_factory=lambda: os.getenv("AEGISQA_OLLAMA_CHAT_MODEL", "qwen3:3b"))

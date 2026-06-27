@@ -62,10 +62,10 @@ def test_workflow_routes_each_llm_agent_independently() -> None:
     }
 
     response = client.post(
-        "/api/v1/workflows/start-from-mock-ticket",
+        "/api/v1/workflows/start-from-demo-ticket",
         json={
             "created_by": "routing-test",
-            "ticket_id": "MOCK-101",
+            "ticket_id": "DEMO-TELCO-IMS-001",
             "intelligence": {
                 "llm_provider": "mock_llm",
                 "embedding_provider": "local_hash_embeddings",
@@ -93,10 +93,10 @@ def test_workflow_rejects_model_route_for_deterministic_agent() -> None:
     client = TestClient(app)
 
     response = client.post(
-        "/api/v1/workflows/start-from-mock-ticket",
+        "/api/v1/workflows/start-from-demo-ticket",
         json={
             "created_by": "routing-test",
-            "ticket_id": "MOCK-101",
+            "ticket_id": "DEMO-TELCO-IMS-001",
             "intelligence": {
                 "agent_routes": {
                     "ValidatorAgent": {

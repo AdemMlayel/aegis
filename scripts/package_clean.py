@@ -12,14 +12,16 @@ EXCLUDE_DIRS = {
     ".ruff_cache",
     ".tools",
     ".venv",
+    ".incoming_robot_libs",
     "__pycache__",
+    "custom_libs",
     "node_modules",
     "dist",
     "generated",
     "aegisqa.egg-info",
 }
 EXCLUDE_SUFFIXES = {".pyc", ".pyo"}
-EXCLUDE_FILES = {".env"}
+EXCLUDE_FILES = {".env", "lld.docx"}
 
 
 def should_skip(path: Path) -> bool:

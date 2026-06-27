@@ -3,21 +3,14 @@ from backend.embeddings import embedding_provider_registry
 from backend.graph.state import IntegrationProviderRef, TestContext, TicketData
 from backend.integrations.profile import build_integration_profile
 from backend.llm import llm_provider_registry
+from backend.tickets.sources import DemoTicketSource
 
 
 def default_ticket() -> TicketData:
-    return TicketData(
-        id="FAKE-001",
-        title="Money Transfer Feature",
-        description="As a customer, I want to transfer money to another account.",
-        acceptance_criteria=[
-            "Transfer completes within 3 seconds",
-            "Balance updates immediately",
-            "Confirmation notification is sent",
-        ],
-        priority="high",
-        labels=["banking", "payments"],
-    )
+    ticket = DemoTicketSource().fetch("DEMO-TELCO-IMS-001")
+    if ticket is None:
+        raise ValueError("Structured demo ticket source did not return a default ticket")
+    return ticket
 
 
 def load_ticket(context: TestContext) -> TestContext:

@@ -2,62 +2,24 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from typing import Any, Literal
+from typing import Any
 
-from pydantic import Field
-
-from backend.graph.artifacts import PROJECT_ROOT
-from backend.graph.state import StrictModel, TicketData, utc_now
+from backend.graph.state import TicketData, utc_now
 from backend.storage.database import connect, initialize_database
-
-
-MOCK_TICKETS_PATH = PROJECT_ROOT / "backend" / "mock_data" / "tickets.json"
-TicketPriority = Literal["low", "medium", "high", "critical"]
-MockTicketStatus = Literal["backlog", "ready", "in_progress", "blocked", "done"]
-RequirementStatus = Literal["draft", "approved", "needs_clarification"]
+from backend.tickets.demo_data import STRUCTURED_DEMO_TICKETS
+from backend.tickets.schema import (
+    LinkedRequirement,
+    MockTicketRecord,
+    MockTicketStatus,
+    MockTicketUpdate,
+    NewMockTicketComment,
+    TicketComment,
+    TicketPriority,
+)
 
 
 def _now_iso() -> str:
     return utc_now().isoformat()
-
-
-class MockTicketComment(StrictModel):
-    author: str
-    body: str
-    created_at: str = Field(default_factory=_now_iso)
-
-
-class MockLinkedRequirement(StrictModel):
-    id: str
-    title: str
-    status: RequirementStatus = "draft"
-    source: str = "mock"
-
-
-class MockTicketRecord(TicketData):
-    status: MockTicketStatus = "ready"
-    created_at: str = Field(default_factory=_now_iso)
-    updated_at: str = Field(default_factory=_now_iso)
-    comments: list[MockTicketComment] = Field(default_factory=list)
-    linked_requirements: list[MockLinkedRequirement] = Field(default_factory=list)
-
-
-class MockTicketUpdate(StrictModel):
-    title: str | None = None
-    description: str | None = None
-    acceptance_criteria: list[str] | None = None
-    priority: TicketPriority | None = None
-    labels: list[str] | None = None
-    assignee: str | None = None
-    status: MockTicketStatus | None = None
-    raw_url: str | None = None
-    comments: list[MockTicketComment] | None = None
-    linked_requirements: list[MockLinkedRequirement] | None = None
-
-
-class NewMockTicketComment(StrictModel):
-    author: str
-    body: str
 
 
 _seed_imported = False
@@ -77,17 +39,12 @@ def _record_from_seed(item: dict[str, Any]) -> MockTicketRecord:
 
 
 def _record_to_ticket(record: MockTicketRecord) -> TicketData:
-    return TicketData(
-        id=record.id,
-        title=record.title,
-        description=record.description,
-        acceptance_criteria=record.acceptance_criteria,
-        priority=record.priority,
-        labels=record.labels,
-        assignee=record.assignee,
-        source=record.source,
-        raw_url=record.raw_url,
-    )
+    payload = {
+        key: value
+        for key, value in record.model_dump(mode="json").items()
+        if key in TicketData.model_fields
+    }
+    return TicketData.model_validate(payload)
 
 
 def _search_blob(record: MockTicketRecord) -> str:
@@ -99,7 +56,26 @@ def _search_blob(record: MockTicketRecord) -> str:
             record.status,
             record.priority,
             " ".join(record.acceptance_criteria),
+            record.business_objective,
+            record.test_objective,
+            record.system_under_test,
+            record.feature_or_service_name,
+            record.environment,
+            " ".join(record.test_scope),
+            " ".join(record.out_of_scope),
+            " ".join(record.preconditions),
+            " ".join(record.assumptions),
+            " ".join(record.interfaces_involved),
+            " ".join(record.expected_outputs),
+            " ".join(record.risks_or_constraints),
+            " ".join(record.dependencies),
+            " ".join(record.required_tools),
             " ".join(record.labels),
+            " ".join(item.description for item in record.validation_rules),
+            " ".join(step.action for step in record.test_steps),
+            record.technical.architecture_summary,
+            " ".join(record.technical.components_involved),
+            " ".join(record.technical.data_flow),
             record.assignee or "",
             " ".join(comment.body for comment in record.comments),
             " ".join(requirement.id for requirement in record.linked_requirements),
@@ -192,8 +168,7 @@ def seed_mock_tickets() -> None:
             _seed_imported = True
             return
 
-        payload = json.loads(MOCK_TICKETS_PATH.read_text(encoding="utf-8"))
-        for item in payload:
+        for item in STRUCTURED_DEMO_TICKETS:
             _save_record(connection, _record_from_seed(item))
 
     _seed_imported = True
@@ -302,12 +277,12 @@ def update_mock_ticket(
     }
     if "comments" in changes and changes["comments"] is not None:
         changes["comments"] = [
-            MockTicketComment.model_validate(comment)
+            TicketComment.model_validate(comment)
             for comment in changes["comments"]
         ]
     if "linked_requirements" in changes and changes["linked_requirements"] is not None:
         changes["linked_requirements"] = [
-            MockLinkedRequirement.model_validate(requirement)
+            LinkedRequirement.model_validate(requirement)
             for requirement in changes["linked_requirements"]
         ]
     changes["updated_at"] = _now_iso()
@@ -327,7 +302,7 @@ def add_mock_ticket_comment(
 
     comments = [
         *record.comments,
-        MockTicketComment(
+        TicketComment(
             author=comment.author,
             body=comment.body,
             created_at=_now_iso(),

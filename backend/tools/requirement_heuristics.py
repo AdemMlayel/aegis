@@ -14,6 +14,10 @@ from backend.intelligence.context import (
     search_memory_for_ticket,
 )
 from backend.prompts import prompt_registry
+from backend.intelligence.structured_outputs import (
+    RequirementLLMOutput,
+    parse_structured_llm_response,
+)
 from backend.tools.base import BaseTool, tool_registry
 
 
@@ -37,6 +41,14 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
     actor = _infer_actor(ticket.description)
     domain = _infer_domain(ticket.labels, ticket.title, ticket.description)
     has_acceptance_criteria = bool(ticket.acceptance_criteria)
+    explicit_preconditions = ticket.preconditions or [
+        "User can access the target environment"
+    ]
+    expected_results = (
+        ticket.expected_outputs
+        or ticket.acceptance_criteria
+        or ["Requested business action completes successfully"]
+    )
     mentions_performance = any(
         term in criterion.lower()
         for criterion in ticket.acceptance_criteria
@@ -45,14 +57,19 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
 
     checklist = CompletenessChecklist(
         actor_identified=actor != "user",
-        preconditions_defined="auth" in ticket.description.lower()
+        preconditions_defined=bool(ticket.preconditions)
+        or "auth" in ticket.description.lower()
         or "login" in ticket.description.lower(),
         expected_outcome_specified=has_acceptance_criteria,
         error_scenarios_mentioned=any(
             term in ticket.description.lower()
             for term in ("error", "invalid", "fail", "insufficient")
-        ),
-        data_constraints_defined=any(
+        )
+        or bool(ticket.risks_or_constraints),
+        data_constraints_defined=bool(
+            ticket.input_data or ticket.technical.test_data_requirements
+        )
+        or any(
             term in ticket.description.lower()
             for term in ("limit", "minimum", "maximum", "currency")
         ),
@@ -78,8 +95,19 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
         ticket_title=ticket.title,
         priority=ticket.priority,
         labels=", ".join(ticket.labels),
-        description=ticket.description,
-        acceptance_criteria=ticket.acceptance_criteria or ["No acceptance criteria provided"],
+        description="\n".join(
+            part
+            for part in (
+                ticket.description,
+                f"Business objective: {ticket.business_objective}",
+                f"Test objective: {ticket.test_objective}",
+                f"System under test: {ticket.system_under_test}",
+                f"Feature or service: {ticket.feature_or_service_name}",
+                f"Architecture: {ticket.technical.architecture_summary}",
+            )
+            if part and not part.endswith(": ")
+        ),
+        acceptance_criteria=expected_results,
         knowledge_context=format_knowledge_context(knowledge_results),
         memory_context=format_memory_context(memory_results),
     )
@@ -100,37 +128,50 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
         model_role="main_rag",
     )
 
+    structured_output = parse_structured_llm_response(
+        response=llm_response,
+        schema=RequirementLLMOutput,
+        context=context,
+    )
     knowledge_refs = [result.chunk.chunk_id for result in knowledge_results]
     memory_refs = [result.entry.memory_id for result in memory_results]
 
     return RequirementAnalysis(
-        business_action=ticket.title,
+        business_action=ticket.feature_or_service_name or ticket.title,
         domain=domain,
         actor=actor,
-        preconditions=["User can access the target environment"],
-        expected_results=ticket.acceptance_criteria
-        or ["Requested business action completes successfully"],
+        preconditions=explicit_preconditions,
+        expected_results=expected_results,
         completeness_checklist=checklist,
         missing_fields=missing_fields,
-        clarification_questions=clarification_questions,
+        clarification_questions=[
+            *clarification_questions,
+            *(structured_output.ambiguities if structured_output else []),
+        ],
         memory_refs_used=memory_refs,
         knowledge_refs_used=knowledge_refs,
         prompt_versions_used=[prompt_version_ref("requirement_analysis_v1")],
         llm_summary=" ".join(
             [
-                llm_response.text,
+                structured_output.summary if structured_output else llm_response.text,
                 *[
                     f"Reviewer direction applied: {comment}"
                     for comment in reviewer_feedback
                 ],
             ]
         ),
-        confidence=0.82 if has_acceptance_criteria else 0.62,
+        confidence=(
+            structured_output.confidence
+            if structured_output is not None
+            else 0.82 if has_acceptance_criteria else 0.62
+        ),
     )
 
 
 def _infer_domain(labels: list[str], title: str, description: str) -> str:
     text = " ".join([title, description, *labels]).lower()
+    if any(term in text for term in ("telecom", "ims", "sip", "diameter", "trace")):
+        return "telecom"
     if any(term in text for term in ("payment", "transfer", "banking", "account")):
         return "banking"
     if any(term in text for term in ("api", "endpoint", "request", "response")):

@@ -1,0 +1,98 @@
+{
+  "fixture_id": "SANITIZED_CALL_TRACE_FIXTURE",
+  "environment": "TEST_ENVIRONMENT",
+  "trace_reference": "TRACE_REFERENCE_PLACEHOLDER",
+  "events": [
+    {
+      "id": "EVT-SIP-INVITE-001",
+      "protocol": "SIP",
+      "message": "INVITE",
+      "source": "TEST_SUBSCRIBER_A",
+      "target": "INTERNAL_SERVICE_A",
+      "headers": [
+        "To",
+        "From",
+        "Call-ID",
+        "CSeq",
+        "Via",
+        "Max-Forwards",
+        "P-Asserted-Identity"
+      ]
+    },
+    {
+      "id": "EVT-SIP-TRYING-001",
+      "protocol": "SIP",
+      "message": "100 TRYING",
+      "source": "INTERNAL_SERVICE_A",
+      "target": "TEST_SUBSCRIBER_A",
+      "headers": [
+        "To",
+        "From",
+        "Call-ID",
+        "CSeq",
+        "Via"
+      ]
+    },
+    {
+      "id": "EVT-DIA-LIR-001",
+      "protocol": "Diameter",
+      "message": "LIR",
+      "source": "INTERNAL_SERVICE_B",
+      "target": "INTERNAL_SERVICE_C",
+      "session_id": "SESSION_PLACEHOLDER_A"
+    },
+    {
+      "id": "EVT-DIA-LIA-001",
+      "protocol": "Diameter",
+      "message": "LIA",
+      "source": "INTERNAL_SERVICE_C",
+      "target": "INTERNAL_SERVICE_B",
+      "session_id": "SESSION_PLACEHOLDER_A",
+      "result_code": "SUCCESS_RESULT_CODE_PLACEHOLDER"
+    },
+    {
+      "id": "EVT-SIP-ACK-001",
+      "protocol": "SIP",
+      "message": "ACK",
+      "source": "TEST_SUBSCRIBER_A",
+      "target": "INTERNAL_SERVICE_A",
+      "headers": [
+        "To",
+        "From",
+        "Call-ID",
+        "CSeq",
+        "Via"
+      ]
+    },
+    {
+      "id": "EVT-SIP-BYE-001",
+      "protocol": "SIP",
+      "message": "BYE",
+      "source": "INTERNAL_SERVICE_A",
+      "target": "TEST_SUBSCRIBER_A",
+      "headers": [
+        "To",
+        "From",
+        "Call-ID",
+        "CSeq",
+        "Via"
+      ]
+    }
+  ],
+  "flexible_order_groups": [
+    [
+      "EVT-DIA-LIR-001",
+      "EVT-DIA-LIA-001"
+    ]
+  ],
+  "sequence_templates": {
+    "IMS_CALL_FLOW_TEMPLATE": [
+      "EVT-SIP-INVITE-001",
+      "EVT-SIP-TRYING-001",
+      "EVT-DIA-LIR-001",
+      "EVT-DIA-LIA-001",
+      "EVT-SIP-ACK-001",
+      "EVT-SIP-BYE-001"
+    ]
+  }
+}

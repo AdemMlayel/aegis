@@ -36,6 +36,7 @@ class GenerateAutomationSkill(BaseSkill):
             context_id=context.context_id,
             audit_sink=context.record_event,
             ticket_id=context.ticket.id,
+            ticket=context.ticket,
             test_cases=context.test_cases,
             test_data=context.test_data,
             revision=revision,

@@ -19,6 +19,7 @@ from backend.embeddings import embedding_provider_registry
 from backend.secrets import secret_provider_registry
 from backend.tickets import ticket_connector_registry
 from backend.tools import tool_registry
+from backend.storage.adapters import storage_adapter_registry
 
 
 class ProviderKind(StrEnum):
@@ -31,6 +32,7 @@ class ProviderKind(StrEnum):
     KNOWLEDGE_STORE = "knowledge_store"
     MEMORY_STORE = "memory_store"
     EMBEDDING_PROVIDER = "embedding_provider"
+    STORAGE_BACKEND = "storage_backend"
 
 
 class ProviderMode(StrEnum):
@@ -100,6 +102,7 @@ class ProviderCatalog:
     def as_dict(self, *, include_external: bool = False) -> dict[str, Any]:
         return {
             "environment": settings.environment,
+            "deterministic_demo_mode": settings.deterministic_demo_mode,
             "external_connectors_enabled": settings.external_connectors_enabled,
             "selected": [asdict(selection) for selection in self.selections()],
             "providers": [asdict(entry) for entry in self.list(include_external=include_external)],
@@ -114,7 +117,13 @@ def build_provider_catalog() -> ProviderCatalog:
             ProviderCatalogEntry(
                 kind=ProviderKind.TICKET_CONNECTOR,
                 name=spec.name,
-                mode=ProviderMode.MOCK if spec.name.endswith("mock") else ProviderMode.EXTERNAL,
+                mode=(
+                    ProviderMode.MOCK
+                    if spec.name.endswith("mock")
+                    else ProviderMode.EXTERNAL
+                    if spec.requires_external_api
+                    else ProviderMode.LOCAL
+                ),
                 description=spec.description,
                 version=spec.version,
                 requires_external_api=spec.requires_external_api,
@@ -228,6 +237,22 @@ def build_provider_catalog() -> ProviderCatalog:
             config_key="AEGISQA_DEFAULT_MEMORY_STORE",
         )
     )
+
+
+    for spec in storage_adapter_registry.list_specs():
+        entries.append(
+            ProviderCatalogEntry(
+                kind=ProviderKind.STORAGE_BACKEND,
+                name=spec.name,
+                mode=ProviderMode.EXTERNAL if spec.requires_external_service else ProviderMode.LOCAL,
+                description=spec.description,
+                version="0.1.0",
+                requires_external_api=spec.requires_external_service,
+                enabled=(not spec.requires_external_service or settings.external_connectors_enabled),
+                selected=spec.name == settings.storage_backend,
+                config_key="AEGISQA_STORAGE_BACKEND",
+            )
+        )
 
     if tool_registry.has("LocalGitHandoffTool"):
         git_spec = tool_registry.get("LocalGitHandoffTool").spec

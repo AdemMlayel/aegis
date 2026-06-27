@@ -227,7 +227,7 @@ export function AgentConfigPanel({
         <SourceRow label="Historical test memory" status="ready" />
         <SourceRow
           label="Ticket provider"
-          status={integrationName(integrationProfile, "ticket_connector") ?? "jira_mock"}
+          status={integrationName(integrationProfile, "ticket_connector") ?? "demo"}
         />
         <SourceRow
           label="External connectors"

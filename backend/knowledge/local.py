@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from backend.knowledge.base import KnowledgeChunk, KnowledgeStore
+from backend.knowledge.ingestion import (
+    load_ingested_document_chunks,
+    load_local_document_chunks,
+)
 
 LOCAL_KNOWLEDGE_CHUNKS = [
     KnowledgeChunk(
@@ -58,13 +62,31 @@ LOCAL_KNOWLEDGE_CHUNKS = [
 ]
 
 
+_knowledge_stores: dict[tuple[str | None, str | None], KnowledgeStore] = {}
+
+
+def _all_local_chunks() -> list[KnowledgeChunk]:
+    return [
+        *LOCAL_KNOWLEDGE_CHUNKS,
+        *load_local_document_chunks(),
+        *load_ingested_document_chunks(),
+    ]
+
+
 def get_local_knowledge_store(
     *,
     embedding_provider: str | None = None,
     embedding_model: str | None = None,
 ) -> KnowledgeStore:
-    return KnowledgeStore(
-        LOCAL_KNOWLEDGE_CHUNKS,
-        embedding_provider=embedding_provider,
-        embedding_model=embedding_model,
-    )
+    key = (embedding_provider, embedding_model)
+    if key not in _knowledge_stores:
+        _knowledge_stores[key] = KnowledgeStore(
+            _all_local_chunks(),
+            embedding_provider=embedding_provider,
+            embedding_model=embedding_model,
+        )
+    return _knowledge_stores[key]
+
+
+def reset_local_knowledge_store() -> None:
+    _knowledge_stores.clear()

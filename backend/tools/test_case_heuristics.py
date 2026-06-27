@@ -13,6 +13,10 @@ from backend.intelligence.context import (
     search_memory_for_ticket,
 )
 from backend.prompts import prompt_registry
+from backend.intelligence.structured_outputs import (
+    TestCaseLLMOutput,
+    parse_structured_llm_response,
+)
 from backend.tools.base import BaseTool, tool_registry
 
 
@@ -55,6 +59,7 @@ def generate_test_cases(
     evidence_refs = list(coverage_plan.knowledge_refs_used or analysis.knowledge_refs_used)
     memory_refs = list(coverage_plan.memory_refs_used or analysis.memory_refs_used)
     model_guidance: str | None = None
+    structured_notes: list[str] = []
     reviewer_feedback: list[str] = []
     if ticket is not None:
         knowledge_results = search_knowledge_for_ticket(ticket, limit=3, context=context)
@@ -83,7 +88,14 @@ def generate_test_cases(
             context=context,
             model_role="stable_baseline",
         )
-        if llm_response.provider != "mock_llm" and llm_response.text:
+        structured_output = parse_structured_llm_response(
+            response=llm_response,
+            schema=TestCaseLLMOutput,
+            context=context,
+        )
+        if structured_output is not None:
+            structured_notes = structured_output.generation_notes
+        elif llm_response.provider != "mock_llm" and llm_response.text:
             model_guidance = f"Model guidance: {llm_response.text[:1200]}"
 
     test_cases = [
@@ -94,20 +106,19 @@ def generate_test_cases(
             priority="critical" if coverage_plan.risk_level == "critical" else "high",
             requirement_refs=["REQ-001"],
             preconditions=analysis.preconditions,
-            steps=[
-                f"Sign in as {analysis.actor}",
-                f"Start {analysis.business_action}",
-                "Submit valid data",
-                "Verify the success response",
-            ],
-            expected_outcome="Primary user journey completes successfully",
+            steps=_primary_steps(ticket, analysis),
+            expected_outcome=_primary_expected_outcome(ticket),
             test_data_requirements={
                 "users": ["valid_user"],
                 "records": ["valid_record"],
+                **_structured_data_requirements(ticket),
             },
             evidence_refs=evidence_refs,
             memory_refs=memory_refs,
-            generation_notes=["Generated from local deterministic AI/RAG architecture path."],
+            generation_notes=[
+                "Generated from local deterministic AI/RAG architecture path.",
+                *_structured_generation_notes(ticket),
+            ],
         ),
         TestCase(
             id="TC002",
@@ -178,6 +189,9 @@ def generate_test_cases(
             )
         )
 
+    if structured_notes:
+        for test_case in test_cases:
+            test_case.generation_notes.extend(structured_notes)
     if model_guidance:
         for test_case in test_cases:
             test_case.generation_notes.append(model_guidance)
@@ -188,3 +202,53 @@ def generate_test_cases(
             )
 
     return test_cases
+
+
+def _primary_steps(
+    ticket: TicketData | None,
+    analysis: RequirementAnalysis,
+) -> list[str]:
+    if ticket and ticket.test_steps:
+        return [
+            f"{step.order}. {step.action} Expected: {step.expected_result}"
+            for step in sorted(ticket.test_steps, key=lambda item: item.order)
+        ]
+    return [
+        f"Sign in as {analysis.actor}",
+        f"Start {analysis.business_action}",
+        "Submit valid data",
+        "Verify the success response",
+    ]
+
+
+def _primary_expected_outcome(ticket: TicketData | None) -> str:
+    if ticket and ticket.expected_outputs:
+        return "; ".join(ticket.expected_outputs[:3])
+    return "Primary user journey completes successfully"
+
+
+def _structured_data_requirements(ticket: TicketData | None) -> dict[str, list[str]]:
+    if ticket is None or not ticket.input_data:
+        return {}
+    return {
+        "structured_ticket_inputs": [item.value for item in ticket.input_data],
+    }
+
+
+def _structured_generation_notes(ticket: TicketData | None) -> list[str]:
+    if ticket is None:
+        return []
+    notes: list[str] = []
+    if ticket.required_tools:
+        notes.append(f"Required tools: {', '.join(ticket.required_tools)}")
+    if ticket.validation_rules:
+        notes.append(
+            "Validation rules: "
+            + ", ".join(rule.id for rule in ticket.validation_rules)
+        )
+    if ticket.interfaces_involved:
+        notes.append(
+            "Interfaces involved: "
+            + ", ".join(ticket.interfaces_involved)
+        )
+    return notes

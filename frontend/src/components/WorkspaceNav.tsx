@@ -191,7 +191,7 @@ function buildWorkspaceItems(
       title: ticket.title,
       status: ticket.status ?? "ready",
       category: "active",
-      updatedAt: ticket.updated_at,
+      updatedAt: ticket.updated_at ?? ticket.last_updated_date,
       progress: 4
     });
   }

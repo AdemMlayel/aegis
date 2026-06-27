@@ -439,6 +439,48 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .bullet-list { margin: 10px 0 0; padding-left: 18px; color: #455267; font-size: 12px; line-height: 1.5; }
 .bullet-list li { margin: 4px 0; }
 
+.ticket-context-panel {
+  padding: 18px 28px 20px;
+  border-bottom: 1px solid var(--border);
+  background: #fbfcfd;
+}
+.empty-workspace .ticket-context-panel {
+  width: min(980px, 100%);
+  margin-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.ticket-context-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.ticket-context-grid .deliverable-metric { min-width: 0; background: white; }
+.ticket-context-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  padding: 16px 0 4px;
+}
+.ticket-context-copy h3 {
+  margin: 0 0 6px;
+  color: #778192;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.ticket-context-copy p {
+  margin: 0 0 8px;
+  color: #3f4b60;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.ticket-context-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+}
+.ticket-context-columns .detail-section { padding: 13px 0; }
+
 .message-composer {
   position: sticky;
   bottom: 12px;
@@ -1205,6 +1247,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .workspace-tabs button { min-width: 86px; }
   .conversation-view, .evidence-workspace { padding: 16px; }
   .operational-summary dl { grid-template-columns: 1fr; }
+  .ticket-context-panel { padding: 16px; }
+  .ticket-context-grid,
+  .ticket-context-copy,
+  .ticket-context-columns { grid-template-columns: 1fr; }
   .split-workspace { grid-template-columns: 1fr; }
   .item-index { border-right: 0; border-bottom: 1px solid var(--border); }
   .item-detail { padding: 20px 16px 32px; }

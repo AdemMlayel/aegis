@@ -22,6 +22,7 @@ router = APIRouter(tags=["integrations"])
 
 class ProviderCatalogResponse(BaseModel):
     environment: str
+    deterministic_demo_mode: bool
     external_connectors_enabled: bool
     selected: list[dict[str, object]]
     providers: list[dict[str, object]]

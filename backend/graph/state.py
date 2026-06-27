@@ -20,21 +20,91 @@ class StrictModel(BaseModel):
 
 class TicketSource(StrEnum):
     FAKE = "fake"
+    DEMO = "demo"
     JIRA = "jira"
     AZURE_DEVOPS = "azure_devops"
     GITLAB = "gitlab"
+
+
+TicketStatus = Literal["backlog", "ready", "in_progress", "blocked", "done"]
+
+
+class TicketInputDatum(StrictModel):
+    name: str
+    value: str
+    description: str = ""
+
+
+class TicketValidationRule(StrictModel):
+    id: str
+    description: str
+    applies_to: str = "workflow"
+    severity: Literal["info", "warning", "high", "critical"] = "info"
+
+
+class TicketTestStep(StrictModel):
+    order: int = Field(ge=1)
+    action: str
+    expected_result: str
+    validation_refs: list[str] = Field(default_factory=list)
+
+
+class TicketServiceInteraction(StrictModel):
+    name: str
+    source: str
+    target: str
+    protocol: str
+    operation: str
+    expected_result: str
+    validation_refs: list[str] = Field(default_factory=list)
+
+
+class TicketTechnicalDetails(StrictModel):
+    architecture_summary: str = ""
+    components_involved: list[str] = Field(default_factory=list)
+    data_flow: list[str] = Field(default_factory=list)
+    api_or_service_interactions: list[TicketServiceInteraction] = Field(
+        default_factory=list
+    )
+    configuration_requirements: list[str] = Field(default_factory=list)
+    security_constraints: list[str] = Field(default_factory=list)
+    logging_requirements: list[str] = Field(default_factory=list)
+    monitoring_requirements: list[str] = Field(default_factory=list)
+    error_handling_expectations: list[str] = Field(default_factory=list)
+    test_data_requirements: list[str] = Field(default_factory=list)
 
 
 class TicketData(StrictModel):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
     description: str = ""
+    business_objective: str = ""
+    test_objective: str = ""
+    system_under_test: str = ""
+    feature_or_service_name: str = ""
+    test_scope: list[str] = Field(default_factory=list)
+    out_of_scope: list[str] = Field(default_factory=list)
+    preconditions: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    environment: str = "TEST_ENVIRONMENT"
+    interfaces_involved: list[str] = Field(default_factory=list)
+    input_data: list[TicketInputDatum] = Field(default_factory=list)
+    expected_outputs: list[str] = Field(default_factory=list)
+    validation_rules: list[TicketValidationRule] = Field(default_factory=list)
+    test_steps: list[TicketTestStep] = Field(default_factory=list)
     acceptance_criteria: list[str] = Field(default_factory=list)
+    risks_or_constraints: list[str] = Field(default_factory=list)
+    dependencies: list[str] = Field(default_factory=list)
+    required_tools: list[str] = Field(default_factory=list)
     priority: Literal["low", "medium", "high", "critical"] = "medium"
+    status: TicketStatus = "ready"
+    created_date: str = Field(default_factory=lambda: utc_now().date().isoformat())
+    last_updated_date: str = Field(default_factory=lambda: utc_now().date().isoformat())
     labels: list[str] = Field(default_factory=list)
     assignee: str | None = None
-    source: TicketSource = TicketSource.FAKE
+    source: TicketSource = TicketSource.DEMO
     raw_url: str | None = None
+    technical: TicketTechnicalDetails = Field(default_factory=TicketTechnicalDetails)
 
 
 class IntelligenceEvidenceRef(StrictModel):
@@ -84,6 +154,7 @@ class IntelligenceTraceBlock(StrictModel):
     memory_refs: list[IntelligenceEvidenceRef] = Field(default_factory=list)
     prompt_versions: list[PromptUsageRef] = Field(default_factory=list)
     llm_calls: list[LLMUsageRef] = Field(default_factory=list)
+    structured_parses: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class IntelligenceConfigBlock(StrictModel):
@@ -246,6 +317,24 @@ class ExecutionBlock(StrictModel):
     artifacts: list[ExecutionArtifact] = Field(default_factory=list)
 
 
+class InvestigationEvidenceItem(StrictModel):
+    evidence_id: str
+    kind: Literal[
+        "robot_result",
+        "robot_log",
+        "artifact",
+        "model_trace",
+        "knowledge_ref",
+        "memory_ref",
+        "workflow_event",
+    ] = "artifact"
+    source: str
+    summary: str
+    test_case_id: str | None = None
+    severity_hint: Literal["info", "warning", "high", "critical"] = "info"
+    content_excerpt: str = ""
+
+
 class InvestigationFinding(StrictModel):
     test_case_id: str | None = None
     severity: Literal["info", "warning", "high", "critical"] = "info"
@@ -253,11 +342,13 @@ class InvestigationFinding(StrictModel):
     summary: str
     evidence_refs: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.5, ge=0, le=1)
+    recommended_actions: list[str] = Field(default_factory=list)
 
 
 class InvestigationBlock(StrictModel):
     status: Literal["not_started", "completed", "skipped"] = "not_started"
     generated_at: datetime | None = None
+    evidence_items: list[InvestigationEvidenceItem] = Field(default_factory=list)
     findings: list[InvestigationFinding] = Field(default_factory=list)
     root_cause_summary: str | None = None
     confidence: float = Field(default=0.0, ge=0, le=1)
@@ -397,7 +488,7 @@ class WorkflowTraceEvent(StrictModel):
 
 
 class IntegrationProviderRef(StrictModel):
-    kind: Literal["ticket_connector", "execution_adapter", "artifact_store", "secret_provider", "git_handoff", "llm_provider", "knowledge_store", "memory_store", "embedding_provider"]
+    kind: Literal["ticket_connector", "execution_adapter", "artifact_store", "secret_provider", "git_handoff", "llm_provider", "knowledge_store", "memory_store", "embedding_provider", "storage_backend"]
     name: str
     mode: Literal["mock", "local", "external"] = "local"
     requires_external_api: bool = False

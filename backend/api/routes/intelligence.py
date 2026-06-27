@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from backend.knowledge import get_local_knowledge_store
+from backend.knowledge import get_local_knowledge_store, ingest_local_document
 from backend.intelligence.providers import (
     embedding_provider_metadata,
     llm_provider_metadata,
@@ -164,6 +164,23 @@ class MemorySearchItem(BaseModel):
     matched_terms: list[str]
 
 
+class KnowledgeIngestRequest(BaseModel):
+    title: str
+    text: str
+    source: str = "local://manual-ingest"
+    tags: list[str] = []
+
+
+class KnowledgeIngestResponse(BaseModel):
+    document_id: str
+    title: str
+    source: str
+    chunk_ids: list[str]
+    chunk_count: int
+    tags: list[str]
+    stored_path: str | None = None
+
+
 @router.get("/intelligence/prompts", response_model=list[PromptTemplateResponse])
 def list_prompt_templates(
     principal: Annotated[Principal, Depends(require_capability(Capability.READ_WORKFLOW))],
@@ -276,6 +293,20 @@ def search_knowledge(
         )
         for result in get_local_knowledge_store().search(query=query, limit=limit)
     ]
+
+
+@router.post("/intelligence/knowledge/ingest", response_model=KnowledgeIngestResponse)
+def ingest_knowledge_document(
+    request: KnowledgeIngestRequest,
+    principal: Annotated[Principal, Depends(require_capability(Capability.EDIT_ARTIFACTS))],
+) -> KnowledgeIngestResponse:
+    result = ingest_local_document(
+        title=request.title,
+        text=request.text,
+        source=request.source,
+        tags=request.tags,
+    )
+    return KnowledgeIngestResponse(**result.__dict__)
 
 
 @router.get("/intelligence/memory/search", response_model=list[MemorySearchItem])

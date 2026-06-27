@@ -8,17 +8,19 @@ from backend.main import app
 def test_seeded_mock_tickets_include_database_metadata() -> None:
     client = TestClient(app)
 
-    response = client.get("/api/v1/tickets/mock/MOCK-101")
+    response = client.get("/api/v1/tickets/demo/DEMO-TELCO-IMS-001")
 
     assert response.status_code == 200
     ticket = response.json()["ticket"]
     assert ticket["status"] == "ready"
     assert ticket["comments"]
-    assert ticket["comments"][0]["author"] == "product_owner"
+    assert ticket["comments"][0]["author"] == "domain_expert"
     assert {requirement["id"] for requirement in ticket["linked_requirements"]} >= {
-        "REQ-MOCK-101-1",
-        "REQ-MOCK-101-2",
+        "REQ-DEMO-TELCO-001",
+        "REQ-DEMO-TELCO-002",
     }
+    assert ticket["technical"]["architecture_summary"]
+    assert ticket["required_tools"]
 
 
 def test_mock_ticket_database_supports_crud_filters_and_comments() -> None:

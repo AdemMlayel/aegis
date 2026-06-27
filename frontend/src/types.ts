@@ -22,19 +22,82 @@ export type WorkflowControlState =
   | "completed"
   | "failed";
 
+export type TicketInputDatum = {
+  name: string;
+  value: string;
+  description: string;
+};
+
+export type TicketValidationRule = {
+  id: string;
+  description: string;
+  applies_to: string;
+  severity: "info" | "warning" | "high" | "critical";
+};
+
+export type TicketTestStep = {
+  order: number;
+  action: string;
+  expected_result: string;
+  validation_refs: string[];
+};
+
+export type TicketServiceInteraction = {
+  name: string;
+  source: string;
+  target: string;
+  protocol: string;
+  operation: string;
+  expected_result: string;
+  validation_refs: string[];
+};
+
+export type TicketTechnicalDetails = {
+  architecture_summary: string;
+  components_involved: string[];
+  data_flow: string[];
+  api_or_service_interactions: TicketServiceInteraction[];
+  configuration_requirements: string[];
+  security_constraints: string[];
+  logging_requirements: string[];
+  monitoring_requirements: string[];
+  error_handling_expectations: string[];
+  test_data_requirements: string[];
+};
+
 export type TicketData = {
   id: string;
   title: string;
   description: string;
+  business_objective: string;
+  test_objective: string;
+  system_under_test: string;
+  feature_or_service_name: string;
+  test_scope: string[];
+  out_of_scope: string[];
+  preconditions: string[];
+  assumptions: string[];
+  environment: string;
+  interfaces_involved: string[];
+  input_data: TicketInputDatum[];
+  expected_outputs: string[];
+  validation_rules: TicketValidationRule[];
+  test_steps: TicketTestStep[];
   acceptance_criteria: string[];
+  risks_or_constraints: string[];
+  dependencies: string[];
+  required_tools: string[];
   priority: Priority;
   labels: string[];
   assignee?: string | null;
   source?: string;
   raw_url?: string | null;
-  status?: TicketStatus;
+  status: TicketStatus;
+  created_date: string;
+  last_updated_date: string;
   created_at?: string;
   updated_at?: string;
+  technical: TicketTechnicalDetails;
 };
 
 export type RequirementAnalysis = {
@@ -146,9 +209,20 @@ export type ExecutionBlock = {
   artifacts: ExecutionArtifact[];
 };
 
+export type InvestigationEvidenceItem = {
+  evidence_id: string;
+  kind: "robot_result" | "robot_log" | "artifact" | "model_trace" | "knowledge_ref" | "memory_ref" | "workflow_event";
+  source: string;
+  summary: string;
+  test_case_id: string | null;
+  severity_hint: "info" | "warning" | "high" | "critical";
+  content_excerpt: string;
+};
+
 export type InvestigationBlock = {
   status: "not_started" | "completed" | "skipped";
   generated_at: string | null;
+  evidence_items: InvestigationEvidenceItem[];
   findings: Array<{
     test_case_id: string | null;
     severity: "info" | "warning" | "high" | "critical";
@@ -156,6 +230,7 @@ export type InvestigationBlock = {
     summary: string;
     evidence_refs: string[];
     confidence: number;
+    recommended_actions: string[];
   }>;
   root_cause_summary: string | null;
   confidence: number;
@@ -208,6 +283,15 @@ export type IntelligenceTrace = {
     model_role: string | null;
     requested_model: string | null;
     summary: string;
+  }>;
+  structured_parses: Array<{
+    prompt_name: string;
+    prompt_version: string;
+    provider: string;
+    model: string;
+    schema: string;
+    status: string;
+    error: string | null;
   }>;
 };
 

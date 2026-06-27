@@ -110,7 +110,7 @@ export async function smokeTestOllamaProfiles(payload: {
   return body.results;
 }
 
-export async function listMockTickets(payload: {
+export async function listDemoTickets(payload: {
   query?: string;
   priority?: TicketData["priority"];
   status?: TicketStatus;
@@ -123,7 +123,7 @@ export async function listMockTickets(payload: {
   if (payload.status) params.set("status", payload.status);
   if (payload.assignee) params.set("assignee", payload.assignee);
   if (payload.label) params.set("label", payload.label);
-  const response = await fetch(`${API_ROOT}/tickets/mock${params.toString() ? `?${params}` : ""}`);
+  const response = await fetch(`${API_ROOT}/tickets/demo${params.toString() ? `?${params}` : ""}`);
   const body = await parseResponse<{ tickets: TicketData[] }>(response);
   return body.tickets;
 }
@@ -134,21 +134,10 @@ export async function createWorkflowSession(payload: {
   mode: WorkflowMode;
   intelligence?: IntelligenceConfigPayload;
 }): Promise<TestContext> {
-  const ticket = {
-    id: payload.ticket.id,
-    title: payload.ticket.title,
-    description: payload.ticket.description,
-    acceptance_criteria: payload.ticket.acceptance_criteria,
-    priority: payload.ticket.priority,
-    labels: payload.ticket.labels,
-    assignee: payload.ticket.assignee ?? null,
-    source: payload.ticket.source ?? "fake",
-    raw_url: payload.ticket.raw_url ?? null
-  };
   const response = await fetch(`${API_ROOT}/workflows/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, ticket })
+    body: JSON.stringify(payload)
   });
   const body = await parseResponse<{ context: TestContext }>(response);
   return body.context;

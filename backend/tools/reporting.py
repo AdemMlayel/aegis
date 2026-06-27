@@ -21,6 +21,10 @@ from backend.intelligence.context import (
     consume_stage_feedback,
 )
 from backend.prompts import prompt_registry
+from backend.intelligence.structured_outputs import (
+    ReportLLMOutput,
+    parse_structured_llm_response,
+)
 from backend.tools.base import BaseTool, tool_registry
 
 
@@ -111,6 +115,8 @@ def generate_report(
     memory_refs = [ref.ref_id for ref in intelligence_trace.memory_refs] if intelligence_trace else []
     prompt_refs = [f"{ref.name}@{ref.version}" for ref in intelligence_trace.prompt_versions] if intelligence_trace else []
     model_summary: str | None = None
+    model_next_actions: list[str] = []
+    model_confidence: float | None = None
     reviewer_feedback: list[str] = []
 
     if ticket is not None:
@@ -140,7 +146,16 @@ def generate_report(
             context=context,
             model_role="main_rag",
         )
-        if llm_response.provider != "mock_llm" and llm_response.text:
+        structured_output = parse_structured_llm_response(
+            response=llm_response,
+            schema=ReportLLMOutput,
+            context=context,
+        )
+        if structured_output is not None and llm_response.provider != "mock_llm":
+            model_summary = structured_output.executive_summary[:2000]
+            model_next_actions = structured_output.next_actions
+            model_confidence = structured_output.confidence
+        elif llm_response.provider != "mock_llm" and llm_response.text:
             model_summary = llm_response.text[:2000]
         if "report_generation_v1@1.0.0" not in prompt_refs:
             prompt_refs.append("report_generation_v1@1.0.0")
@@ -163,6 +178,7 @@ def generate_report(
             "Review generated Robot files through the automation file endpoint",
             "Execute approved automation through the mock or Robot execution adapter",
             "Review investigation and archived-memory payloads before promoting to external systems",
+            *model_next_actions,
             *[
                 f"Reviewer direction applied: {comment}"
                 for comment in reviewer_feedback
@@ -171,5 +187,5 @@ def generate_report(
         knowledge_refs_used=knowledge_refs,
         memory_refs_used=memory_refs,
         prompt_versions_used=prompt_refs,
-        confidence=0.82 if knowledge_refs or memory_refs else 0.68,
+        confidence=model_confidence if model_confidence is not None else 0.82 if knowledge_refs or memory_refs else 0.68,
     )
