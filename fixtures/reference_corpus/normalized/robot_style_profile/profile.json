@@ -1,0 +1,264 @@
+{
+  "generated_at": "2026-06-28T20:33:23.230780+00:00",
+  "generation_guidance": [
+    "Prefer known project keywords from the normalized keyword registry.",
+    "Preserve readable Robot sections: Settings, Variables when needed, Test Cases.",
+    "Use sanitized placeholders for environments, subscribers, devices, hosts and credentials.",
+    "Keep execution human-gated and validate generated imports/keywords before execution."
+  ],
+  "schema_version": "aegis-robot-style-profile.v1",
+  "source": "fixtures/reference_corpus/raw_sanitized/robot-tests",
+  "style": {
+    "common_libraries": [
+      {
+        "count": 38,
+        "value": "..LOCAL_PATH_PLACEHOLDER"
+      },
+      {
+        "count": 5,
+        "value": "Collections"
+      },
+      {
+        "count": 5,
+        "value": "DateTime"
+      }
+    ],
+    "common_resources": [
+      {
+        "count": 10,
+        "value": "..LOCAL_PATH_PLACEHOLDER"
+      },
+      {
+        "count": 5,
+        "value": "SOURCE_NAME_PLACEHOLDER.robot"
+      }
+    ],
+    "common_setups": [],
+    "common_step_keywords": [
+      {
+        "count": 30,
+        "value": "${tc_info}"
+      },
+      {
+        "count": 18,
+        "value": "Should Be True"
+      },
+      {
+        "count": 15,
+        "value": "&{tc_filter}"
+      },
+      {
+        "count": 15,
+        "value": "${test_data}"
+      },
+      {
+        "count": 7,
+        "value": "Log"
+      },
+      {
+        "count": 6,
+        "value": "Call Method"
+      },
+      {
+        "count": 6,
+        "value": "Set To Dictionary"
+      },
+      {
+        "count": 4,
+        "value": "${devices_info}"
+      },
+      {
+        "count": 4,
+        "value": "${call_duration}"
+      },
+      {
+        "count": 4,
+        "value": "${trace_inputs}"
+      },
+      {
+        "count": 4,
+        "value": "${Pcap_validation_inputs}"
+      },
+      {
+        "count": 4,
+        "value": "${success_message}="
+      },
+      {
+        "count": 4,
+        "value": "Log To Console"
+      },
+      {
+        "count": 4,
+        "value": "${df_html}"
+      },
+      {
+        "count": 4,
+        "value": "${mrf_validation}"
+      },
+      {
+        "count": 3,
+        "value": "${nodeobj_lbs}"
+      },
+      {
+        "count": 3,
+        "value": "${ims_tc41_obj}"
+      },
+      {
+        "count": 3,
+        "value": "${vnf_info}"
+      },
+      {
+        "count": 3,
+        "value": "${vnf_val}"
+      },
+      {
+        "count": 3,
+        "value": "${nodeobj_trm}"
+      },
+      {
+        "count": 3,
+        "value": "${scrap_data_trm}"
+      },
+      {
+        "count": 3,
+        "value": "${output_text_dic_trm}"
+      },
+      {
+        "count": 3,
+        "value": "${nodeobj_trh}"
+      },
+      {
+        "count": 3,
+        "value": "${scrap_data_trh}"
+      },
+      {
+        "count": 3,
+        "value": "${output_text_dic_trh}"
+      },
+      {
+        "count": 3,
+        "value": "${node_file_map}"
+      },
+      {
+        "count": 3,
+        "value": "${ims_tc44_obj}"
+      },
+      {
+        "count": 2,
+        "value": "${ims_tc15_obj}"
+      },
+      {
+        "count": 2,
+        "value": "${ims_tc16_obj}"
+      },
+      {
+        "count": 2,
+        "value": "${ims_tc17_obj}"
+      }
+    ],
+    "common_tags": [
+      {
+        "count": 2,
+        "value": "SOURCE_NAME_PLACEHOLDER"
+      },
+      {
+        "count": 2,
+        "value": "APP_FTAS"
+      },
+      {
+        "count": 2,
+        "value": "vIMS_MRF_023"
+      },
+      {
+        "count": 1,
+        "value": "Fixed_CC_26"
+      },
+      {
+        "count": 1,
+        "value": "TMSII00958168"
+      },
+      {
+        "count": 1,
+        "value": "Fixed_CC_25"
+      },
+      {
+        "count": 1,
+        "value": "TMSII00958167"
+      },
+      {
+        "count": 1,
+        "value": "Fixed_CC_24"
+      },
+      {
+        "count": 1,
+        "value": "TMSII00958166"
+      },
+      {
+        "count": 1,
+        "value": "mVoLTE CC_TC10"
+      },
+      {
+        "count": 1,
+        "value": "TMSII00532817"
+      },
+      {
+        "count": 1,
+        "value": "TMSII00738769"
+      },
+      {
+        "count": 1,
+        "value": "TMSII00738768"
+      },
+      {
+        "count": 1,
+        "value": "APP_CTAS"
+      },
+      {
+        "count": 1,
+        "value": "TMSII00738767"
+      },
+      {
+        "count": 1,
+        "value": "vIMS_MRF_014"
+      },
+      {
+        "count": 1,
+        "value": "TMSII00596730"
+      },
+      {
+        "count": 1,
+        "value": "vIMS_MRF_015"
+      },
+      {
+        "count": 1,
+        "value": "TMSII00596731"
+      },
+      {
+        "count": 1,
+        "value": "TMSII00596739"
+      }
+    ],
+    "common_teardowns": [],
+    "test_name_examples": [
+      "Critical_call_test:International_format_from_Fixed_Residential.|fixed_to_fixed|Munich_to_Munich",
+      "Critical_call_test:National_format_from_Fixed_Residential|fixed_to_fixed|Munich_to_Munich",
+      "Critical_call_test:Local_format_from_Fixed_Residential|fixed_to_fixed|Munich_to_Munich",
+      "Basic_VoLTE:_A_and_B_VoLTE,_B_releases._A_dials_international_format.|Android_to_Android|Munich_to_Munich",
+      "Export_of_cell_data_from_CRDL",
+      "5G:Administration_in _BS-Portal_Web_GUI",
+      "System_overload_status",
+      "Check_binaries"
+    ],
+    "variable_prefixes": []
+  },
+  "summary": {
+    "library_imports": 48,
+    "resource_imports": 15,
+    "robot_files": 5,
+    "sections_observed": {
+      "settings": 5,
+      "test cases": 5
+    },
+    "tag_count": 28
+  }
+}

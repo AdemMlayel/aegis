@@ -1,0 +1,718 @@
+{
+  "files": [
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 21,
+      "redactions": {
+        "source_name_reference": 7,
+        "unix_path": 14
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "69fdcba939493837",
+      "source_size_bytes": 4703,
+      "target_path": "robot-tests/robot_test_001.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 17,
+      "redactions": {
+        "source_name_reference": 5,
+        "unix_path": 12
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "aa8c6901aad0595c",
+      "source_size_bytes": 5498,
+      "target_path": "robot-tests/robot_test_002.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 26,
+      "redactions": {
+        "source_name_reference": 11,
+        "unix_path": 15
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "d71b0fd8a51062f7",
+      "source_size_bytes": 4211,
+      "target_path": "robot-tests/robot_test_003.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 34,
+      "redactions": {
+        "source_name_reference": 19,
+        "unix_path": 15
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "3e0b63915b36e48a",
+      "source_size_bytes": 7948,
+      "target_path": "robot-tests/robot_test_004.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 43,
+      "redactions": {
+        "source_name_reference": 25,
+        "unix_path": 18
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "5fae2ed1676e7825",
+      "source_size_bytes": 7553,
+      "target_path": "robot-tests/robot_test_005.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 732,
+      "redactions": {
+        "hostname": 477,
+        "source_name_reference": 236,
+        "unix_path": 19
+      },
+      "source_extension": ".py",
+      "source_path_hash": "a87d98f285b8e039",
+      "source_size_bytes": 69062,
+      "target_path": "custom-libs/custom_lib_001.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 177,
+      "redactions": {
+        "hostname": 172,
+        "source_name_reference": 2,
+        "unix_path": 1,
+        "unquoted_sensitive_assignment": 1,
+        "url": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "15c13e9a45e42df3",
+      "source_size_bytes": 22135,
+      "target_path": "custom-libs/custom_lib_002.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 353,
+      "redactions": {
+        "hostname": 339,
+        "source_name_reference": 13,
+        "unix_path": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "4fc8c59caa66062d",
+      "source_size_bytes": 49807,
+      "target_path": "custom-libs/custom_lib_003.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 138,
+      "redactions": {
+        "hostname": 127,
+        "source_name_reference": 10,
+        "unquoted_sensitive_assignment": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "1c4699aef483dd3c",
+      "source_size_bytes": 28674,
+      "target_path": "custom-libs/custom_lib_004.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 172,
+      "redactions": {
+        "hostname": 118,
+        "source_name_reference": 3,
+        "unix_path": 49,
+        "unquoted_sensitive_assignment": 1,
+        "url": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "4b23036a5dd27b29",
+      "source_size_bytes": 20201,
+      "target_path": "custom-libs/custom_lib_005.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 3,
+      "redactions": {
+        "hostname": 3
+      },
+      "source_extension": ".py",
+      "source_path_hash": "0f89061594a889d4",
+      "source_size_bytes": 862,
+      "target_path": "custom-libs/custom_lib_006.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 115,
+      "redactions": {
+        "hostname": 96,
+        "source_name_reference": 2,
+        "unix_path": 15,
+        "unquoted_sensitive_assignment": 1,
+        "url": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "afeac034eb644bb2",
+      "source_size_bytes": 13707,
+      "target_path": "custom-libs/custom_lib_007.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 24,
+      "redactions": {
+        "hostname": 23,
+        "source_name_reference": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "57ef0b4bab40927b",
+      "source_size_bytes": 1891,
+      "target_path": "custom-libs/custom_lib_008.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 12,
+      "redactions": {
+        "hostname": 11,
+        "source_name_reference": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "78263b68c9328aa5",
+      "source_size_bytes": 1106,
+      "target_path": "custom-libs/custom_lib_009.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 26,
+      "redactions": {
+        "hostname": 22,
+        "long_numeric_identifier": 1,
+        "source_name_reference": 3
+      },
+      "source_extension": ".py",
+      "source_path_hash": "2b0d9a0e5658c3a0",
+      "source_size_bytes": 3534,
+      "target_path": "custom-libs/custom_lib_010.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 24,
+      "redactions": {
+        "hostname": 19,
+        "unquoted_sensitive_assignment": 1,
+        "url": 4
+      },
+      "source_extension": ".py",
+      "source_path_hash": "bf8762218dd1478a",
+      "source_size_bytes": 2862,
+      "target_path": "custom-libs/custom_lib_011.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 12,
+      "redactions": {
+        "hostname": 9,
+        "source_name_reference": 3
+      },
+      "source_extension": ".py",
+      "source_path_hash": "222ddc9a9c8cc51a",
+      "source_size_bytes": 2282,
+      "target_path": "custom-libs/custom_lib_012.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 90,
+      "redactions": {
+        "hostname": 78,
+        "source_name_reference": 5,
+        "unix_path": 4,
+        "unquoted_sensitive_assignment": 2,
+        "url": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "a6ef2cc558cf5c1b",
+      "source_size_bytes": 14467,
+      "target_path": "custom-libs/custom_lib_013.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 5,
+      "redactions": {
+        "hostname": 3,
+        "source_name_reference": 2
+      },
+      "source_extension": ".py",
+      "source_path_hash": "3678553e13f8e865",
+      "source_size_bytes": 622,
+      "target_path": "custom-libs/custom_lib_014.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 7,
+      "redactions": {
+        "hostname": 5,
+        "source_name_reference": 2
+      },
+      "source_extension": ".py",
+      "source_path_hash": "60ca3856b8dc15bc",
+      "source_size_bytes": 2693,
+      "target_path": "custom-libs/custom_lib_015.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 11,
+      "redactions": {
+        "hostname": 10,
+        "source_name_reference": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "350cd914617c119d",
+      "source_size_bytes": 649,
+      "target_path": "custom-libs/custom_lib_016.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 160,
+      "redactions": {
+        "hostname": 155,
+        "source_name_reference": 2,
+        "unix_path": 1,
+        "unquoted_sensitive_assignment": 1,
+        "url": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "35fa86d81596a48d",
+      "source_size_bytes": 22414,
+      "target_path": "custom-libs/custom_lib_017.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 123,
+      "redactions": {
+        "hostname": 116,
+        "ipv4": 1,
+        "long_numeric_identifier": 1,
+        "source_name_reference": 2,
+        "unix_path": 3
+      },
+      "source_extension": ".py",
+      "source_path_hash": "d48548212db048f6",
+      "source_size_bytes": 5902,
+      "target_path": "custom-libs/custom_lib_018.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 51,
+      "redactions": {
+        "hostname": 49,
+        "source_name_reference": 1,
+        "unquoted_sensitive_assignment": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "70b1b18b58cd552b",
+      "source_size_bytes": 9489,
+      "target_path": "custom-libs/custom_lib_019.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 57,
+      "redactions": {
+        "hostname": 45,
+        "long_numeric_identifier": 1,
+        "source_name_reference": 3,
+        "unix_path": 6,
+        "url": 2
+      },
+      "source_extension": ".py",
+      "source_path_hash": "292f745470d1c4e3",
+      "source_size_bytes": 8019,
+      "target_path": "custom-libs/custom_lib_020.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 15,
+      "redactions": {
+        "hostname": 8,
+        "source_name_reference": 7
+      },
+      "source_extension": ".py",
+      "source_path_hash": "85318f68cc1a472c",
+      "source_size_bytes": 5787,
+      "target_path": "custom-libs/custom_lib_021.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 121,
+      "redactions": {
+        "hostname": 120,
+        "source_name_reference": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "9b199bc7cf593cd0",
+      "source_size_bytes": 14666,
+      "target_path": "custom-libs/custom_lib_022.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 9,
+      "redactions": {
+        "hostname": 5,
+        "source_name_reference": 4
+      },
+      "source_extension": ".py",
+      "source_path_hash": "eca5d025cda25d68",
+      "source_size_bytes": 1582,
+      "target_path": "custom-libs/custom_lib_023.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 40,
+      "redactions": {
+        "hostname": 39,
+        "source_name_reference": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "839cf4ba28008e93",
+      "source_size_bytes": 7356,
+      "target_path": "custom-libs/custom_lib_024.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 73,
+      "redactions": {
+        "hostname": 62,
+        "source_name_reference": 9,
+        "unix_path": 2
+      },
+      "source_extension": ".py",
+      "source_path_hash": "2960f6798c93d780",
+      "source_size_bytes": 12039,
+      "target_path": "custom-libs/custom_lib_025.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 244,
+      "redactions": {
+        "hostname": 226,
+        "source_name_reference": 7,
+        "unix_path": 11
+      },
+      "source_extension": ".py",
+      "source_path_hash": "dc092a56d5d2b742",
+      "source_size_bytes": 24191,
+      "target_path": "custom-libs/custom_lib_026.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 43,
+      "redactions": {
+        "hostname": 39,
+        "long_numeric_identifier": 1,
+        "source_name_reference": 3
+      },
+      "source_extension": ".py",
+      "source_path_hash": "257b68a267b49655",
+      "source_size_bytes": 7627,
+      "target_path": "custom-libs/custom_lib_027.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 37,
+      "redactions": {
+        "hostname": 36,
+        "source_name_reference": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "ad0f80751ca575cc",
+      "source_size_bytes": 3701,
+      "target_path": "custom-libs/custom_lib_028.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 133,
+      "redactions": {
+        "hostname": 88,
+        "source_name_reference": 43,
+        "unix_path": 1,
+        "url": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "5332bcbd52679894",
+      "source_size_bytes": 18714,
+      "target_path": "custom-libs/custom_lib_029.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 108,
+      "redactions": {
+        "hostname": 105,
+        "source_name_reference": 1,
+        "windows_path": 2
+      },
+      "source_extension": ".py",
+      "source_path_hash": "f00db5eb065e6a66",
+      "source_size_bytes": 27321,
+      "target_path": "custom-libs/custom_lib_030.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 106,
+      "redactions": {
+        "hostname": 101,
+        "source_name_reference": 4,
+        "unquoted_sensitive_assignment": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "e58cfddf8af5bb5b",
+      "source_size_bytes": 36587,
+      "target_path": "custom-libs/custom_lib_031.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 211,
+      "redactions": {
+        "hostname": 203,
+        "source_name_reference": 8
+      },
+      "source_extension": ".py",
+      "source_path_hash": "7d31994773c62b49",
+      "source_size_bytes": 57388,
+      "target_path": "custom-libs/custom_lib_032.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 41,
+      "redactions": {
+        "hostname": 34,
+        "source_name_reference": 1,
+        "unix_path": 6
+      },
+      "source_extension": ".py",
+      "source_path_hash": "4c9f77b851cedf95",
+      "source_size_bytes": 8168,
+      "target_path": "custom-libs/custom_lib_033.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 8,
+      "redactions": {
+        "hostname": 7,
+        "ipv4": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "14cb5d297e40be5a",
+      "source_size_bytes": 1114,
+      "target_path": "custom-libs/custom_lib_034.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 25,
+      "redactions": {
+        "hostname": 23,
+        "source_name_reference": 2
+      },
+      "source_extension": ".py",
+      "source_path_hash": "98f73245baacca79",
+      "source_size_bytes": 5527,
+      "target_path": "custom-libs/custom_lib_035.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 11,
+      "redactions": {
+        "unix_path": 11
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "bb92e6680570312f",
+      "source_size_bytes": 10568,
+      "target_path": "custom-libs/custom_lib_036.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 4,
+      "redactions": {
+        "hostname": 4
+      },
+      "source_extension": ".py",
+      "source_path_hash": "faf9db7e13bebee7",
+      "source_size_bytes": 3052,
+      "target_path": "custom-libs/custom_lib_037.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 183,
+      "redactions": {
+        "hostname": 183
+      },
+      "source_extension": ".py",
+      "source_path_hash": "d268d406420e8891",
+      "source_size_bytes": 41625,
+      "target_path": "custom-libs/custom_lib_038.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 30,
+      "redactions": {
+        "hostname": 25,
+        "source_name_reference": 3,
+        "unix_path": 1,
+        "url": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "30a30ee1395e0224",
+      "source_size_bytes": 2898,
+      "target_path": "custom-libs/custom_lib_039.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 6,
+      "redactions": {
+        "hostname": 5,
+        "source_name_reference": 1
+      },
+      "source_extension": ".py",
+      "source_path_hash": "fe7e46b2889baecb",
+      "source_size_bytes": 1207,
+      "target_path": "custom-libs/custom_lib_040.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 36,
+      "redactions": {
+        "source_name_reference": 36
+      },
+      "source_extension": ".py",
+      "source_path_hash": "db6cbb82dd21c0e8",
+      "source_size_bytes": 1262,
+      "target_path": "custom-libs/custom_lib_041.py"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 41,
+      "redactions": {
+        "hostname": 38,
+        "source_name_reference": 3
+      },
+      "source_extension": ".py",
+      "source_path_hash": "cb681f5a5d59b093",
+      "source_size_bytes": 9598,
+      "target_path": "custom-libs/custom_lib_042.py"
+    },
+    {
+      "output_type": "sanitized_spreadsheet",
+      "redaction_total": 71,
+      "redactions": {
+        "hostname": 12,
+        "long_numeric_identifier": 31,
+        "unix_path": 7,
+        "url": 21
+      },
+      "source_extension": ".xlsx",
+      "source_path_hash": "04367e3d424ab1ea",
+      "source_size_bytes": 5557,
+      "target_path": "report-example/report_example_001.xlsx"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 1492,
+      "redactions": {
+        "hostname": 1458,
+        "long_hex_identifier": 1,
+        "long_numeric_identifier": 2,
+        "source_name_reference": 5,
+        "unix_path": 15,
+        "url": 11
+      },
+      "source_extension": ".html",
+      "source_path_hash": "0e535d65c0c6fbc0",
+      "source_size_bytes": 242729,
+      "target_path": "successful-execution/successful_execution_001.html"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 21,
+      "redactions": {
+        "hostname": 2,
+        "long_hex_identifier": 1,
+        "long_numeric_identifier": 1,
+        "source_name_reference": 9,
+        "unix_path": 8
+      },
+      "source_extension": ".xml",
+      "source_path_hash": "05c573167ab61b7a",
+      "source_size_bytes": 8993,
+      "target_path": "successful-execution/successful_execution_002.xml"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 1482,
+      "redactions": {
+        "hostname": 1459,
+        "long_numeric_identifier": 1,
+        "unix_path": 10,
+        "url": 12
+      },
+      "source_extension": ".html",
+      "source_path_hash": "a76ffa8207dff8a9",
+      "source_size_bytes": 244438,
+      "target_path": "successful-execution/successful_execution_003.html"
+    }
+  ],
+  "generated_at": "2026-06-28T12:42:38.179302+00:00",
+  "safety": {
+    "binary_media_copied": false,
+    "filenames_generalized": true,
+    "original_paths_hashed": true,
+    "raw_files_committed": false,
+    "raw_values_preserved": false
+  },
+  "schema_version": "aegis-sanitized-data.v1",
+  "source": "quarantined_sensitive_reference",
+  "summary": {
+    "categories": {
+      "custom-libs": {
+        "files": 42,
+        "redactions": 3817
+      },
+      "failed-execution": {
+        "files": 0,
+        "redactions": 0
+      },
+      "lld-examples": {
+        "files": 0,
+        "redactions": 0
+      },
+      "report-example": {
+        "files": 1,
+        "redactions": 71
+      },
+      "robot-tests": {
+        "files": 5,
+        "redactions": 141
+      },
+      "successful-execution": {
+        "files": 3,
+        "redactions": 2995
+      }
+    },
+    "files": 51,
+    "redaction_types": {
+      "hostname": 6159,
+      "ipv4": 2,
+      "long_hex_identifier": 2,
+      "long_numeric_identifier": 39,
+      "source_name_reference": 508,
+      "unix_path": 245,
+      "unquoted_sensitive_assignment": 10,
+      "url": 57,
+      "windows_path": 2
+    },
+    "redactions": 7024
+  },
+  "target_layout": [
+    "robot-tests",
+    "custom-libs",
+    "report-example",
+    "successful-execution",
+    "failed-execution",
+    "lld-examples"
+  ]
+}

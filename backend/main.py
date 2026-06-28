@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
+from backend.api.routes.chat import router as chat_router
 from backend.api.routes.executions import router as executions_router
 from backend.api.routes.governance import router as governance_router
 from backend.api.routes.integrations import router as integrations_router
@@ -24,6 +25,7 @@ from backend.governance.policy import AgentPolicyDenied
 configure_structured_logging()
 app = FastAPI(title="AegisQA", version="0.1.0")
 install_gateway_middleware(app)
+app.include_router(chat_router, prefix="/api/v1")
 app.include_router(executions_router, prefix="/api/v1")
 app.include_router(governance_router, prefix="/api/v1")
 app.include_router(integrations_router, prefix="/api/v1")

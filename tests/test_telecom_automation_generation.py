@@ -47,6 +47,17 @@ def test_telecom_trace_library_validates_sanitized_fixture() -> None:
     fixture_id = library.load_sanitized_trace(TELECOM_TRACE_FIXTURE)
 
     assert fixture_id == "SANITIZED_CALL_TRACE_FIXTURE"
+    assert library.verify_trace_event_present("SIP", "INVITE") is True
+    assert (
+        library.verify_trace_route(
+            "SIP",
+            "INVITE",
+            "TEST_SUBSCRIBER_A",
+            "INTERNAL_SERVICE_A",
+        )
+        is True
+    )
+    assert library.verify_minimum_event_count("SIP", "3") is True
     assert library.verify_sip_header_present("INVITE", "Call-ID") is True
     assert (
         library.verify_sip_header_present("INVITE", "P-Asserted-Identity")
@@ -61,6 +72,25 @@ def test_telecom_trace_library_validates_sanitized_fixture() -> None:
         is True
     )
     assert library.verify_flexible_sequence("IMS_CALL_FLOW_TEMPLATE") is True
+
+
+def test_promoted_trace_keywords_fail_with_clear_assertions() -> None:
+    library = TelecomTraceLibrary()
+    library.load_sanitized_trace(TELECOM_TRACE_FIXTURE)
+
+    with pytest.raises(AssertionError, match="Trace event not found"):
+        library.verify_trace_event_present("SIP", "REGISTER")
+
+    with pytest.raises(AssertionError, match="Trace route mismatch"):
+        library.verify_trace_route(
+            "SIP",
+            "INVITE",
+            "INTERNAL_SERVICE_X",
+            "INTERNAL_SERVICE_Y",
+        )
+
+    with pytest.raises(AssertionError, match="expected at least 99"):
+        library.verify_minimum_event_count("Diameter", 99)
 
 
 def test_telecom_trace_library_rejects_path_traversal() -> None:
@@ -90,11 +120,19 @@ def test_telecom_ticket_generates_keyword_based_robot() -> None:
     assert f"Library           {TELECOM_TRACE_LIBRARY}" in content
     assert f"${{TRACE_FIXTURE}}    {TELECOM_TRACE_FIXTURE}" in content
     assert "    Load Sanitized Trace    ${TRACE_FIXTURE}" in content
+    assert "    Verify Trace Event Present    SIP    INVITE" in content
+    assert (
+        "    Verify Trace Route    SIP    INVITE    TEST_SUBSCRIBER_A    "
+        "INTERNAL_SERVICE_A"
+    ) in content
+    assert "    Verify Minimum Event Count    SIP    3" in content
     assert "    Verify SIP Header Present    INVITE    Call-ID" in content
     assert (
         "    Verify SIP Header Present    INVITE    P-Asserted-Identity"
         in content
     )
+    assert "    Verify Trace Event Present    Diameter    LIR" in content
+    assert "    Verify Minimum Event Count    Diameter    2" in content
     assert "    Verify Diameter Session Match    LIR    LIA" in content
     assert (
         "    Verify Diameter Result Code    LIA    SUCCESS_RESULT_CODE_PLACEHOLDER"

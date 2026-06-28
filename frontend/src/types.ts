@@ -699,3 +699,63 @@ export type ExecutionEvent = {
   metadata: Record<string, unknown>;
   created_at: string;
 };
+
+export type ChatIntent =
+  | "system_question"
+  | "ticket_question"
+  | "workflow_start"
+  | "workflow_status"
+  | "workflow_step"
+  | "artifact_question"
+  | "validation_question"
+  | "approval_request"
+  | "execution_request"
+  | "investigation_question"
+  | "report_request"
+  | "knowledge_question"
+  | "help"
+  | "unknown";
+
+export type ChatActionKind =
+  | "start_workflow"
+  | "resume_workflow"
+  | "run_next_stage"
+  | "approve_pending_stage"
+  | "execute_workflow";
+
+export type ChatAction = {
+  action_id: string;
+  kind: ChatActionKind;
+  label: string;
+  description: string;
+  requires_confirmation: boolean;
+  status: "pending_confirmation" | "completed" | "cancelled" | "blocked";
+  context_id: string | null;
+  ticket_id: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+  completed_at: string | null;
+  result_summary: string | null;
+};
+
+export type ChatMessage = {
+  message_id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  intent: ChatIntent | null;
+  actions: ChatAction[];
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export type ChatSession = {
+  session_id: string;
+  created_by: string;
+  title: string;
+  context_id: string | null;
+  ticket_id: string | null;
+  messages: ChatMessage[];
+  pending_actions: ChatAction[];
+  created_at: string;
+  updated_at: string;
+};

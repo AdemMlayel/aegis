@@ -7,11 +7,12 @@ from backend.graph.state import (
     TestContext,
     utc_now,
 )
+from backend.reference_corpus.profiles import load_execution_evidence_profile
 
 
 def investigation_coordinator(context: TestContext) -> TestContext:
     if context.execution is None or context.execution.status == "skipped":
-        evidence = _collect_non_execution_evidence(context)
+        evidence = [*_collect_execution_profile_evidence(), *_collect_non_execution_evidence(context)]
         context.investigation = InvestigationBlock(
             status="skipped",
             generated_at=utc_now(),
@@ -105,8 +106,35 @@ def _collect_execution_evidence(context: TestContext) -> list[InvestigationEvide
                 severity_hint="info",
             )
         )
+    evidence.extend(_collect_execution_profile_evidence())
     evidence.extend(_collect_non_execution_evidence(context))
     return evidence
+
+
+def _collect_execution_profile_evidence() -> list[InvestigationEvidenceItem]:
+    profile = load_execution_evidence_profile()
+    summary = profile.get("summary", {}) if isinstance(profile, dict) else {}
+    if not isinstance(summary, dict) or not summary.get("artifact_count"):
+        return []
+
+    guidance = profile.get("investigation_guidance", [])
+    if not isinstance(guidance, list):
+        guidance = []
+    has_failed = bool(summary.get("has_failed_example"))
+    has_successful = bool(summary.get("has_successful_example"))
+    return [
+        InvestigationEvidenceItem(
+            evidence_id="reference-profile:execution-evidence",
+            kind="artifact",
+            source="fixtures/reference_corpus/normalized/execution_evidence_profile/profile.json",
+            summary=(
+                "Sanitized execution evidence profile available "
+                f"(success={has_successful}, failed={has_failed})."
+            ),
+            severity_hint="info",
+            content_excerpt="; ".join(str(item) for item in guidance[:4])[:800],
+        )
+    ]
 
 
 def _collect_non_execution_evidence(context: TestContext) -> list[InvestigationEvidenceItem]:
@@ -152,4 +180,6 @@ def _classify_failure(message: str, logs: list[str]) -> str:
         return "data"
     if any(term in text for term in ("keyword", "import", "syntax", "robot")):
         return "test"
+    if any(term in text for term in ("assert", "expected", "actual", "mismatch", "failed")):
+        return "application"
     return "unknown"

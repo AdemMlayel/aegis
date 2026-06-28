@@ -1,0 +1,3526 @@
+{
+  "generated_at": "2026-06-28T20:33:23.227988+00:00",
+  "keywords": [
+    {
+      "approved_for_generation": true,
+      "args": [
+        "path",
+        "parameters"
+      ],
+      "documentation": "Get API call with given path and returns dictionary.\nArgs:\n        path(str): Path that needs to be appended at the end of the url\nReturns:\n        dict: Output of the call",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Get",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "parameters"
+      ],
+      "documentation": "Get API call to the given URL and returns dictionary.\nArgs:\n        url(str): URL to be fired.\nReturns:\n        dict: Output of the call.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Get With Full Url",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "path",
+        "data",
+        "parameters",
+        "gme_headers"
+      ],
+      "documentation": "POST API call with given path and returns dictionary.\nArgs:\n        path(str): Path that needs to be appended at the end of the url\n        data(dict): data to be passed along with the request.\nReturns:\n        dict: Output of the call.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Post",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "data",
+        "parameters",
+        "headers"
+      ],
+      "documentation": "POST API call to the given URL and data then returns dictionary.\nArgs:\n        url(str): URL to be fired.\n        data(dict): data to be passed along with the request.\nReturns:\n        dict: Output of the call.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Post With Full Url",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "path",
+        "parameters"
+      ],
+      "documentation": "POST API call with given path and returns dictionary.\nArgs:\n        path(str): Path that needs to be appended at the end of the url\n        data(dict): data to be passed along with the request.\nReturns:\n        dict: Output of the call.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Post No Data",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "parameters"
+      ],
+      "documentation": "POST API call to the given URL and data then returns dictionary.\nArgs:\n        url(str): URL to be fired.\n        data(dict): data to be passed along with the request.\nReturns:\n        dict: Output of the call.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Post With Full Url No Data",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "path",
+        "parameters"
+      ],
+      "documentation": "DELETE API call with given path and returns dictionary.\nArgs:\n        path(str): Path that needs to be appended at the end of the url\n        data(dict): data to be passed along with the request.\nReturns:\n        dict: Output of the call.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Delete",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "parameters"
+      ],
+      "documentation": "DELETE API call to the given URL and data, then returns dictionary.\nArgs:\n        url(str): URL to be fired.\n        data(dict): data to be passed along with the request.\nReturns:\n        dict: Output of the call.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Delete With Full Url",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "path",
+        "data",
+        "parameters",
+        "response_buffer",
+        "header_buffer",
+        "curl_obj",
+        "gme_headers"
+      ],
+      "documentation": "POST API call with given path and returns dictionary.\nArgs:\n        path(str): Path that needs to be appended at the end of the url\n        data(dict): data to be passed along with the request.\nReturns:\n        dict: Output of the call.",
+      "domain": "api",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Post Curl",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "data",
+        "parameters",
+        "response_buffer",
+        "header_buffer",
+        "curl_obj",
+        "headers"
+      ],
+      "documentation": "",
+      "domain": "api",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Post Curl With Full Url",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "path",
+        "parameters",
+        "response_buffer",
+        "header_buffer",
+        "curl_obj"
+      ],
+      "documentation": "Get API call with given path and returns dictionary.\nArgs:\n        path(str): Path that needs to be appended at the end of the url\nReturns:\n        dict: Output of the call",
+      "domain": "api",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Get Curl",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "parameters",
+        "response_buffer",
+        "header_buffer",
+        "curl_obj"
+      ],
+      "documentation": "",
+      "domain": "api",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Do Get Curl With Full Url",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "curl",
+        "latency",
+        "pool_stablishment"
+      ],
+      "documentation": "",
+      "domain": "api",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Curl Timing Information",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "payload",
+        "parameters",
+        "with_curl",
+        "dashboard_dict",
+        "curl_obj",
+        "jwt",
+        "app"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Generate Auth Request Id",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "payload",
+        "parameters",
+        "with_curl",
+        "dashboard_dict",
+        "curl_obj",
+        "jwt",
+        "app"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Generate Token",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters",
+        "version",
+        "with_curl",
+        "dashboard_dict",
+        "curl_obj"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Perform Kyc Match",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "app_url",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Verify User Consents",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters",
+        "version",
+        "with_curl",
+        "dashboard_dict",
+        "curl_obj"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Perform Sim Swap Check",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters",
+        "version",
+        "with_curl",
+        "dashboard_dict",
+        "curl_obj"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Retrieve Sim Swap Date",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Perform Number Verification",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters",
+        "with_curl",
+        "dashboard_dict",
+        "curl_obj"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Verify Number",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters",
+        "with_curl",
+        "dashboard_dict",
+        "curl_obj"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Check Number Id",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters",
+        "with_curl",
+        "dashboard_dict",
+        "curl_obj"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Search Telco Finder",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Get Telco Id",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "headers",
+        "parameters",
+        "with_curl",
+        "dashboard_dict",
+        "curl_obj"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Get Telco Routing",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Create Qod Qos Session",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "session_id",
+        "payload",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Extend The Duration Of A Qod Qos Session",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "session_id",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Get Qos Session Information",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "session_id",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Delete Qos Session Using Session Id",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "session_name",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Get Qos Profile",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Verify Location",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "mobile",
+      "library": "OpenGW",
+      "name": "Device Connectivity",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "url",
+        "payload",
+        "headers",
+        "parameters"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "OpenGW",
+      "name": "Send Sms",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45140.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Getdfhtml",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "remotepathtoCDR",
+        "target_directory"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get C D R",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "e1"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "N1",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "ip"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Is Host Reachable",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "charging_id",
+        "cdr_folder"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get C D Rfilename Pgw",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "charging_id",
+        "cdr_folder"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get C D Rfilename Sgw",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "pathtoCDRs_list",
+        "cmp_op"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate C D R List",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "pathtoCDR"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Parse All C D R",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "pathtoCDR"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Parse C D R",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "pathtoCDR",
+        "starttime",
+        "archivelogs",
+        "cmp_op"
+      ],
+      "documentation": "Validate all CDR records in a file against validation criteria.\nReturns True if all records pass validation, False otherwise.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate All C D R",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "cdr_folder",
+        "cdr_count"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get C D Rfilename List Pgw",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "cdr_folder",
+        "cdr_count"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get C D Rfilename List Sgw",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "pathtoCDR",
+        "starttime",
+        "archivelogs",
+        "cmp_op"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate C D R",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "archive_path",
+        "number_of_days_cgs"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Check Archive",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_41124.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "testcasedir",
+        "filter"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Login Cmg",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_18418.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "commands",
+        "testcasedir",
+        "filter",
+        "prompt"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Execute Command",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_18418.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "command",
+        "testcasedir",
+        "filter",
+        "prompt"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Execute One Command",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_18418.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "tc_dir",
+        "config_path_list",
+        "filter",
+        "partial_success"
+      ],
+      "documentation": "Fetch configuration files from CMG servers via SFTP.\n\nArgs:\n    tc_dir: Local directory to store downloaded files\n    config_path_list: List of remote file paths to download\n    filter: Optional filter to select specific CMG servers\n    partial_success: If True, consider partial downloads as success\n\nReturns:\n    dict: Contains 'success' (bool), 'results' (dict), 'summary' (dict)",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Fetch Config File",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_18418.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "sshlogs"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Fetch V P R N Service Id",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_18418.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "base_command",
+        "args"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Build Dyn Command",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_18418.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "ports",
+        "testcase_dir",
+        "filter_criteria",
+        "prompt"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Check Cmg Active Alarms",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_18418.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "device"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Get Sim Info",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_69789.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "api",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Curl Connection",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_63456.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "curl"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Release Connection",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_63456.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Close All Connections",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_63456.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "s"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Str To Bool",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_63456.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Returns a boto3 DynamoDB resource.",
+      "domain": "data",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Dynamo Resource",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_80449.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "dynamo_resource",
+        "table_name"
+      ],
+      "documentation": "Returns a DynamoDB table instance.",
+      "domain": "data",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Dynamo Table",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_80449.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "table",
+        "item"
+      ],
+      "documentation": "Inserts a record into the DynamoDB table.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Insert Record Into Table",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_80449.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "command",
+        "tc_dir"
+      ],
+      "documentation": "This function opens an interactive session on the given by making use of paramiko module.\nThis function executes the commands on the given server and returns the output path.\n:param: ip_addr: Server IP address.\n:param: username: Username of the which is used while logging on the server.\n:param; command: Command string to be executed.\n:return: None",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Login And Scrap Data",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_71106.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Testcase Info",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Devices Info",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Call Duration",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Trace Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Pcap Vlaidation",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Sipp Info",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Mrf Validation",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Vnf Info",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Vnf Val",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Cms Info",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Lbs Info",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_81042.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Device Location",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_93210.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "stf_json"
+      ],
+      "documentation": "",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Generate Devices List",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_64346.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "udid",
+        "devices_list"
+      ],
+      "documentation": "",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Device From Udid",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_64346.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "msisdn",
+        "devices_list"
+      ],
+      "documentation": "",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Device From Msisdn",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_64346.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "udid_or_msisdn",
+        "devices_list"
+      ],
+      "documentation": "",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Extract Device Dict",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_64346.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "collection_name",
+        "filter"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Document",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_40656.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "key_path"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Loginto Node",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_16230.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "expectstr",
+        "sendstr",
+        "searchstr",
+        "searchregex"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Execute Command On Node",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_16230.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "bytestr",
+        "fd",
+        "search_regex"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Writestrtofile",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_16230.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Logout Node",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_16230.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "key_path",
+        "password"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Loginto Node Password",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_16230.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "expectstr",
+        "sendstr"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Execute Commands On Nodes",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_16230.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "command",
+        "tc_dir"
+      ],
+      "documentation": "Connects to all nodes in HOSTNAME_PLACEHOLDER concurrently, executes the command on each,\nand writes output to individual files in tc_dir.\n:param command: Command string to be executed on each node.\n:param tc_dir: Directory where output files will be saved.\n:return: Dict mapping result_key -> output_file path, or result_key -> False on failure.\n         result_key is \"site_node\" if site_name is set, otherwise just \"node\".",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Scrape All Nodes",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99531.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "tc_dir"
+      ],
+      "documentation": "Loads output text files for all nodes in HOSTNAME_PLACEHOLDER.\n\nSearches tc_dir for output files matching each node's IP and returns\na mapping of result keys to their output file paths.\n\nParameters\n----------\ntc_dir : str\n    Directory where output files are stored.\n\nReturns\n-------\nDict[str, Any]\n    Dict mapping result_key -> output_file path on success,\n    or result_key -> False if the file is missing, empty, or inaccessible.\n    result_key is \"site_node\" if site_name is set, otherwise just \"node\".",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Load All Output Texts",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99531.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "status_code"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Check Status",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49033.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "List all STF devices (including disconnected or otherwise inaccessible devices).",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Device List",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49033.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "serial"
+      ],
+      "documentation": "Returns information about a specific device.",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Device Information",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49033.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Returns information about yourself (the authenticated user).",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get User Profile",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49033.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Returns a list of devices currently being used by the authenticated user.",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get User Devices",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49033.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "serial"
+      ],
+      "documentation": "Attempts to add a device under the authenticated user's control. This is analogous to pressing \"Use\" in the UI.",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Add A Device To A User",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49033.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "serial"
+      ],
+      "documentation": "The User Devices endpoint returns device list owner by current authorized user",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get User Device",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49033.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "serial"
+      ],
+      "documentation": "Removes a device from the authenticated user's device list. This is analogous to pressing \"Stop using\" in the UI.",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Delete User Device",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49033.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "serial"
+      ],
+      "documentation": "Allows you to retrieve the remote debug URL (i.e. an adb connectable address) for a device the authenticated user controls.\n\nNote that if you haven't added your ADB key to STF yet, the device may be in unauthorized state after connecting to it for the first time.\n\nWe recommend you make sure your ADB key has already been set up properly before you start using this API.\n\nYou can add your ADB key from the settings page, or by connecting to a device you're actively using in the UI and responding to the dialog that appears.",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Remote Connect A Device",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49033.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "serial"
+      ],
+      "documentation": "Disconnect a remote debugging session.",
+      "domain": "mobile",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Remote Disconnect A Device",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49033.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Mc Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get S O U R C E N A M E P L A C E H O L D E R Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Pcap Validation Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Cdr Validation Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Enm Cli Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Cdr Exp Val Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Cnom Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Basic Events",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Event Type Validation Results",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Imsi Anritsu",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Imsi Cnom",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Anritsu Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Apn Names List",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Cdr Number",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Cdr Folder",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get S M F T B Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Pgw Validation Inputs",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "message_key"
+      ],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Pcap Validation Messages",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Pcap Download",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Cmg Commands",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Cmg Console Fields",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Cmg Ports",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87773.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "test_data",
+        "dynamic_test_data"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Load Testdata",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_15585.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Getmessage",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_15585.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "messagename",
+        "pkt"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Fill Dynamic Fields",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_15585.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "field",
+        "pkt"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Checkfields",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_15585.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "item",
+        "pkt",
+        "cmpoperator",
+        "searchpacket"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validatefields",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_15585.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Createdf",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_15585.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Validate messages against packets in the capture.\nReturns True if all messages are found and pass validation, False otherwise.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_15585.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Charging Id",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_48849.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Apn Name",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_48849.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Find Uag And Ue For Side A Registration",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_12004.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Find Uag And Ue For Side A",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_12004.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Find Uag And Ue For Side B",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_12004.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "cnom_obj",
+        "testcase_name",
+        "node_type",
+        "node_value",
+        "tc_dir"
+      ],
+      "documentation": "Initialize CNOM by setting the driver and storing node parameters.\n\n:param cnom_obj: An object or dictionary containing CNOM connection details.\n:param testcase_name: The test case name (used to build the testcase directory).\n:param node_type: The type of node (e.g., PCC-MM).\n:param node_value: The node identifier (e.g., EAMFTB1).\n:return: Boolean, True if initialization succeeds.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Initialize Cnom",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_08308.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "node_type",
+        "node_value",
+        "page"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Select Node Alarm",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_08308.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Performs alarm activity check by navigating to Alarm Viewer,\nselecting node, and validating alarm summary data.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Perform Alarm Activity Check",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_08308.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Validates alarm list widget by checking timestamp formats,\nalarm details, and downloading alarm data.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate Alarm List Widget",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_08308.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Closes the WebDriver instance.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Close Driver",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_08308.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "output_dir"
+      ],
+      "documentation": "Collect data from SGSN MME node including monitoring status, logs, traffic usage, comparisons and events",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Collect Data S G S N M M E Node",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_03769.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "output_dir"
+      ],
+      "documentation": "Collect data from WMG node including monitoring status, logs, traffic usage, comparisons and events",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Collect Data W M G Node",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_03769.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "node_value",
+        "node_type"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Select Node Monitoring",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_03769.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Performs PM (Performance Monitoring) operations including navigation,\nelement verification, and screenshot capture for monitoring dashboard.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Preform P M Monitoring",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_03769.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "trace_path",
+        "output_dir"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Monitor Network",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_03769.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "command",
+        "tc_dir",
+        "margin"
+      ],
+      "documentation": "Validates connectivity between target PCC node and ChGW by comparing request/response values\nfor the correct CHF block in the SSH output.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate The Connectivity Between The Target P C C Node And The Ch G W",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_48779.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "ip_port",
+        "scenario_xml",
+        "calls",
+        "trace_stat",
+        "tc_output_dir"
+      ],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Sipp Register",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49761.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "ip_port",
+        "scenario_xml",
+        "calls",
+        "bmsisdn",
+        "auth_uri",
+        "tc_output_dir",
+        "trace_stat",
+        "name"
+      ],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Sipp Mo Call",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49761.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "name",
+        "pid",
+        "scenario_xml",
+        "tc_output_dir"
+      ],
+      "documentation": "Check if a SIPp process is finished.\nReturns True if finished, False if still running.",
+      "domain": "telecom_trace",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Is Call Done",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_49761.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "method",
+        "url",
+        "headers",
+        "params",
+        "data",
+        "timeout",
+        "verify",
+        "json_data"
+      ],
+      "documentation": "Sends an HTTP request with the given parameters.\n(verify=False is used here for development; in production, use verify=True with valid certificates.)",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Send Request",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Retrieves available test servers from the API.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Test Servers",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "test_server_id"
+      ],
+      "documentation": "Validates the provided test server ID against available servers.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate Ts Id",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Retrieves the list of test servers and returns the first one as a TestServer object.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Default Test Server",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "test_session_name"
+      ],
+      "documentation": "Retrieves a TestSessionStub for the given test_session_name.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Test Session",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "parameters",
+        "test_session_name"
+      ],
+      "documentation": "Prepares dynamic parameters for the ENODEB test session.\nCreates a minimal override containing only the new SUT name,\nand returns a dictionary with the TestSessionStub and the updated parameters.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Execute E N O D E B Testsession",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "test_session",
+        "parameters",
+        "test_server",
+        "sleep_time",
+        "only_start"
+      ],
+      "documentation": "Triggers a test session using the provided parameters.\nReturns a tuple: (True, test_session_id)",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Run Test Session",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "expected_status_list",
+        "max_attempts",
+        "sleep_time"
+      ],
+      "documentation": "Polls the active test session until its status is among expected_status_list or max_attempts are reached.\nReturns (True, current_status) on success; otherwise (False, None).",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Check Test Session Status",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "parameters",
+        "test_server",
+        "sleep_time",
+        "only_start",
+        "wait",
+        "Terminate_old_test_session"
+      ],
+      "documentation": "Triggers the test session with the provided parameters.\nReturns a tuple: (True, test_session_id) after confirming the session is in RUNNING state.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Run With Parameters",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Stops the currently running test session without requiring the session ID to be passed.\n\nThis function retrieves the active session ID from the instance variable (self.test_session_id)\nor, if that is not available, from the class variable (SOURCE_NAME_PLACEHOLDER.session_id). It then sends a POST request\nwith action=stop and polls until the session state reaches \"STOPPED\" or \"COMPLETE\".\nIf a 404 is returned with \"Test No Longer Running\", it treats that as success.\n\nReturns:\n     tuple: (status, test_session_id)",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Stop Test Session",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "test_id"
+      ],
+      "documentation": "Deletes the currently running test session.\n\nThis function retrieves the active session ID automatically (from self.test_session_id\nor from the class variable SOURCE_NAME_PLACEHOLDER.session_id) if no test_id is provided. It then sends\na DELETE request to the endpoint corresponding to the running test session. If the response\nindicates successful deletion (typically status code 200 and a specific result message),\nit clears the stored session ID and returns True.\n\nReturns:\n     bool: True if deletion is successful; otherwise, False.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Delete Test Session",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "SOURCE_NAME_PLACEHOLDER",
+        "test_server_dict"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "TestServer",
+      "name": "From Dict",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "TestServer",
+      "name": "Get Info",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_45716.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "sshlogs",
+        "expected_dict"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate Value By Key",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_53190.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "sshlogs",
+        "expected_dict"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate Value From Tables",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_53190.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "sshlogs",
+        "keys"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Extract Value By Key",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_53190.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "sshlogs",
+        "expected_dict"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate Value From Lists",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_53190.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "sshlogs",
+        "expected_fields"
+      ],
+      "documentation": "This function opens an a file, filters it and validates if the expected fields match\n:param: output_file: path to file to validate\n:param: field: fields to find in the file\n:param: expected_field: expected field value (not used in current implementation)\n:return: true if field was found and validated else false",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate Field In File",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_53190.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "sshlogs",
+        "expected_dict"
+      ],
+      "documentation": "Validates Nokia SR-OS Virtual Fabric matrices per LLD.\n\n\u2022 Allowed symbols: . x * - 1-9\n\u2022 Diagonal (same VM-ID) must be '-'\n\u2022 All pairs in target_vm_ids (defaults 01-04) must be '.'\nReturns True if every rule passes.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate Virtual Fabric Validation",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_53190.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "sshlogs",
+        "expected_dict"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Compare Values By Key",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_53190.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "console_path",
+        "expected_fields"
+      ],
+      "documentation": "Validate expected field values appear under their specified sections in console output.\n\n:param console_path: Path to the console output file (text)\n:param expected_fields: Dict where keys are 'field:section' and values are expected values\n:return: True if all fields found correctly, else False immediately when missing",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Validate Fields From Console Output",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_53190.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "tc_dir",
+        "file_name",
+        "messages_list"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Load Messages Json",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_92913.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Check Iphone",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_92913.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Check Fixed",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_92913.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Generate HTML table showing validation results for all messages",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Validation Results",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_92913.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "sequence_condition"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Validate Seq Results",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_92913.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "message_dic"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Parse Message",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_92913.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "field",
+        "pkt"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Attr Value",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_92913.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "static_test_data"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Dynamic Ips Results Ab",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_92913.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "static_test_data"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Dynamic Ips Results Registration",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_92913.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "Pcap_file",
+        "Filter",
+        "Layer",
+        "Field_name",
+        "Field_value",
+        "Return_field_value",
+        "expected_suffix"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Search Data",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_79692.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "prm"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "Account",
+      "name": "On Reg State",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_24230.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Pjsua2 Test",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_24230.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "prefix_string"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Build Time Stamp",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_28867.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "scroll_dir"
+      ],
+      "documentation": "This function is used to scroll the webpage in either up or down direction.\n:param driver:      This argument is a selenium web driver require to scrape the webpage.\n:param scroll_dir:      This argument tell which to scroll to provided direction.\n:return:    None.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Scroll",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_28867.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "This function is used to fetch current username of the system.\nUsername is required to build the directory for the testcase to store it's respective logs.\n:return:    Returns the file directory.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Curr Username",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_28867.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "file_path"
+      ],
+      "documentation": "This function is used to fetch the current file count for the given file path.\n:param file_path:   Used to search in the given file path to fetch the total file count inside it.\n:return:    File count inside the given file path.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Get Current File Cnt",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_28867.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "old_file_cnt",
+        "new_file_cnt",
+        "file_type"
+      ],
+      "documentation": "This function is to check whether the file was downloaded or not.\n:param old_file_cnt:    Total old file count in the downloads directory.\n:param new_file_cnt:    Total new file count in the downloads directory.\n:param file_type:   Type of file for specific check.\n:return:    Returns True if the new file count is greater than old file count, else False.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Is File Downloaded",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_28867.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "This function is used to unzip the files which are currently in zipped state.\n    It will first move inside the user's download directory and then unzip the .gz files.\n:return:",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Unziping Files",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_28867.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "cnom_obj"
+      ],
+      "documentation": "This function is used for building directory for the given testcases wherein logs will be stored.\n:param cnom_obj:    Accepts object of cnom class which provides the pcap file path.\n:return:    Returns the build directory.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Build Directory",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_28867.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "dictionary",
+        "path"
+      ],
+      "documentation": ":param dictionary:\n:param path:\n:return:",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Command Checker",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_28867.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "${DEVICE}",
+        "${NETOWRK}"
+      ],
+      "documentation": "Checks if used notwork is correct",
+      "domain": "generic",
+      "library": "resource",
+      "name": "android_network_mode_check",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_60700.robot",
+      "source_type": "robot_keyword"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Checks IMS Registration status on Android device",
+      "domain": "generic",
+      "library": "resource",
+      "name": "iphone_registration_check",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_60700.robot",
+      "source_type": "robot_keyword"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "${DEVICE}"
+      ],
+      "documentation": "Checks IMS Registration status on Android device",
+      "domain": "generic",
+      "library": "resource",
+      "name": "android_registration_check",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_60700.robot",
+      "source_type": "robot_keyword"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "${DEVICE}",
+        "${EXPECTED_IP_VERSION}"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "resource",
+      "name": "android_ip_version_check",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_60700.robot",
+      "source_type": "robot_keyword"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "${SIP_SERVER}",
+        "${AUT_SERVER}",
+        "${DEVICE_B}",
+        "${call_duration}",
+        "${tc_dir}",
+        "${scenario_path}"
+      ],
+      "documentation": "Initiates a call from FIXED A to android Device B",
+      "domain": "telecom_trace",
+      "library": "resource",
+      "name": "execute_fixed_android_call_session_ab",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_60700.robot",
+      "source_type": "robot_keyword"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "${DEVICE_A}",
+        "${DEVICE_B}",
+        "${call_duration}"
+      ],
+      "documentation": "Initiates a call from android Device A to android Device B",
+      "domain": "telecom_trace",
+      "library": "resource",
+      "name": "execute_android_call_session_ab",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_60700.robot",
+      "source_type": "robot_keyword"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "${DEVICE_A}",
+        "${DEVICE_B}",
+        "${call_duration}"
+      ],
+      "documentation": "Initiates a call from android Device A to android Device B",
+      "domain": "telecom_trace",
+      "library": "resource",
+      "name": "execute_iphone_android_call_session_ab",
+      "risk_level": "medium",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_60700.robot",
+      "source_type": "robot_keyword"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "${DEVICE}",
+        "${EXPECTED_IP_VERSION}"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "resource",
+      "name": "android_set_ip_version",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_60700.robot",
+      "source_type": "robot_keyword"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "${SIP_SERVER}",
+        "${tc_dir}",
+        "${scenario_path}"
+      ],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "resource",
+      "name": "fixedIms_registration",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_60700.robot",
+      "source_type": "robot_keyword"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "element"
+      ],
+      "documentation": "This function is used to expand the elements which under provided shadow DOM element.\n:param element: Web element which is of type shadow DOM.\n:return:    Returns the shadow",
+      "domain": "generic",
+      "library": "Perform_actions",
+      "name": "Expand Shadow Element",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_66463.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "query_str"
+      ],
+      "documentation": "This function is used to extract all the elements which are under the query str.\nquery_str is js_path for the given element.\n:param query_str: Provided js path for the element which needs to be scrapped.\n:return:    The list of css_selectors starting from the root shadow DOM element.",
+      "domain": "generic",
+      "library": "Perform_actions",
+      "name": "Extract Elements",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_66463.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "js_path",
+        "action",
+        "param"
+      ],
+      "documentation": "This module is used to perform the given action on the element.\n:param js_path:     This argument is a js_path for the provided element on which action needs to performed.\n:param action:      Type of action to perform on the given element.\n:param param:       Extended action in case of typing inside the given element.\n:return:    None if action is 'click' or 'send_keys'. Will return text in case of grab_text action.",
+      "domain": "generic",
+      "library": "Perform_actions",
+      "name": "Perform Action",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_66463.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath",
+        "element_name"
+      ],
+      "documentation": "",
+      "domain": "ui",
+      "library": "module",
+      "name": "Eleclick",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath",
+        "send_value",
+        "element_name",
+        "clear_first"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Sendkeys",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath",
+        "send_value",
+        "element_name",
+        "clear_first"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Senddirc",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath",
+        "element_name"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Eclear",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath",
+        "element_name"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Getele",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath",
+        "ele_name",
+        "timeout"
+      ],
+      "documentation": "Checks for the presence of a graph element on the page.\nArgs:\n    driver: Selenium WebDriver instance\n    xpath: XPath to locate the graph element\n    ele_name: Name of the graph for logging purposes\n    timeout: Maximum time to wait for element (default: 10 seconds)\nReturns:\n    bool: True if graph is present, False otherwise",
+      "domain": "generic",
+      "library": "module",
+      "name": "Ele Presence",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath",
+        "element_name"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Gettext",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "xpath"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Create Shadow Xpath",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "xpath"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Process Shadow Xpath",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "xpath"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Split Xpath",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "shadow_host",
+        "path_segments"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Traverse Shadow Dom",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath"
+      ],
+      "documentation": "Find an element using a shadow DOM XPath starting from the initial host.",
+      "domain": "generic",
+      "library": "module",
+      "name": "Find Element With Shadow Xpath",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath",
+        "key"
+      ],
+      "documentation": "Find an element using a shadow DOM XPath starting from the initial host.\nsend key",
+      "domain": "generic",
+      "library": "module",
+      "name": "Find Element With Shadow Xpath And Send Key",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath"
+      ],
+      "documentation": "Find an element in shadow DOM using an XPath-like syntax.\n\nArgs:\n    driver: Selenium WebDriver instance\n    xpath: XPath-like string to locate element in shadow DOM\n\nReturns:\n    WebElement: The found element or None if not found",
+      "domain": "generic",
+      "library": "module",
+      "name": "Find Element In Shadow Dom",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath"
+      ],
+      "documentation": "click on element in shadow DOM(s)\n\nArgs:\n    driver: WebDriver instance\n    xpath: Shadow DOM XPath string\n\nReturns:\n    bool: True if click was successful, False otherwise",
+      "domain": "ui",
+      "library": "module",
+      "name": "Eleclick With Shadow",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath",
+        "keys"
+      ],
+      "documentation": "Send keys to element in shadow DOM(s)\n\nArgs:\n    driver: WebDriver instance\n    xpath: Shadow DOM XPath string\n    keys: String or keys to send to the element\n\nReturns:\n    bool: True if sending keys was successful, False otherwise",
+      "domain": "generic",
+      "library": "module",
+      "name": "Sendkeys With Shadow",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "frame",
+        "xpath",
+        "element_name"
+      ],
+      "documentation": "",
+      "domain": "ui",
+      "library": "module",
+      "name": "Eleclick In Frame",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "frame",
+        "xpath"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Get Text In Frame",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver",
+        "xpath",
+        "class_text",
+        "timeout",
+        "debug"
+      ],
+      "documentation": "Enhanced function to find and click Export buttons with comprehensive detection.\n\nArgs:\n    driver: Selenium WebDriver instance\n    xpath: Optional specific xpath to try first (for backward compatibility)\n    class_text: Class text that should NOT be present (indicates disabled state)\n    timeout: Maximum time to wait in seconds\n    debug: Enable detailed logging\n\nReturns:\n    WebElement if successful, None if failed\n\nUsage:\n    # Simple usage - will automatically find Export button\n    element = wait_until_class_not_contains_and_click(driver)\n\n    # With specific xpath (backward compatibility)\n    element = wait_until_class_not_contains_and_click(\n        driver, \n        xpath=\"//li[@id='ExportButton']//a[@title='Export']\",\n        class_text=\"view_SideButton_disabled\"\n    )",
+      "domain": "ui",
+      "library": "module",
+      "name": "Wait Until Class Not Contains And Click",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver"
+      ],
+      "documentation": "Backward compatibility wrapper",
+      "domain": "generic",
+      "library": "module",
+      "name": "Debug Page State",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_99211.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "driver_path"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Get Chrome Driver With Ssl Bypass",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_66526.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "txt_to_search",
+        "testcase_dir"
+      ],
+      "documentation": "",
+      "domain": "telecom_trace",
+      "library": "module",
+      "name": "Download Pcap File From S O U R C E N A M E P L A C E H O L D E R Portal",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_66526.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "margin"
+      ],
+      "documentation": "returns current date and time with minus margin seconds in this format 2025-09-09 16:43:51.552",
+      "domain": "generic",
+      "library": "module",
+      "name": "Start Time Margin",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_75907.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "margin"
+      ],
+      "documentation": "returns current date and  time with plus margin in min in this format 2025/04/09 16:43:51.552",
+      "domain": "generic",
+      "library": "module",
+      "name": "End Time Margin",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_75907.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "action"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Sleep Time For",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_75907.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Sleep Time For Cdr Generation Cycle",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_75907.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "classname",
+        "args"
+      ],
+      "documentation": "",
+      "domain": "generic",
+      "library": "module",
+      "name": "Create Object",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_75669.py",
+      "source_type": "python_function"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "locator",
+        "double_click"
+      ],
+      "documentation": "Wait for the element to be clickable and then click.\n\nArgs:\n    locator: Locator for the web element.\n    double_click: Boolean indicating whether to perform a double click (default is False).\n\nReturns:\n    None.",
+      "domain": "ui",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Wait And Click",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "locator",
+        "delay"
+      ],
+      "documentation": "Wait for the element to be clickable with a specified delay and then click.\n\nArgs:\n    locator: Locator for the web element.\n    delay: Delay in seconds (default is 1).\n\nReturns:\n    None.",
+      "domain": "ui",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Wait And Click With Delay",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "locator",
+        "text",
+        "delay"
+      ],
+      "documentation": "Wait for the element to be visible, clear its content, and then type the specified text.\n\nArgs:\n    locator: Locator for the web element.\n    text: Text to be typed into the element.\n    delay: Delay in seconds (default is 1).\n\nReturns:\n    None.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Wait And Type With Delay",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "locator",
+        "timeout"
+      ],
+      "documentation": "Wait for the specified element to be visible on the page.\n\nArgs:\n    locator: Locator for the web element.\n    timeout: Maximum time to wait for the element to be visible (default is 30 seconds).\n\nReturns:\n    The web element once it is visible.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Wait For Element To Be Visible",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "locator"
+      ],
+      "documentation": "Wait for the element to be visible and move the mouse to the element.\n\nArgs:\n    locator: Locator for the web element.\n\nReturns:\n    None.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Wait And Move To Element",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "locator"
+      ],
+      "documentation": "Move to the specified element and click.\n:param locator: Locator for the web element.\n:return: None.",
+      "domain": "ui",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Move To Element And Click",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "element_type",
+        "shadowroot_name",
+        "locator"
+      ],
+      "documentation": "Wait for the shadow-root element to be clickable and move the mouse to the element and perform click action.\n\nArgs:\n    shadowroot_tag_name: Name of the shadow-root host\n    locator: Locator for the web element.\n\nReturns:\n    None.",
+      "domain": "ui",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Find Shadow Root And Click On Button",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "locator"
+      ],
+      "documentation": "Performs a context click (right-click) on the element specified by the locator.\n\n:param locator: Locator for the web element.\n:return: None.",
+      "domain": "ui",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Context Click",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "locator",
+        "condition",
+        "timeout"
+      ],
+      "documentation": "Wait for the element to be present and satisfy the specified condition.\n\nArgs:\n    locator: Locator for the web element.\n    condition: A function that takes an element as an argument and returns a Boolean.\n    timeout: Maximum time to wait for the condition to be satisfied (default is 30 seconds).\n\nReturns:\n    None.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Wait And Wait For Condition",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [],
+      "documentation": "Perform common actions for exporting.\n\nClick on the export icon and the OK button for export.\n\nReturns:\n    None.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Perform Common Export Actions",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "timeout"
+      ],
+      "documentation": "Switch to the newly opened window after waiting for it.\n:param timeout: Maximum time to wait for the new window (default is 30 seconds).",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Switch To New Window",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    },
+    {
+      "approved_for_generation": true,
+      "args": [
+        "screenshot_path",
+        "width"
+      ],
+      "documentation": "Embed a screenshot in the Robot Framework log using the data URI scheme.\n\nArgs:\n    screenshot_path: The absolute path to the screenshot file.\n    width: Width of the embedded image in pixels (default is \"1000\").\n\nReturns:\n    None.",
+      "domain": "generic",
+      "library": "SOURCE_NAME_PLACEHOLDER",
+      "name": "Embed Screenshot In Log",
+      "risk_level": "low",
+      "sensitivity": "sanitized",
+      "source": "sanitized_source_87726.py",
+      "source_type": "python_class_method"
+    }
+  ],
+  "safety": {
+    "imports_executed": false,
+    "raw_source_paths_preserved": false,
+    "static_parse_only": true,
+    "values_redacted_before_extraction": true
+  },
+  "schema_version": "aegis-robot-keyword-registry.v1",
+  "source": "fixtures/reference_corpus/raw_sanitized/custom-libs",
+  "summary": {
+    "domains": {
+      "api": 6,
+      "data": 2,
+      "generic": 189,
+      "mobile": 15,
+      "telecom_trace": 17,
+      "ui": 9
+    },
+    "keyword_count": 238,
+    "parse_errors": 7,
+    "source_files": 42
+  }
+}

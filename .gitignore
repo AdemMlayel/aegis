@@ -4,16 +4,19 @@ node_modules/
 frontend/node_modules/
 frontend/dist/
 .pytest_cache/
+.pytest_tmp/
 .ruff_cache/
 __pycache__/
 *.py[cod]
 *.egg-info/
 
 generated/
+data/
 
 .env
 .env.*
 *.log
 lld.docx
+aegis-sensitive-data/
 custom_libs/
 .incoming_robot_libs/

@@ -8,7 +8,7 @@ The project intentionally avoids real company APIs by default. Company integrati
 
 ```bash
 python -m pytest -q
-# 140 passed
+# 148 passed
 
 cd frontend
 npm ci
@@ -114,6 +114,50 @@ Manual ingestion example body:
 }
 ```
 
+
+## Sanitized reference corpus grounding
+
+The current Milestone 8A grounding flow treats `aegis-sensitive-data/` as a quarantined input folder. Raw files are never consumed directly by agents.
+
+Safe flow:
+
+```text
+aegis-sensitive-data/
+  -> scripts/sanitize_sensitive_data_repo.py
+  -> fixtures/reference_corpus/raw_sanitized/
+  -> scripts/generate_reference_corpus_profiles.py
+  -> fixtures/reference_corpus/normalized/
+  -> agents/tools use normalized profiles only
+```
+
+Generated normalized profiles:
+
+- `fixtures/reference_corpus/normalized/robot_keywords/keyword_registry.json`
+- `fixtures/reference_corpus/normalized/robot_style_profile/profile.json`
+- `fixtures/reference_corpus/normalized/report_profile/profile.json`
+- `fixtures/reference_corpus/normalized/execution_evidence_profile/profile.json`
+
+Current corpus state:
+
+```text
+Sanitized files: 51
+Redactions applied: 7024
+Robot tests: 5
+Custom library/reference files: 42
+Report examples: 1
+Successful execution artifacts: 3
+Failed execution artifacts: 0 currently provided
+Extracted normalized Robot keywords: 238
+```
+
+Run the safe grounding pipeline manually:
+
+```bash
+python scripts/sanitize_sensitive_data_repo.py --clean
+python scripts/generate_reference_corpus_profiles.py
+python -m pytest -q
+```
+
 ## Execution adapters
 
 | Adapter | Purpose |
@@ -158,7 +202,7 @@ Never share the raw working tree. Generate a clean source package:
 python scripts/package_clean.py ../aegisqa-clean
 ```
 
-The package excludes `.env`, `.git`, `.venv`, `.tools`, `node_modules`, build output, generated artifacts, caches, and `lld.docx`.
+The package excludes `.env`, `.git`, `.venv`, `.tools`, `node_modules`, build output, generated artifacts, caches, `lld.docx`, `data/`, and the quarantined `aegis-sensitive-data/` folder. It keeps only sanitized reference-corpus material and normalized profiles under `fixtures/reference_corpus/`.
 
 ## Current limitations
 
@@ -169,3 +213,19 @@ The package excludes `.env`, `.git`, `.venv`, `.tools`, `node_modules`, build ou
 - Production vector DB is not connected.
 - Docker Robot execution requires a local Docker image.
 - Agent simulation/optimizer and A2A protocol are future milestones.
+
+
+## Milestone 8B — Conversational QA Copilot
+
+AegisQA now includes a governed chat layer over the workflow cockpit. The copilot can answer system, ticket, workflow, artifact, validation, execution, investigation, report, and safe-corpus questions. Controlled actions such as workflow start, running a stage, approving a pending stage, and execution are represented as confirmation-required chat actions.
+
+Main endpoints:
+
+```text
+POST /api/v1/chat/sessions
+GET  /api/v1/chat/sessions/{session_id}
+POST /api/v1/chat/sessions/{session_id}/messages
+POST /api/v1/chat/sessions/{session_id}/actions/{action_id}/confirm
+```
+
+The copilot does not replace the deterministic workflow engine. It routes safe user intent into existing workflow services and preserves the model-drafts/system-validates/human-confirms architecture.

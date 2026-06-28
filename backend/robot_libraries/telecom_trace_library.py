@@ -54,6 +54,55 @@ class TelecomTraceLibrary:
             raise AssertionError(f"SIP header '{header}' is missing from {message}")
         return True
 
+    @keyword("Verify Trace Event Present")
+    def verify_trace_event_present(self, protocol: str, message: str) -> bool:
+        self._find_event(protocol=protocol, message=message)
+        return True
+
+    @keyword("Verify Trace Route")
+    def verify_trace_route(
+        self,
+        protocol: str,
+        message: str,
+        source: str,
+        target: str,
+    ) -> bool:
+        event = self._find_event(protocol=protocol, message=message)
+        actual_source = str(event.get("source", ""))
+        actual_target = str(event.get("target", ""))
+        if actual_source != source or actual_target != target:
+            raise AssertionError(
+                f"Trace route mismatch for {protocol} {message}: "
+                f"expected {source}->{target}"
+            )
+        return True
+
+    @keyword("Verify Minimum Event Count")
+    def verify_minimum_event_count(
+        self,
+        protocol: str,
+        minimum_count: int | str,
+    ) -> bool:
+        try:
+            required_count = int(minimum_count)
+        except (TypeError, ValueError) as exc:
+            raise AssertionError(
+                f"Minimum event count must be an integer: {minimum_count}"
+            ) from exc
+
+        actual_count = sum(
+            1
+            for event in self._events()
+            if str(event.get("protocol", "")).strip().lower()
+            == protocol.strip().lower()
+        )
+        if actual_count < required_count:
+            raise AssertionError(
+                f"Trace has {actual_count} {protocol} events; "
+                f"expected at least {required_count}"
+            )
+        return True
+
     @keyword("Verify Diameter Session Match")
     def verify_diameter_session_match(
         self,

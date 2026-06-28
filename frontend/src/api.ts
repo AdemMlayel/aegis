@@ -23,7 +23,10 @@ import type {
   WorkflowEvent,
   WorkflowMode,
   WorkflowStageName,
-  WorkflowSummary
+  WorkflowSummary,
+  ChatSession,
+  ChatMessage,
+  ChatAction
 } from "./types";
 import { API_ROOT } from "./config";
 
@@ -407,4 +410,56 @@ export async function getAutomationFile(ticketId: string, robotFile: string): Pr
   const response = await fetch(`${API_ROOT}/automation/files/${encodeURIComponent(ticketId)}/${encodeURIComponent(fileName)}`);
   const body = await parseResponse<{ content: string }>(response);
   return body.content;
+}
+
+
+export async function createChatSession(payload: {
+  created_by: string;
+  context_id?: string | null;
+  ticket_id?: string | null;
+  title?: string | null;
+}): Promise<ChatSession> {
+  const response = await fetch(`${API_ROOT}/chat/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const body = await parseResponse<{ session: ChatSession }>(response);
+  return body.session;
+}
+
+export async function sendChatMessage(payload: {
+  sessionId: string;
+  actor: string;
+  message: string;
+  context_id?: string | null;
+  ticket_id?: string | null;
+}): Promise<{ session: ChatSession; message: ChatMessage }> {
+  const response = await fetch(`${API_ROOT}/chat/sessions/${payload.sessionId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      actor: payload.actor,
+      message: payload.message,
+      context_id: payload.context_id ?? null,
+      ticket_id: payload.ticket_id ?? null
+    })
+  });
+  return parseResponse<{ session: ChatSession; message: ChatMessage }>(response);
+}
+
+export async function confirmChatAction(payload: {
+  sessionId: string;
+  actionId: string;
+  actor: string;
+}): Promise<{ session: ChatSession; action: ChatAction; message: ChatMessage }> {
+  const response = await fetch(
+    `${API_ROOT}/chat/sessions/${payload.sessionId}/actions/${payload.actionId}/confirm`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actor: payload.actor })
+    }
+  );
+  return parseResponse<{ session: ChatSession; action: ChatAction; message: ChatMessage }>(response);
 }

@@ -15,6 +15,9 @@ def test_robot_keyword_registry_lists_approved_telecom_keywords() -> None:
     assert names == {
         "Load Sanitized Trace",
         "Verify SIP Header Present",
+        "Verify Trace Event Present",
+        "Verify Trace Route",
+        "Verify Minimum Event Count",
         "Verify Diameter Session Match",
         "Verify Diameter Result Code",
         "Verify Flexible Sequence",

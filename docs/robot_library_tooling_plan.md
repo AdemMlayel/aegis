@@ -259,6 +259,15 @@ For each useful reference capability:
 
 Do not promote broad libraries wholesale. Promote narrow, reviewed capabilities.
 
+Promoted local demo adapters:
+
+- `Verify Trace Event Present`: confirms a sanitized protocol/message event exists.
+- `Verify Trace Route`: confirms sanitized source/target placeholders on an event.
+- `Verify Minimum Event Count`: confirms a protocol appears at least N times in the fixture.
+
+These adapters are fixture-only and remain backed by
+`fixtures/telecom/sanitized_call_trace.json`.
+
 ## Phase 4: Future Real Integration Mode
 
 Only after security, secrets, sandboxing, and customer approval are ready:

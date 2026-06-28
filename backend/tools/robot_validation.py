@@ -13,7 +13,28 @@ from backend.graph.state import (
     AutomationValidation,
     TestDataBlock,
 )
+from backend.robot_libraries.registry import list_robot_keyword_capabilities
 from backend.tools.base import BaseTool, tool_registry
+
+BUILTIN_KEYWORDS = {
+    "log",
+    "should be true",
+    "should be equal",
+    "should contain",
+    "should not contain",
+    "create dictionary",
+    "create list",
+    "set variable",
+    "no operation",
+    "fail",
+    "sleep",
+    "run keyword",
+    "run keyword if",
+    "run keywords",
+    "call method",
+    "get library instance",
+}
+ROBOT_CONTROL_TOKENS = {"for", "end", "if", "else", "else if", "while", "try", "except", "finally"}
 
 
 @tool_registry.register(
@@ -71,7 +92,10 @@ def validate_robot_automation(
 
         if artifact_exists and robot_file.suffix == ".robot":
             validation = _run_robot_dryrun(robot_file)
-            validation.errors = [*errors, *validation.errors]
+            profile_errors = _validate_known_keywords(robot_file)
+            validation.errors = [*errors, *validation.errors, *profile_errors]
+            if profile_errors:
+                validation.dry_run_passed = False
         else:
             validation = AutomationValidation(
                 artifact_exists=artifact_exists,
@@ -140,14 +164,7 @@ def _run_robot_dryrun(robot_file: Path) -> AutomationValidation:
 
 
 def _run_local_robot_syntax_check(robot_file: Path) -> AutomationValidation:
-    """Reproducible local validator used when Robot Framework is unavailable.
-
-    The approved architecture still keeps Robot dry-run as the preferred
-    validation path, but local development and CI should remain green without
-    relying on a globally installed CLI.  This fallback validates the generated
-    file structure and basic Robot section syntax so mock-data workflows can
-    prove the architecture without company infrastructure.
-    """
+    """Reproducible local validator used when Robot Framework is unavailable."""
     errors: list[str] = []
     try:
         content = robot_file.read_text(encoding="utf-8")
@@ -166,7 +183,8 @@ def _run_local_robot_syntax_check(robot_file: Path) -> AutomationValidation:
     if "Library" not in content:
         errors.append("Robot file does not declare any library")
     executable_lines = [
-        line for line in content.splitlines()
+        line
+        for line in content.splitlines()
         if line.startswith("    ") and not line.strip().startswith("#")
     ]
     if not executable_lines:
@@ -181,3 +199,43 @@ def _run_local_robot_syntax_check(robot_file: Path) -> AutomationValidation:
         validation_attempts=1,
         errors=errors,
     )
+
+
+def _validate_known_keywords(robot_file: Path) -> list[str]:
+    known = {capability.name.lower() for capability in list_robot_keyword_capabilities(include_corpus=True)}
+    known |= BUILTIN_KEYWORDS
+    errors: list[str] = []
+    in_test_cases = False
+    try:
+        lines = robot_file.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError as exc:
+        return [f"Unable to read Robot file for keyword validation: {exc}"]
+
+    for raw_line in lines:
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.startswith("***") and stripped.endswith("***"):
+            in_test_cases = stripped.strip("* ").lower() == "test cases"
+            continue
+        if not in_test_cases or not raw_line.startswith((" ", "\t")):
+            continue
+        cells = _robot_cells(stripped)
+        if not cells:
+            continue
+        first_cell = cells[0].strip()
+        lowered = first_cell.lower()
+        if first_cell.startswith("[") or lowered in ROBOT_CONTROL_TOKENS:
+            continue
+        if lowered not in known:
+            errors.append(
+                f"Unknown Robot keyword '{first_cell}' in {robot_file.relative_to(PROJECT_ROOT)}. "
+                "Generated automation must use BuiltIn or approved reference-corpus keywords."
+            )
+    return errors
+
+
+def _robot_cells(text: str) -> list[str]:
+    if "    " in text:
+        return [cell.strip() for cell in text.split("    ") if cell.strip()]
+    return [cell.strip() for cell in text.split("\t") if cell.strip()]

@@ -21,6 +21,7 @@ from backend.intelligence.context import (
     consume_stage_feedback,
 )
 from backend.prompts import prompt_registry
+from backend.reference_corpus.profiles import load_report_profile
 from backend.intelligence.structured_outputs import (
     ReportLLMOutput,
     parse_structured_llm_response,
@@ -118,6 +119,13 @@ def generate_report(
     model_next_actions: list[str] = []
     model_confidence: float | None = None
     reviewer_feedback: list[str] = []
+    report_profile = load_report_profile()
+    profile_summary = report_profile.get("summary", {}) if isinstance(report_profile, dict) else {}
+    profile_sections = []
+    if isinstance(report_profile.get("profile"), dict):
+        raw_sections = report_profile["profile"].get("preferred_sections", [])
+        if isinstance(raw_sections, list):
+            profile_sections = [str(section) for section in raw_sections[:5]]
 
     if ticket is not None:
         prompt = prompt_registry.get("report_generation_v1")
@@ -178,6 +186,11 @@ def generate_report(
             "Review generated Robot files through the automation file endpoint",
             "Execute approved automation through the mock or Robot execution adapter",
             "Review investigation and archived-memory payloads before promoting to external systems",
+            *(
+                [f"Apply report profile sections: {', '.join(profile_sections)}"]
+                if profile_sections and (execution is not None or investigation is not None)
+                else []
+            ),
             *model_next_actions,
             *[
                 f"Reviewer direction applied: {comment}"

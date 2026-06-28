@@ -17,5 +17,5 @@ class RobotKeywordCapabilityTool(BaseTool):
         if domain is not None and not isinstance(domain, str):
             raise TypeError("RobotKeywordCapabilityTool requires a string domain")
 
-        capabilities = list_robot_keyword_capabilities(domain=domain)
+        capabilities = list_robot_keyword_capabilities(domain=domain, include_corpus=True)
         return [capability.model_dump(mode="json") for capability in capabilities]

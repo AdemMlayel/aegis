@@ -1,6 +1,8 @@
 import { X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  confirmChatAction,
+  createChatSession,
   createWorkflowSession,
   decideApproval,
   downloadWorkflowReport,
@@ -30,10 +32,12 @@ import {
   resumeWorkflowSession,
   reviewWorkflowStage,
   runNextWorkflowStage,
+  sendChatMessage,
   sendWorkflowMessage,
   smokeTestOllamaProfiles
 } from "./api";
 import { AgentConfigPanel } from "./components/AgentConfigPanel";
+import { CopilotPanel } from "./components/CopilotPanel";
 import {
   ConversationWorkspace,
   type WorkspaceView
@@ -65,7 +69,8 @@ import type {
   WorkflowEvent,
   WorkflowMode,
   WorkflowStageName,
-  WorkflowSummary
+  WorkflowSummary,
+  ChatSession
 } from "./types";
 
 export default function App() {
@@ -77,6 +82,7 @@ export default function App() {
   const [workspaceFilter, setWorkspaceFilter] = useState<WorkspaceFilter>("all");
   const [view, setView] = useState<WorkspaceView>("conversation");
   const [configCollapsed, setConfigCollapsed] = useState(false);
+  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
 
   const [providerCatalog, setProviderCatalog] = useState<ProviderCatalog | null>(null);
   const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
@@ -297,6 +303,12 @@ export default function App() {
       setTokenBudget(budget);
       setOperationalHealth(serviceHealth);
       initializeRuntimeDefaults(routing, providers, embeddings, health);
+      const chat = await createChatSession({
+        created_by: OPERATOR_ID,
+        ticket_id: ticketList[0]?.id ?? null,
+        title: "AegisQA Copilot"
+      }).catch(() => null);
+      if (chat) setChatSession(chat);
 
       const storedContextId = localStorage.getItem("aegisqa:lastContextId");
       if (storedContextId) {
@@ -554,6 +566,49 @@ export default function App() {
     }
   }
 
+  async function sendCopilotMessage(message: string) {
+    const session = chatSession ?? await runAction("chat", () =>
+      createChatSession({
+        created_by: OPERATOR_ID,
+        context_id: context?.context_id ?? null,
+        ticket_id: selectedTicket?.id ?? null,
+        title: "AegisQA Copilot"
+      })
+    );
+    if (!session) return;
+    const response = await runAction("chat", () =>
+      sendChatMessage({
+        sessionId: session.session_id,
+        actor: OPERATOR_ID,
+        message,
+        context_id: context?.context_id ?? null,
+        ticket_id: selectedTicket?.id ?? null
+      })
+    );
+    if (!response) return;
+    setChatSession(response.session);
+  }
+
+  async function confirmCopilotAction(actionId: string) {
+    if (!chatSession) return;
+    const response = await runAction("chat", () =>
+      confirmChatAction({
+        sessionId: chatSession.session_id,
+        actionId,
+        actor: OPERATOR_ID
+      })
+    );
+    if (!response) return;
+    setChatSession(response.session);
+    if (response.session.context_id) {
+      const loaded = await getWorkflow(response.session.context_id).catch(() => null);
+      if (loaded) {
+        applyContext(loaded);
+        await refreshWorkflows();
+      }
+    }
+  }
+
   async function saveArtifact(comment?: string) {
     if (!context || !selectedTest) return;
     const response = await runAction("artifact", () =>
@@ -691,6 +746,13 @@ export default function App() {
             <button onClick={() => setError(null)} title="Dismiss error"><X /></button>
           </div>
         ) : null}
+        <CopilotPanel
+          session={chatSession}
+          busy={busy === "chat"}
+          disabled={false}
+          onSend={(message) => void sendCopilotMessage(message)}
+          onConfirmAction={(actionId) => void confirmCopilotAction(actionId)}
+        />
         <ConversationWorkspace
           context={context}
           selectedTicket={selectedTicket}

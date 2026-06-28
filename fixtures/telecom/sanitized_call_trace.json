@@ -2,6 +2,7 @@
   "fixture_id": "SANITIZED_CALL_TRACE_FIXTURE",
   "environment": "TEST_ENVIRONMENT",
   "trace_reference": "TRACE_REFERENCE_PLACEHOLDER",
+  "source_system": "SANITIZED_TRACE_ADAPTER_REFERENCE",
   "events": [
     {
       "id": "EVT-SIP-INVITE-001",

@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.2.2 (Python 3.8.10 on linux)" generated="2025-05-25T15:25:36.965331" rpa="false" schemaversion="5">
+<suite id="s1" name="PC TCS" source="LOCAL_PATH_PLACEHOLDER suites/PC_TCS.robot">
+<test id="s1-t1" name="vSGSN-MME-Alarm Monitor(Alarm List,Alarm Timeline)" line="455">
+<kw name="Create Dictionary" owner="BuiltIn">
+<msg time="2025-05-25T15:25:37.553774" level="INFO">&amp;{tc_filter} = { tmsid=TMSII00855722 }</msg>
+<var>&amp;{tc_filter}</var>
+<arg>tmsid=${pc_testcase_tmsids}[10]</arg>
+<doc>Creates and returns a dictionary based on the given ``items``.</doc>
+<status status="PASS" start="2025-05-25T15:25:37.553212" elapsed="0.000611"/>
+</kw>
+<kw name="Get Document" owner="SOURCE_NAME_PLACEHOLDER">
+<msg time="2025-05-25T15:25:37.570782" level="INFO">${test_data} = {'_id': 'HEX_IDENTIFIER_PLACEHOLDER', 'tmsid': 'TMSII00855722', 'tcname': 'vSGSN-MME - Alarm Monitor (Alarm List, Alarm Timeline)', 'tc_output_dir': 'LOCAL_PATH_PLACEHOLDER', 'teststeps': {...</msg>
+<var>${test_data}</var>
+<arg>${pc_collection}</arg>
+<arg>${tc_filter}</arg>
+<status status="PASS" start="2025-05-25T15:25:37.554038" elapsed="0.016803"/>
+</kw>
+<kw name="Create Object" owner="utility">
+<msg time="2025-05-25T15:25:37.571468" level="INFO">SOURCE_NAME_PLACEHOLDER
+&lt;class 'str'&gt;</msg>
+<msg time="2025-05-25T15:25:37.571567" level="INFO">${pc_tc10_obj} = &lt;HOSTNAME_PLACEHOLDER object at 0x7f51afc80310&gt;</msg>
+<var>${pc_tc10_obj}</var>
+<arg>SOURCE_NAME_PLACEHOLDER</arg>
+<arg>${test_data}</arg>
+<arg>${False}</arg>
+<status status="PASS" start="2025-05-25T15:25:37.571113" elapsed="0.000485"/>
+</kw>
+<kw name="Call Method" owner="BuiltIn">
+<msg time="2025-05-25T15:25:37.572131" level="INFO">${tc_info} = {'tmsid': 'TMSII00855722', 'tc_dir': 'LOCAL_PATH_PLACEHOLDER suites', 'tc_output_dir': 'LOCAL_PATH_PLACEHOLDER'}</msg>
+<var>${tc_info}</var>
+<arg>${pc_tc10_obj}</arg>
+<arg>get_testcase_info</arg>
+<doc>Calls the named method of the given object with the provided arguments.</doc>
+<status status="PASS" start="2025-05-25T15:25:37.571816" elapsed="0.000377"/>
+</kw>
+<kw name="Create Object" owner="utility">
+<msg time="2025-05-25T15:25:37.572726" level="INFO">LOCAL_PATH_PLACEHOLDER</msg>
+<msg time="2025-05-25T15:25:37.572855" level="INFO">SOURCE_NAME_PLACEHOLDER
+&lt;class 'str'&gt;</msg>
+<msg time="2025-05-25T15:25:37.572939" level="INFO">${pc_tc10_obj} = &lt;HOSTNAME_PLACEHOLDER object at 0x7f51afca6910&gt;</msg>
+<var>${pc_tc10_obj}</var>
+<arg>SOURCE_NAME_PLACEHOLDER</arg>
+<arg>${test_data}</arg>
+<arg>${True}</arg>
+<arg>${tc_info}[tc_output_dir]</arg>
+<status status="PASS" start="2025-05-25T15:25:37.572378" elapsed="0.000589"/>
+</kw>
+<kw name="Call Method" owner="BuiltIn">
+<msg time="2025-05-25T15:25:37.573441" level="INFO">${trace_inputs} = {'IMSI': 'NUMERIC_IDENTIFIER_PLACEHOLDER', 'Node_type': 'SGSN-MME', 'Node_name': 'ESGSNTB1'}</msg>
+<var>${trace_inputs}</var>
+<arg>${pc_tc10_obj}</arg>
+<arg>get_trace_inputs</arg>
+<doc>Calls the named method of the given object with the provided arguments.</doc>
+<status status="PASS" start="2025-05-25T15:25:37.573161" elapsed="0.000322"/>
+</kw>
+<kw name="Call Method" owner="BuiltIn">
+<msg time="2025-05-25T15:25:37.574064" level="INFO">${tc_info} = {'tmsid': 'TMSII00855722', 'tc_dir': 'LOCAL_PATH_PLACEHOLDER', 'tc_output_dir': 'LOCAL_PATH_PLACEHOLDER'}</msg>
+<var>${tc_info}</var>
+<arg>${pc_tc10_obj}</arg>
+<arg>get_testcase_info</arg>
+<doc>Calls the named method of the given object with the provided arguments.</doc>
+<status status="PASS" start="2025-05-25T15:25:37.573767" elapsed="0.000337"/>
+</kw>
+<kw name="Initialize CNOM" owner="SOURCE_NAME_PLACEHOLDER">
+<msg time="2025-05-25T15:25:38.751806" level="INFO">CNOM initialized; driver set with testcase directory: LOCAL_PATH_PLACEHOLDER</msg>
+<msg time="2025-05-25T15:25:38.752253" level="INFO">${init_status} = True</msg>
+<var>${init_status}</var>
+<arg>${CNOM}</arg>
+<arg>${tc_info}[tmsid]</arg>
+<arg>${trace_inputs}[Node_type]</arg>
+<arg>${trace_inputs}[Node_name]</arg>
+<arg>${tc_info}[tc_dir]</arg>
+<doc>Initialize CNOM by setting the driver and storing node parameters.</doc>
+<status status="PASS" start="2025-05-25T15:25:37.574353" elapsed="1.177948"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${init_status}</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="PASS" start="2025-05-25T15:25:38.752802" elapsed="0.000529"/>
+</kw>
+<kw name="Perform Alarm Activity Check" owner="SOURCE_NAME_PLACEHOLDER">
+<msg time="2025-05-25T15:25:41.961615" level="INFO">Performed action number: 1</msg>
+<msg time="2025-05-25T15:25:43.062266" level="INFO">Performed action number: 2</msg>
+<msg time="2025-05-25T15:25:44.244971" level="INFO">Performed action number: 3</msg>
+<msg time="2025-05-25T15:25:44.312562" level="INFO">Alarm summary text: Active alarm summary
+4
+Critical
+3
+Major
+0
+Minor
+0
+Warning
+0
+Indeterminate
+2025-05-25 15:17:42 UTC +02:00</msg>
+<msg time="2025-05-25T15:25:46.445689" level="INFO">Data is present</msg>
+<msg time="2025-05-25T15:25:46.445939" level="INFO">${alarm_status} = True</msg>
+<var>${alarm_status}</var>
+<status status="PASS" start="2025-05-25T15:25:38.753584" elapsed="7.692389"/>
+</kw>
+<kw name="Should Be Equal" owner="BuiltIn">
+<arg>${alarm_status}</arg>
+<arg>${True}</arg>
+<arg>Alarm activity check failed</arg>
+<doc>Fails if the given objects are unequal.</doc>
+<status status="PASS" start="2025-05-25T15:25:46.446215" elapsed="0.000488"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-05-25T15:25:46.447191" level="INFO">Alarm Summary Widget for the selected SGSN-MME : Validated</msg>
+<arg>Alarm Summary Widget for the selected ${trace_inputs}[Node_type] : Validated</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-05-25T15:25:46.446951" elapsed="0.000301"/>
+</kw>
+<kw name="Validate Alarm List Widget" owner="SOURCE_NAME_PLACEHOLDER">
+<msg time="2025-05-25T15:25:46.452989" level="INFO">Alarm List Dates: ['2025-05-25 15:21:08.000 (5 minutes ago)', '2025-05-05 11:32:20.000 (20 days ago)', '2025-05-05 11:32:20.000 (20 days ago)', '2025-03-03 15:53:36.000 (3 months ago)', '2025-03-03 15:53:33.000 (3 months ago)', '2025-03-03 15:53:33.000 (3 months ago)', '2025-03-03 15:53:33.000 (3 months ago)']</msg>
+<msg time="2025-05-25T15:25:46.454672" level="INFO">All alarms validated successfully!</msg>
+<msg time="2025-05-25T15:25:48.491008" level="INFO">Found shadow host with selector 'html': html</msg>
+<msg time="2025-05-25T15:25:48.505255" level="INFO">current element is body</msg>
+<msg time="2025-05-25T15:25:48.516835" level="INFO">current element is eui-container</msg>
+<msg time="2025-05-25T15:25:48.529225" level="INFO">current element is main</msg>
+<msg time="2025-05-25T15:25:48.540097" level="INFO">current element is div</msg>
+<msg time="2025-05-25T15:25:48.546657" level="INFO">current element is div</msg>
+<msg time="2025-05-25T15:25:48.556518" level="INFO">current element is div</msg>
+<msg time="2025-05-25T15:25:48.565855" level="INFO">current element is e-alarm-viewer</msg>
+<msg time="2025-05-25T15:25:48.577889" level="INFO">current element is div</msg>
+<msg time="2025-05-25T15:25:48.587645" level="INFO">current element is e-cnom-lib-dashboard</msg>
+<msg time="2025-05-25T15:25:48.596318" level="INFO">current element is div</msg>
+<msg time="2025-05-25T15:25:48.606338" level="INFO">current element is e-cnom-lib-line-chart-widget</msg>
+<msg time="2025-05-25T15:25:48.616618" level="INFO">current element is eui-tooltip</msg>
+<msg time="2025-05-25T15:25:50.654755" level="INFO">Alarms Data Downloaded successfully</msg>
+<msg time="2025-05-25T15:25:50.655788" level="INFO">${validate} = True</msg>
+<var>${validate}</var>
+<status status="PASS" start="2025-05-25T15:25:46.447419" elapsed="4.208458"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${validate}</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="PASS" start="2025-05-25T15:25:50.656549" elapsed="0.000751"/>
+</kw>
+<kw name="Close Driver" owner="SOURCE_NAME_PLACEHOLDER">
+<status status="PASS" start="2025-05-25T15:25:50.657928" elapsed="0.109771"/>
+</kw>
+<doc>TMSII00855722 The scope is to verify that the node alarms are visible in CNOM Alarm Monitor application.</doc>
+<tag>E_CNOM-AM_003</tag>
+<timeout value="15 minutes"/>
+<status status="PASS" start="2025-05-25T15:25:37.551225" elapsed="13.216839"/>
+</test>
+<status status="PASS" start="2025-05-25T15:25:36.966304" elapsed="13.814101"/>
+</suite>
+<statistics>
+<total>
+<stat pass="1" fail="0" skip="0">All Tests</stat>
+</total>
+<tag>
+<stat pass="1" fail="0" skip="0">E_CNOM-AM_003</stat>
+</tag>
+<suite>
+<stat name="PC TCS" id="s1" pass="1" fail="0" skip="0">PC TCS</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>

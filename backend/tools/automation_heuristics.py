@@ -10,7 +10,8 @@ from backend.graph.state import (
     TestDataBlock,
     TicketData,
 )
-from backend.robot_libraries.registry import TELECOM_TRACE_LIBRARY
+from backend.reference_corpus.profiles import load_robot_style_profile
+from backend.robot_libraries.registry import TELECOM_TRACE_LIBRARY, list_robot_keyword_capabilities
 from backend.tools.base import BaseTool, tool_registry
 
 TELECOM_TRACE_FIXTURE = "fixtures/telecom/sanitized_call_trace.json"
@@ -22,6 +23,37 @@ TELECOM_TRACE_MARKERS = (
     "trace-validation",
     "trace validation",
 )
+
+
+def _reference_style_tags() -> list[str]:
+    profile = load_robot_style_profile()
+    style = profile.get("style", {}) if isinstance(profile, dict) else {}
+    common_tags = style.get("common_tags", []) if isinstance(style, dict) else []
+    tags: list[str] = []
+    if isinstance(common_tags, list):
+        for item in common_tags:
+            if isinstance(item, dict):
+                value = str(item.get("value", "")).strip()
+                if value and "PLACEHOLDER" not in value.upper():
+                    tags.append(value)
+            if len(tags) >= 3:
+                break
+    return tags
+
+
+def _reference_style_comment() -> str | None:
+    profile = load_robot_style_profile()
+    summary = profile.get("summary", {}) if isinstance(profile, dict) else {}
+    if not isinstance(summary, dict) or not summary.get("robot_files"):
+        return None
+    return (
+        f"# Reference corpus style applied from {summary.get('robot_files')} "
+        "sanitized Robot test files"
+    )
+
+
+def _approved_keyword_names() -> set[str]:
+    return {capability.name for capability in list_robot_keyword_capabilities(include_corpus=True)}
 
 
 @tool_registry.register(
@@ -128,7 +160,8 @@ def _render_robot_file(
             ticket=ticket,
         )
 
-    tags = ["generated", test_case.type, test_case.priority]
+    tags = ["generated", test_case.type, test_case.priority, *_reference_style_tags()]
+    style_comment = _reference_style_comment()
     lines = [
         "*** Settings ***",
         (
@@ -136,6 +169,7 @@ def _render_robot_file(
             f"{test_case.id} / revision {revision}"
         ),
         "Library           BuiltIn",
+        *( [style_comment] if style_comment else [] ),
         "",
         "*** Test Cases ***",
         _robot_cell(test_case.title),
@@ -168,7 +202,8 @@ def _render_telecom_robot_file(
     *,
     ticket: TicketData | None,
 ) -> str:
-    tags = ["generated", test_case.type, test_case.priority, "telecom-trace"]
+    tags = ["generated", test_case.type, test_case.priority, "telecom-trace", *_reference_style_tags()]
+    style_comment = _reference_style_comment()
     lines = [
         "*** Settings ***",
         (
@@ -176,6 +211,7 @@ def _render_telecom_robot_file(
             f"{test_case.id} / revision {revision}"
         ),
         f"Library           {TELECOM_TRACE_LIBRARY}",
+        *( [style_comment] if style_comment else [] ),
         "",
         "*** Variables ***",
         f"${{TRACE_FIXTURE}}    {TELECOM_TRACE_FIXTURE}",
@@ -234,6 +270,17 @@ def _telecom_keyword_calls(ticket: TicketData | None) -> list[str]:
     calls: list[tuple[str, ...]] = []
 
     if "sip" in content and "header" in content:
+        calls.append(("Verify Trace Event Present", "SIP", "INVITE"))
+        calls.append(
+            (
+                "Verify Trace Route",
+                "SIP",
+                "INVITE",
+                "TEST_SUBSCRIBER_A",
+                "INTERNAL_SERVICE_A",
+            )
+        )
+        calls.append(("Verify Minimum Event Count", "SIP", "3"))
         calls.append(("Verify SIP Header Present", "INVITE", "Call-ID"))
     if (
         "identity" in content
@@ -244,6 +291,8 @@ def _telecom_keyword_calls(ticket: TicketData | None) -> list[str]:
     if "diameter" in content and (
         "session" in content or "request/answer" in content
     ):
+        calls.append(("Verify Trace Event Present", "Diameter", "LIR"))
+        calls.append(("Verify Minimum Event Count", "Diameter", "2"))
         calls.append(("Verify Diameter Session Match", "LIR", "LIA"))
     if "result code" in content or "success_result_code_placeholder" in content:
         calls.append(
@@ -258,7 +307,18 @@ def _telecom_keyword_calls(ticket: TicketData | None) -> list[str]:
 
     if not calls:
         calls = [
+            ("Verify Trace Event Present", "SIP", "INVITE"),
+            (
+                "Verify Trace Route",
+                "SIP",
+                "INVITE",
+                "TEST_SUBSCRIBER_A",
+                "INTERNAL_SERVICE_A",
+            ),
+            ("Verify Minimum Event Count", "SIP", "3"),
             ("Verify SIP Header Present", "INVITE", "Call-ID"),
+            ("Verify Trace Event Present", "Diameter", "LIR"),
+            ("Verify Minimum Event Count", "Diameter", "2"),
             ("Verify Diameter Session Match", "LIR", "LIA"),
             (
                 "Verify Diameter Result Code",
@@ -268,7 +328,8 @@ def _telecom_keyword_calls(ticket: TicketData | None) -> list[str]:
             ("Verify Flexible Sequence", "IMS_CALL_FLOW_TEMPLATE"),
         ]
 
-    deduped_calls = list(dict.fromkeys(calls))
+    approved = _approved_keyword_names()
+    deduped_calls = [call for call in dict.fromkeys(calls) if call[0] in approved]
     return ["    ".join(call) for call in deduped_calls]
 
 

@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-06-28T20:33:23.231959+00:00",
+  "profile": {
+    "preferred_sections": [
+      "Executive summary",
+      "Execution result",
+      "Evidence",
+      "Risk and confidence",
+      "Recommendations",
+      "Error"
+    ],
+    "sample_safe_excerpts": [
+      "Microsoft Excel Compatible / Openpyxl 3.1.5 3.1 openpyxl 2026-05-13T10:35:30Z 2026-05-13T10:35:30Z phase leg call_id message type code error missing_headers missing_paths unexpected_paths status initiated originating leg LEG_MISSING [] [] [] FAIL initiated internal leg LEG_MISSING [] [] [] FAIL initiated terminating leg LEG_MISSING [] [] [] FAIL setup originating leg LEG_MISSING [] [] [] FAIL setup internal leg LEG_MISSING [] [] [] FAIL setup ter"
+    ],
+    "style_notes": [
+      "Keep an executive summary before technical evidence.",
+      "Separate evidence-backed facts from recommendations.",
+      "Include pass/fail counts, risk level, confidence and next actions.",
+      "Use sanitized placeholders only in examples and generated reports."
+    ]
+  },
+  "schema_version": "aegis-report-profile.v1",
+  "source": "fixtures/reference_corpus/raw_sanitized/report-example",
+  "summary": {
+    "artifact_types": {
+      ".xlsx": 1
+    },
+    "report_files": 1,
+    "sections_detected": {
+      "error": 1
+    }
+  }
+}

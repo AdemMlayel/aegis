@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-06-28T20:33:23.246829+00:00",
+  "outputs": [
+    "execution_evidence_profile/profile.json",
+    "report_profile/profile.json",
+    "robot_keywords/keyword_registry.json",
+    "robot_style_profile/profile.json"
+  ],
+  "safety": {
+    "normalized_outputs_contain_no_original_paths": true,
+    "raw_sensitive_inputs_used": false,
+    "source_is_sanitized_only": true
+  },
+  "schema_version": "aegis-reference-corpus-normalization.v1",
+  "source": "fixtures/reference_corpus/raw_sanitized",
+  "summary": {
+    "execution_artifacts": 3,
+    "report_files": 1,
+    "robot_keywords": 238,
+    "robot_style_files": 5
+  }
+}

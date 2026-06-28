@@ -19,6 +19,8 @@ EXCLUDE_DIRS = {
     "dist",
     "generated",
     "aegisqa.egg-info",
+    "aegis-sensitive-data",
+    "data",
 }
 EXCLUDE_SUFFIXES = {".pyc", ".pyo"}
 EXCLUDE_FILES = {".env", "lld.docx"}
