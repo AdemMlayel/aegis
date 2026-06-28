@@ -1,6 +1,7 @@
 import { X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  cancelChatAction,
   confirmChatAction,
   createChatSession,
   createWorkflowSession,
@@ -609,6 +610,20 @@ export default function App() {
     }
   }
 
+
+  async function cancelCopilotAction(actionId: string) {
+    if (!chatSession) return;
+    const response = await runAction("chat", () =>
+      cancelChatAction({
+        sessionId: chatSession.session_id,
+        actionId,
+        actor: OPERATOR_ID
+      })
+    );
+    if (!response) return;
+    setChatSession(response.session);
+  }
+
   async function saveArtifact(comment?: string) {
     if (!context || !selectedTest) return;
     const response = await runAction("artifact", () =>
@@ -752,6 +767,7 @@ export default function App() {
           disabled={false}
           onSend={(message) => void sendCopilotMessage(message)}
           onConfirmAction={(actionId) => void confirmCopilotAction(actionId)}
+          onCancelAction={(actionId) => void cancelCopilotAction(actionId)}
         />
         <ConversationWorkspace
           context={context}

@@ -428,6 +428,13 @@ export async function createChatSession(payload: {
   return body.session;
 }
 
+export async function listChatSessions(limit = 20): Promise<ChatSession[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const response = await fetch(`${API_ROOT}/chat/sessions?${params.toString()}`);
+  const body = await parseResponse<{ sessions: ChatSession[] }>(response);
+  return body.sessions;
+}
+
 export async function sendChatMessage(payload: {
   sessionId: string;
   actor: string;
@@ -455,6 +462,22 @@ export async function confirmChatAction(payload: {
 }): Promise<{ session: ChatSession; action: ChatAction; message: ChatMessage }> {
   const response = await fetch(
     `${API_ROOT}/chat/sessions/${payload.sessionId}/actions/${payload.actionId}/confirm`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actor: payload.actor })
+    }
+  );
+  return parseResponse<{ session: ChatSession; action: ChatAction; message: ChatMessage }>(response);
+}
+
+export async function cancelChatAction(payload: {
+  sessionId: string;
+  actionId: string;
+  actor: string;
+}): Promise<{ session: ChatSession; action: ChatAction; message: ChatMessage }> {
+  const response = await fetch(
+    `${API_ROOT}/chat/sessions/${payload.sessionId}/actions/${payload.actionId}/cancel`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

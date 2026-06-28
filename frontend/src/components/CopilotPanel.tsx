@@ -8,6 +8,7 @@ type CopilotPanelProps = {
   disabled: boolean;
   onSend: (message: string) => void;
   onConfirmAction: (actionId: string) => void;
+  onCancelAction: (actionId: string) => void;
 };
 
 const SUGGESTIONS = [
@@ -22,7 +23,8 @@ export function CopilotPanel({
   busy,
   disabled,
   onSend,
-  onConfirmAction
+  onConfirmAction,
+  onCancelAction
 }: CopilotPanelProps) {
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -69,15 +71,24 @@ export function CopilotPanel({
             {message.actions.length ? (
               <div className="copilot-actions">
                 {message.actions.map((action) => (
-                  <button
-                    key={action.action_id}
-                    type="button"
-                    disabled={busy || action.status !== "pending_confirmation"}
-                    onClick={() => onConfirmAction(action.action_id)}
-                  >
-                    <ShieldCheck />
-                    {action.label}
-                  </button>
+                  <div key={action.action_id} className="copilot-action-card">
+                    <button
+                      type="button"
+                      disabled={busy || action.status !== "pending_confirmation"}
+                      onClick={() => onConfirmAction(action.action_id)}
+                    >
+                      <ShieldCheck />
+                      {action.label}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={busy || action.status !== "pending_confirmation"}
+                      onClick={() => onCancelAction(action.action_id)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 ))}
               </div>
             ) : null}

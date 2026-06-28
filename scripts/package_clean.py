@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXCLUDE_DIRS = {
     ".git",
     ".pytest_cache",
+    ".pytest_tmp",
     ".ruff_cache",
     ".tools",
     ".venv",

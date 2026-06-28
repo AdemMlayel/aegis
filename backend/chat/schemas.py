@@ -22,13 +22,13 @@ ChatIntent = Literal[
     "investigation_question",
     "report_request",
     "knowledge_question",
+    "action_history",
     "help",
     "unknown",
 ]
 
 ChatActionKind = Literal[
     "start_workflow",
-    "resume_workflow",
     "run_next_stage",
     "approve_pending_stage",
     "execute_workflow",
@@ -71,22 +71,62 @@ class ChatSession(StrictModel):
     ticket_id: str | None = None
     messages: list[ChatMessage] = Field(default_factory=list)
     pending_actions: list[ChatAction] = Field(default_factory=list)
+    action_history: list[ChatAction] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 
     def append_message(self, message: ChatMessage) -> None:
         self.messages.append(message)
         for action in message.actions:
-            if action.status == "pending_confirmation":
-                self.pending_actions.append(action)
+            self._record_action(action)
         self.updated_at = utc_now()
 
     def replace_action(self, action: ChatAction) -> None:
-        self.pending_actions = [
+        self.action_history = [
             action if item.action_id == action.action_id else item
-            for item in self.pending_actions
+            for item in self.action_history
+        ]
+        for message in self.messages:
+            message.actions = [
+                action if item.action_id == action.action_id else item
+                for item in message.actions
+            ]
+        self.pending_actions = [
+            item for item in self.action_history if item.status == "pending_confirmation"
         ]
         self.updated_at = utc_now()
+
+    def find_action(self, action_id: str) -> ChatAction | None:
+        for action in self.action_history:
+            if action.action_id == action_id:
+                return action
+        # Backward compatibility for old persisted sessions created before
+        # action_history existed.
+        for action in self.pending_actions:
+            if action.action_id == action_id:
+                return action
+        for message in self.messages:
+            for action in message.actions:
+                if action.action_id == action_id:
+                    return action
+        return None
+
+    def _record_action(self, action: ChatAction) -> None:
+        existing_index = next(
+            (
+                index
+                for index, item in enumerate(self.action_history)
+                if item.action_id == action.action_id
+            ),
+            None,
+        )
+        if existing_index is None:
+            self.action_history.append(action)
+        else:
+            self.action_history[existing_index] = action
+        self.pending_actions = [
+            item for item in self.action_history if item.status == "pending_confirmation"
+        ]
 
 
 class CreateChatSessionRequest(StrictModel):
@@ -112,11 +152,29 @@ class ChatMessageResponse(StrictModel):
     message: ChatMessage
 
 
+class ListChatSessionsResponse(StrictModel):
+    sessions: list[ChatSession]
+
+
+class ChatActionHistoryResponse(StrictModel):
+    actions: list[ChatAction]
+
+
 class ConfirmChatActionRequest(StrictModel):
     actor: str = Field(default="local-user", min_length=1)
 
 
 class ConfirmChatActionResponse(StrictModel):
+    session: ChatSession
+    action: ChatAction
+    message: ChatMessage
+
+
+class CancelChatActionRequest(StrictModel):
+    actor: str = Field(default="local-user", min_length=1)
+
+
+class CancelChatActionResponse(StrictModel):
     session: ChatSession
     action: ChatAction
     message: ChatMessage

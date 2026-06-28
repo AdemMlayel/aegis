@@ -2,6 +2,7 @@
 .venv
 .tools
 .pytest_cache
+.pytest_tmp
 __pycache__
 *.pyc
 *.pyo

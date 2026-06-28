@@ -130,3 +130,256 @@ def test_chat_can_report_workflow_status_and_plan_next_stage() -> None:
     assert run_response.status_code == 200
     assert run_response.json()["action"]["status"] == "completed"
     assert load_context(context_id).workflow_control.completed_stages == ["ticket"]
+
+
+def test_chat_sessions_can_be_listed_and_pending_actions_cancelled() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/chat/sessions",
+        json={"created_by": "chat-tester", "ticket_id": "DEMO-TELCO-IMS-001"},
+    )
+    assert created.status_code == 201
+    session_id = created.json()["session"]["session_id"]
+
+    planned = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={
+            "actor": "chat-tester",
+            "message": "Analyze DEMO-TELCO-IMS-001",
+        },
+    )
+    assert planned.status_code == 200
+    action = planned.json()["message"]["actions"][0]
+
+    listed = client.get("/api/v1/chat/sessions", params={"limit": 10})
+    assert listed.status_code == 200
+    assert any(
+        session["session_id"] == session_id for session in listed.json()["sessions"]
+    )
+
+    cancelled = client.post(
+        f"/api/v1/chat/sessions/{session_id}/actions/{action['action_id']}/cancel",
+        json={"actor": "chat-tester"},
+    )
+    assert cancelled.status_code == 200
+    body = cancelled.json()
+    assert body["action"]["status"] == "cancelled"
+    assert "cancelled" in body["message"]["content"].lower()
+
+    blocked_confirm = client.post(
+        f"/api/v1/chat/sessions/{session_id}/actions/{action['action_id']}/confirm",
+        json={"actor": "chat-tester"},
+    )
+    assert blocked_confirm.status_code == 409
+
+
+def test_chat_validation_and_report_answers_match_current_context_schema() -> None:
+    from backend.graph.state import TestContext, TicketData
+    from backend.graph.workflow import run_workflow
+    from backend.storage.contexts import save_context
+
+    context = run_workflow(
+        TestContext(
+            created_by="chat-tester",
+            ticket=TicketData(
+                id="CHAT-SCHEMA-001",
+                title="Chat schema compatibility",
+                description="Validate chat answers against the current workflow schema.",
+                acceptance_criteria=["Chat reports validation and report data."],
+                priority="medium",
+                labels=["chat", "schema"],
+            ),
+        )
+    )
+    save_context(context)
+
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/chat/sessions",
+        json={
+            "created_by": "chat-tester",
+            "context_id": context.context_id,
+            "ticket_id": "CHAT-SCHEMA-001",
+        },
+    )
+    assert created.status_code == 201
+    session_id = created.json()["session"]["session_id"]
+
+    validation = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={
+            "actor": "chat-tester",
+            "message": "Explain validation results",
+            "context_id": context.context_id,
+        },
+    )
+    assert validation.status_code == 200
+    validation_message = validation.json()["message"]
+    assert validation_message["intent"] == "validation_question"
+    assert "Total artifacts" in validation_message["content"]
+    assert "Quality score" in validation_message["content"]
+
+    report = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={
+            "actor": "chat-tester",
+            "message": "Generate a PM summary",
+            "context_id": context.context_id,
+        },
+    )
+    assert report.status_code == 200
+    report_message = report.json()["message"]
+    assert report_message["intent"] == "report_request"
+    assert "Summary" in report_message["content"]
+
+
+def test_chat_action_history_endpoint_tracks_terminal_statuses() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/chat/sessions",
+        json={"created_by": "chat-tester", "ticket_id": "DEMO-TELCO-IMS-001"},
+    )
+    session_id = created.json()["session"]["session_id"]
+
+    planned = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={"actor": "chat-tester", "message": "Analyze DEMO-TELCO-IMS-001"},
+    )
+    action = planned.json()["message"]["actions"][0]
+    confirmed = client.post(
+        f"/api/v1/chat/sessions/{session_id}/actions/{action['action_id']}/confirm",
+        json={"actor": "chat-tester"},
+    )
+    assert confirmed.status_code == 200
+    assert confirmed.json()["session"]["pending_actions"] == []
+
+    history = client.get(f"/api/v1/chat/sessions/{session_id}/actions")
+    assert history.status_code == 200
+    actions = history.json()["actions"]
+    assert len(actions) == 1
+    assert actions[0]["action_id"] == action["action_id"]
+    assert actions[0]["status"] == "completed"
+
+    answer = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={"actor": "chat-tester", "message": "Show action history"},
+    )
+    assert answer.status_code == 200
+    message = answer.json()["message"]
+    assert message["intent"] == "action_history"
+    assert "Completed: 1" in message["content"]
+
+
+def test_chat_session_list_can_be_filtered_by_ticket_and_query() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/chat/sessions",
+        json={
+            "created_by": "chat-tester",
+            "ticket_id": "DEMO-TELCO-IMS-001",
+            "title": "IMS demo chat",
+        },
+    )
+    session_id = created.json()["session"]["session_id"]
+
+    by_ticket = client.get(
+        "/api/v1/chat/sessions",
+        params={"ticket_id": "DEMO-TELCO-IMS-001", "limit": 20},
+    )
+    assert by_ticket.status_code == 200
+    assert any(session["session_id"] == session_id for session in by_ticket.json()["sessions"])
+
+    by_query = client.get(
+        "/api/v1/chat/sessions",
+        params={"query": "IMS demo", "limit": 20},
+    )
+    assert by_query.status_code == 200
+    assert any(session["session_id"] == session_id for session in by_query.json()["sessions"])
+
+
+def test_chat_multilingual_deterministic_intents_are_supported() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/chat/sessions",
+        json={"created_by": "chat-tester", "ticket_id": "DEMO-TELCO-IMS-001"},
+    )
+    session_id = created.json()["session"]["session_id"]
+
+    french_status = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={"actor": "chat-tester", "message": "Où en sommes nous dans le workflow ?"},
+    )
+    assert french_status.status_code == 200
+    assert french_status.json()["message"]["intent"] == "workflow_status"
+    assert french_status.json()["message"]["metadata"]["detected_language"] == "fr"
+
+    spanish_report = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={"actor": "chat-tester", "message": "Genera un resumen PM"},
+    )
+    assert spanish_report.status_code == 200
+    assert spanish_report.json()["message"]["intent"] == "report_request"
+
+    german_keywords = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={"actor": "chat-tester", "message": "Welche Robot Schlusselworter sind verfugbar?"},
+    )
+    assert german_keywords.status_code == 200
+    assert german_keywords.json()["message"]["intent"] == "artifact_question"
+    assert "Robot keyword registry" in german_keywords.json()["message"]["content"]
+
+
+def test_chat_execution_request_does_not_plan_action_before_approval() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/chat/sessions",
+        json={"created_by": "chat-tester", "ticket_id": "DEMO-TELCO-IMS-001"},
+    )
+    session_id = created.json()["session"]["session_id"]
+    planned = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={"actor": "chat-tester", "message": "Analyze DEMO-TELCO-IMS-001"},
+    )
+    start_action = planned.json()["message"]["actions"][0]
+    confirmed = client.post(
+        f"/api/v1/chat/sessions/{session_id}/actions/{start_action['action_id']}/confirm",
+        json={"actor": "chat-tester"},
+    )
+    context_id = confirmed.json()["session"]["context_id"]
+
+    execution_request = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={
+            "actor": "chat-tester",
+            "message": "Run the tests",
+            "context_id": context_id,
+        },
+    )
+    assert execution_request.status_code == 200
+    message = execution_request.json()["message"]
+    assert message["intent"] == "execution_request"
+    assert message["actions"] == []
+    assert "must be approved first" in message["content"]
+
+
+def test_chat_read_only_intents_do_not_create_pending_actions() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/chat/sessions",
+        json={"created_by": "chat-tester", "ticket_id": "DEMO-TELCO-IMS-001"},
+    )
+    session_id = created.json()["session"]["session_id"]
+
+    for text in [
+        "What is mocked and what is real?",
+        "Explain Robot keywords",
+        "Show action history",
+        "Explain safe corpus grounding",
+    ]:
+        response = client.post(
+            f"/api/v1/chat/sessions/{session_id}/messages",
+            json={"actor": "chat-tester", "message": text},
+        )
+        assert response.status_code == 200
+        assert response.json()["message"]["actions"] == []
+        assert response.json()["session"]["pending_actions"] == []

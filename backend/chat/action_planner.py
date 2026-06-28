@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from backend.chat.intent_classifier import ClassifiedIntent
+from backend.chat.safety import is_read_only_intent
 from backend.chat.schemas import ChatAction, ChatSession
 from backend.storage.contexts import load_context
 
@@ -12,6 +13,9 @@ def plan_actions(
     message_context_id: str | None = None,
     message_ticket_id: str | None = None,
 ) -> list[ChatAction]:
+    if is_read_only_intent(classified.intent):
+        return []
+
     context_id = classified.context_id or message_context_id or session.context_id
     ticket_id = classified.ticket_id or message_ticket_id or session.ticket_id
 
@@ -27,6 +31,12 @@ def plan_actions(
         ]
 
     if classified.intent == "workflow_step" and context_id:
+        context = load_context(context_id)
+        if context is None:
+            return []
+        control = context.workflow_control
+        if control.state == "waiting_review" or control.next_stage is None:
+            return []
         return [
             ChatAction(
                 kind="run_next_stage",
@@ -58,13 +68,20 @@ def plan_actions(
             ]
 
     if classified.intent == "execution_request" and context_id:
-        return [
-            ChatAction(
-                kind="execute_workflow",
-                label="Execute tests",
-                description="Execute the approved workflow through the configured execution adapter.",
-                context_id=context_id,
-            )
-        ]
+        context = load_context(context_id)
+        if (
+            context is not None
+            and context.approval is not None
+            and context.approval.status == "approved"
+            and context.execution is None
+        ):
+            return [
+                ChatAction(
+                    kind="execute_workflow",
+                    label="Execute tests",
+                    description="Execute the approved workflow through the configured execution adapter.",
+                    context_id=context_id,
+                )
+            ]
 
     return []

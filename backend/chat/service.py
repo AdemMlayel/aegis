@@ -23,7 +23,7 @@ from backend.services.workflow_control import (
     resume_workflow_session,
     review_workflow_stage,
 )
-from backend.chat.session_store import load_chat_session, save_chat_session
+from backend.chat.session_store import list_chat_sessions, load_chat_session, save_chat_session
 
 
 class ChatSessionNotFound(Exception):
@@ -62,6 +62,22 @@ def create_chat_session(request: CreateChatSessionRequest) -> ChatSession:
     session.append_message(greeting)
     return save_chat_session(session)
 
+
+
+
+def list_recent_chat_sessions(
+    *,
+    limit: int = 50,
+    query: str | None = None,
+    context_id: str | None = None,
+    ticket_id: str | None = None,
+) -> list[ChatSession]:
+    return list_chat_sessions(
+        limit=max(1, min(limit, 100)),
+        query=query,
+        context_id=context_id,
+        ticket_id=ticket_id,
+    )
 
 def read_chat_session(session_id: str) -> ChatSession:
     session = load_chat_session(session_id)
@@ -119,6 +135,7 @@ def handle_chat_message(
         actions=planned_actions,
         metadata={
             "confidence": classified.confidence,
+            "detected_language": classified.detected_language,
             "context_id": classified.context_id or context_id or session.context_id,
             "ticket_id": classified.ticket_id or ticket_id or session.ticket_id,
         },
@@ -136,7 +153,7 @@ def confirm_chat_action(
     principal: Principal,
 ) -> tuple[ChatSession, ChatAction, ChatMessage]:
     session = read_chat_session(session_id)
-    action = next((item for item in session.pending_actions if item.action_id == action_id), None)
+    action = session.find_action(action_id)
     if action is None:
         raise ChatActionNotFound("Chat action was not found")
     if action.status != "pending_confirmation":
@@ -170,6 +187,33 @@ def confirm_chat_action(
     message = ChatMessage(
         role="assistant",
         content=result_summary,
+        metadata={"action_id": action.action_id, "action_kind": action.kind},
+    )
+    session.append_message(message)
+    save_chat_session(session)
+    return session, action, message
+
+
+def cancel_chat_action(
+    *,
+    session_id: str,
+    action_id: str,
+    actor: str,
+) -> tuple[ChatSession, ChatAction, ChatMessage]:
+    session = read_chat_session(session_id)
+    action = session.find_action(action_id)
+    if action is None:
+        raise ChatActionNotFound("Chat action was not found")
+    if action.status != "pending_confirmation":
+        raise ChatActionConflict(f"Chat action is {action.status}")
+
+    action.status = "cancelled"
+    action.completed_at = utc_now()
+    action.result_summary = f"Cancelled by {actor}."
+    session.replace_action(action)
+    message = ChatMessage(
+        role="assistant",
+        content=f"Action `{action.label}` was cancelled. No workflow change was applied.",
         metadata={"action_id": action.action_id, "action_kind": action.kind},
     )
     session.append_message(message)
@@ -211,12 +255,6 @@ def _execute_action(*, action: ChatAction, session: ChatSession, actor: str) -> 
             f"Workflow session `{context.context_id}` was created for ticket `{ticket.id}`. "
             f"The next stage is `{context.workflow_control.next_stage}`."
         )
-
-    if action.kind == "resume_workflow":
-        context_id = _require_context_id(action, session)
-        context = resume_workflow_session(context_id=context_id, actor=actor)
-        session.context_id = context.context_id
-        return f"Workflow `{context.context_id}` resumed. State is `{context.workflow_control.state}`."
 
     if action.kind == "run_next_stage":
         context_id = _require_context_id(action, session)
