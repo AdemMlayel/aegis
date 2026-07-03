@@ -3,6 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from backend.graph.state import CoveragePlan, RequirementAnalysis, TestContext, TicketData
+from backend.intelligence.coverage_derivation import (
+    build_coverage_matrix,
+    derive_coverage,
+)
+from backend.intelligence.coverage_adjudication import adjudicate_coverage_plan
 from backend.intelligence.context import (
     append_feedback_to_prompt,
     consume_stage_feedback,
@@ -15,6 +20,7 @@ from backend.intelligence.context import (
 from backend.prompts import prompt_registry
 from backend.intelligence.structured_outputs import (
     CoverageLLMOutput,
+    build_json_contract,
     parse_structured_llm_response,
 )
 from backend.tools.base import BaseTool, tool_registry
@@ -60,11 +66,11 @@ def plan_coverage(
         risk_level = "medium"
         criticality = 5
 
-    required_types = ["functional", "negative"]
-    if risk_level in {"high", "critical"}:
-        required_types.append("boundary")
-    if analysis.completeness_checklist.performance_expectations_set:
-        required_types.append("performance")
+    # Derive requirements, required test types, and propagated confidence from the
+    # ADJUDICATED requirement analysis (not just domain + one boolean). Risk level
+    # stays priority/domain-driven above; the checklist now shapes coverage types.
+    derivation = derive_coverage(analysis, risk_level=risk_level)
+    required_types = derivation.test_types_required
 
     knowledge_results = search_knowledge_for_ticket(ticket, limit=3, context=context)
     memory_results = search_memory_for_ticket(ticket, limit=3, context=context)
@@ -76,6 +82,7 @@ def plan_coverage(
         expected_results=analysis.expected_results,
         knowledge_context=format_knowledge_context(knowledge_results),
         memory_context=format_memory_context(memory_results),
+        json_contract=build_json_contract(CoverageLLMOutput),
     )
     reviewer_feedback = consume_stage_feedback(context, "coverage")
     rendered_prompt = append_feedback_to_prompt(
@@ -112,17 +119,22 @@ def plan_coverage(
         for result in memory_results
     ]
 
-    regression_tests: list[str] = []
+    # Deterministic, episodic-memory-EVIDENCED regression detection. These are
+    # grounded in retrieved memory and always survive adjudication below.
+    deterministic_regressions: list[str] = []
     if any(
         "transfer" in evidence and "balance" in evidence
         for evidence in memory_evidence
     ) and ticket.id.startswith("AI-"):
-        regression_tests.append("REG-BALANCE-CONSISTENCY")
+        deterministic_regressions.append("REG-BALANCE-CONSISTENCY")
     if any("authorization" in evidence for evidence in memory_evidence) and ticket.id.startswith(
         "AI-"
     ):
-        regression_tests.append("REG-AUTH-NEGATIVE-PATHS")
+        deterministic_regressions.append("REG-AUTH-NEGATIVE-PATHS")
 
+    # Deterministic rationale built first; the LLM reading is reconciled against
+    # it (labelled, evidence-gated) rather than stapled on. See
+    # backend.intelligence.coverage_adjudication.
     risk_rationale = [
         f"Priority '{ticket.priority}' and domain '{analysis.domain}' produce {risk_level} risk.",
     ]
@@ -134,29 +146,43 @@ def plan_coverage(
         f"Reviewer direction applied: {comment}"
         for comment in reviewer_feedback
     )
-    if structured_output is not None:
-        risk_rationale.extend(structured_output.risk_notes)
-        regression_tests.extend(
-            regression
-            for regression in structured_output.suggested_regressions
-            if regression and regression not in regression_tests
-        )
-    elif llm_response.provider != "mock_llm" and llm_response.text:
-        risk_rationale.append(f"Model guidance: {llm_response.text[:1200]}")
+    risk_rationale.extend(derivation.rationale)
+
+    adjudication = adjudicate_coverage_plan(
+        derivation_confidence=derivation.confidence,
+        deterministic_regressions=deterministic_regressions,
+        deterministic_rationale=risk_rationale,
+        llm=structured_output,
+        knowledge_refs=len(knowledge_refs),
+        memory_refs=len(memory_refs),
+        llm_unparsed_text=llm_response.text,
+        llm_provider=llm_response.provider,
+    )
+    regression_tests = adjudication.regressions
+    risk_rationale.extend(adjudication.risk_rationale_additions)
+    risk_rationale.extend(adjudication.notes)
+
+    # Build a requirement→test-case matrix from the DERIVED requirements (not the
+    # old hardcoded REQ-001/2/3). Coverage runs before test-case generation, so we
+    # assign planned TC slots by requirement order; test-case generation honors
+    # these ids when tagging requirement_refs.
+    planned_assignment: dict[str, list[str]] = {}
+    for slot, req in enumerate(derivation.requirements, start=1):
+        planned_assignment[req.requirement_id] = [f"TC{slot:03d}"]
+    coverage_matrix = build_coverage_matrix(derivation.requirements, planned_assignment)
+    planned_test_ids = [tc for ids in planned_assignment.values() for tc in ids]
 
     return CoveragePlan(
         risk_level=risk_level,
         business_criticality=criticality,
         test_types_required=required_types,
-        coverage_matrix={
-            "REQ-001 primary success path": ["TC001"],
-            "REQ-002 invalid or rejected input": ["TC002"],
-            "REQ-003 boundary condition": ["TC003"],
-        },
+        coverage_matrix=coverage_matrix,
         regression_tests_to_rerun=regression_tests,
         estimated_automation_effort="medium" if risk_level != "critical" else "high",
-        prioritization_order=["TC001", "TC002", "TC003", *regression_tests],
+        prioritization_order=[*planned_test_ids, *regression_tests],
         memory_refs_used=memory_refs,
         knowledge_refs_used=knowledge_refs,
         risk_rationale=risk_rationale,
+        confidence=adjudication.confidence,
+        requirement_items=derivation.requirements,
     )

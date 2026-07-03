@@ -30,7 +30,45 @@ testpaths = ["tests"]
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F"]
+# N7 supply-chain hardening: broaden beyond the base error/pyflakes set to
+# include bugbear (B) and flake8-bandit security (S) lint. Known-safe,
+# intentional sites are ignored narrowly below rather than globally.
+select = ["E4", "E7", "E9", "F", "B", "S"]
+ignore = [
+    # FastAPI dependency-injection idiom: Query/Depends/Header live in arg
+    # defaults by design. Flagging them as function-call-in-default is noise.
+    "B008",
+    # Asserts and the binding of 0.0.0.0 are addressed per-file below; keep the
+    # global set tight so new real findings still surface.
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Parameterized SQL built from a fixed, in-code column/clause allowlist (never
+# user input) trips S608; the queries bind values via placeholders. S105 fires
+# on SCHEMA-SQL / provider-name *constants* whose names contain "TOKEN"/"SECRET"
+# -- not real credentials.
+"backend/storage/*.py" = ["S608", "S105"]
+"backend/chat/session_store.py" = ["S608"]
+"backend/integrations/providers.py" = ["S105"]
+# Intentional, list-argument subprocess calls to git/gh/robot with no shell=True
+# (S603 "untrusted input" / S607 "partial path" are false positives here: the
+# executables are resolved via shutil.which or fixed names and args are lists).
+# S101: one defensive assert documenting an invariant before payload assembly.
+"backend/integrations/git_handoff.py" = ["S603", "S607", "S101"]
+"backend/tools/robot_validation.py" = ["S603", "S607"]
+"backend/execution/robot.py" = ["S603", "S607"]
+"backend/execution/robot_docker.py" = ["S603", "S607"]
+"backend/graph/execution.py" = ["S603", "S607"]
+# Outbound HTTP to the *configured* LLM/embedding endpoints (S310): the URLs are
+# operator-set provider bases, not attacker-controlled, and only http(s) is used.
+"backend/llm/*.py" = ["S310"]
+# Best-effort capability scan that intentionally skips unparseable entries.
+"backend/robot_libraries/registry.py" = ["S112"]
+# Tests legitimately use assert and bind test fixtures.
+"tests/*.py" = ["S101"]
+# Local developer probe/utility scripts: asserts, subprocess, urllib, and XML
+# parsing of trusted local fixtures are all expected here.
+"scripts/*.py" = ["S101", "S603", "S607", "S310", "S314", "S105"]
 
 [tool.setuptools.packages.find]
 include = ["backend*"]

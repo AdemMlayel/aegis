@@ -14,8 +14,10 @@ from backend.intelligence.context import (
     search_memory_for_ticket,
 )
 from backend.prompts import prompt_registry
+from backend.intelligence.requirement_adjudication import adjudicate_requirement_analysis
 from backend.intelligence.structured_outputs import (
     RequirementLLMOutput,
+    build_json_contract,
     parse_structured_llm_response,
 )
 from backend.tools.base import BaseTool, tool_registry
@@ -110,6 +112,7 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
         acceptance_criteria=expected_results,
         knowledge_context=format_knowledge_context(knowledge_results),
         memory_context=format_memory_context(memory_results),
+        json_contract=build_json_contract(RequirementLLMOutput),
     )
     reviewer_feedback = consume_stage_feedback(context, "requirements")
     rendered_prompt = append_feedback_to_prompt(
@@ -136,18 +139,27 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
     knowledge_refs = [result.chunk.chunk_id for result in knowledge_results]
     memory_refs = [result.entry.memory_id for result in memory_results]
 
+    # Adjudicate: reconcile the deterministic checklist + heuristic questions with
+    # the LLM reading using explicit, recorded rules (instead of stapling them
+    # together). Every override lands in adjudication.notes for traceability.
+    adjudication = adjudicate_requirement_analysis(
+        heuristic_checklist=checklist,
+        heuristic_questions=clarification_questions,
+        llm=structured_output,
+        heuristic_confidence=0.82 if has_acceptance_criteria else 0.62,
+        knowledge_refs=len(knowledge_refs),
+        memory_refs=len(memory_refs),
+    )
+
     return RequirementAnalysis(
         business_action=ticket.feature_or_service_name or ticket.title,
         domain=domain,
         actor=actor,
         preconditions=explicit_preconditions,
         expected_results=expected_results,
-        completeness_checklist=checklist,
+        completeness_checklist=adjudication.checklist,
         missing_fields=missing_fields,
-        clarification_questions=[
-            *clarification_questions,
-            *(structured_output.ambiguities if structured_output else []),
-        ],
+        clarification_questions=adjudication.clarification_questions,
         memory_refs_used=memory_refs,
         knowledge_refs_used=knowledge_refs,
         prompt_versions_used=[prompt_version_ref("requirement_analysis_v1")],
@@ -160,11 +172,8 @@ def analyze_ticket(ticket: TicketData, *, context: TestContext | None = None) ->
                 ],
             ]
         ),
-        confidence=(
-            structured_output.confidence
-            if structured_output is not None
-            else 0.82 if has_acceptance_criteria else 0.62
-        ),
+        confidence=adjudication.confidence,
+        adjudication_notes=adjudication.notes,
     )
 
 

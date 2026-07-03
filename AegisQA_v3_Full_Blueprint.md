@@ -1,7 +1,51 @@
 # AegisQA v3 — Full Implementation Blueprint
 
 **AI-Powered Test Automation Orchestrator**
-**Version:** 3.0 | **Status:** Pre-Implementation
+**Version:** 3.0 | **Status:** Partially implemented (local architecture proof)
+
+---
+
+## Implementation Status (reconciled against code)
+
+> This section is the honest, code-verified status of the blueprint below. The
+> rest of this document describes the **full intended design**; not all of it is
+> built. Verified against the repository (300 passing tests, ruff clean). Use
+> this matrix — not the aspirational prose — when describing what AegisQA can do
+> today.
+
+| Blueprint capability | Status | Notes |
+|---|---|---|
+| LangGraph orchestration + TestContext shared state | **Implemented** | 8-stage graph, conditional retry/approval edges, real nodes |
+| Agent → Skill → Tool layer separation | **Implemented** | Physically separate `backend/agents`, `skills`, `tools` packages |
+| Requirement / Coverage / TestCase / TestData agents | **Implemented** | Deterministic heuristics + optional real-LLM drafting, reconciled by an **adjudication layer** (heuristic vs grounded-LLM, traceable per-decision notes — never stapled) |
+| Structured LLM output contract | **Implemented** | Schema-derived JSON contract injected into all four LLM prompts (single source of truth; verified 4/4 live-parse on Nemotron) |
+| Automation generation + dry-run validation | **Implemented** | Robot generation grounded in sanitized keyword registry |
+| Human approval gate + Git handoff | **Implemented** | Local git branch + diff handoff (not a remote company PR) |
+| Execution adapters (mock / robot / robot_docker) | **Implemented** | Fails loud if Docker/image missing — never fakes a run |
+| Investigation (evidence + deterministic scoring) | **Implemented** | Deterministic weighted-signal scorer (12 spec + domain-native signals), fully traceable `score = Σ(matched weights)/budget`; evidence from logs + Robot output |
+| Multi-signal investigation (network/HAR, DB snapshot, screenshots) | **Deferred** | No HAR/network/DB-diff code yet (Phase 3) |
+| Memory (episodic archive/search) | **Implemented** | Local episodic store |
+| Memory-driven learning loop (similar-failure retrieval into investigation) | **Partial** | Store exists; retrieval not yet wired into the investigation node |
+| RAG (local) | **Implemented** | Seeded chunks + sanitized corpus + ingestion; **semantic token-bucketed** local embeddings (not whole-text hash), hybrid vector+lexical reranker; chat knowledge questions retrieve real chunks |
+| Production vector DB + reranker (pgvector/Qdrant, ms-marco) | **Deferred** | Local-only vector path |
+| LLM provider abstraction (mock / Ollama / OpenAI-compatible/vLLM) | **Implemented** | Real self-hosted Nemotron-70B verified end-to-end, zero silent fallback |
+| Conversational QA copilot (governed chat) | **Implemented** | Milestone 8B + show-stage-output + LLM intent adjudication |
+| **Self-Healing / Locator Repair Agent** | **Implemented** | Locator + keyword repair, similarity×stability scoring, human-gated (never auto-applies); chat-queryable. Grounded in the real keyword registry |
+| Celery async execution at scale | **Partial** | Real backend present, falls back to local; unproven under load |
+| WebSocket execution streaming + CI/CD `/execute` + `/results/*` | **Implemented** | Endpoints exist; not load-tested |
+| JWT auth + RBAC (Admin/QA/Viewer) at gateway | **Deferred** | Capability model exists in code; no auth middleware — API is open |
+| Real Jira/Azure/GitLab connectors | **Deferred** | Demo ticket source only; awaiting company API specs/credentials |
+| HashiCorp Vault secrets | **Deferred** | Mock Vault-compatible interface only |
+| Production PostgreSQL | **Deferred** | Adapter boundary only; no migrations |
+| NeMo Guardrails | **Deferred** | Optional Phase 3 plugin |
+| A2A protocol / agent registry DB | **Deferred** | Not needed for local demo |
+
+**One-line summary:** the full ticket→requirements→tests→automation→validation→
+approval→execution→investigation→report→memory pipeline is real and runs on a
+real model. The enterprise integration plane (auth, real connectors, Vault,
+production data stores) and the advanced-intelligence features (self-healing,
+multi-signal investigation, the learning loop) are deferred or in progress.
+Self-healing locator/keyword repair landed as an implemented, human-gated stage.
 
 ---
 

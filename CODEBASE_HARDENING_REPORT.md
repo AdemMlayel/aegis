@@ -2,7 +2,7 @@
 
 ## Current verification
 
-- Backend tests: `140 passed`
+- Backend tests: `300 passed`
 - Python compile check: `python -m compileall -q backend scripts tests` passes
 - Frontend clean build: `npm ci && npm run build` succeeds
 - External company providers: intentionally disabled in local/demo mode

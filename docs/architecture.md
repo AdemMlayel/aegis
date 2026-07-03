@@ -62,6 +62,23 @@ Execution providers:
 Ticket data is intentionally local and Jira-shaped. The connector contract can
 be replaced by a real Jira provider without changing workflow agents.
 
+## Knowledge And Retrieval (RAG)
+
+The knowledge layer grounds assistant answers in a synthetic documentation corpus.
+
+- Source documents live under `fixtures/knowledge/` (`.md`/`.txt`/`.rst`) and are
+  ingested automatically at startup by `backend/knowledge/ingestion.py`. Runtime uploads
+  are stored as JSON under the generated root.
+- Documents are chunked (paragraph-aware, ~900 chars), embedded, and indexed in a local
+  in-memory vector store (`backend/intelligence/vector.py`).
+- Retrieval combines vector similarity with a deterministic hybrid reranker (lexical
+  overlap + tag match), returning scored chunks with source references for citation.
+- Embeddings use `ollama_nomic_embed_text` when available, falling back to deterministic
+  `local_hash_embeddings` (used by deterministic demo mode and tests).
+- The corpus is synthetic and sanitized — placeholders only, no real data. See
+  `fixtures/knowledge/README.md`. Verify retrieval with
+  `python scripts/verify_rag_corpus.py`.
+
 ## Persistence
 
 SQLite migrations own the local schema. Repositories persist:
@@ -101,6 +118,10 @@ Middleware provides request IDs, structured logs, rate limits, timeouts,
 provider circuit breakers, token reservations, cost accounting, health probes,
 and Prometheus-compatible metrics. Enterprise identity, distributed limit
 state, OpenTelemetry export, and alert delivery remain production work.
+
+The decision to keep this native governance layer rather than adopt an external
+agent-governance framework (e.g. NVIDIA NeMo Agent Toolkit) is recorded in
+`docs/adr/0001-agent-governance-approach.md`.
 
 ## Source Packaging
 

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import sys
 import re
 import xml.etree.ElementTree as ET
@@ -11,6 +13,22 @@ from datetime import UTC, datetime
 from html import unescape
 from pathlib import Path
 from typing import Any
+
+
+def _generated_at() -> str:
+    """Return a reproducible ``generated_at`` timestamp.
+
+    The normalized profile JSONs are committed artifacts that the application
+    reads at runtime, so regenerating them must be idempotent — otherwise every
+    ``git clone`` followed by a profile rebuild leaves the tree dirty with only
+    a wall-clock change.  We honor ``SOURCE_DATE_EPOCH`` (the reproducible-build
+    standard); absent that we emit a fixed sentinel so committed output is
+    byte-stable. Nothing in the runtime path depends on this value.
+    """
+    epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    if epoch and epoch.isdigit():
+        return datetime.fromtimestamp(int(epoch), tz=UTC).isoformat()
+    return datetime(1970, 1, 1, tzinfo=UTC).isoformat()
 
 try:
     from scripts.extract_robot_capabilities import extract_capability_report
@@ -58,7 +76,7 @@ def generate_reference_profiles(corpus_root: Path = DEFAULT_CORPUS_ROOT) -> dict
 
     summary = {
         "schema_version": "aegis-reference-corpus-normalization.v1",
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": _generated_at(),
         "source": raw_root.relative_to(PROJECT_ROOT).as_posix(),
         "outputs": sorted(outputs),
         "summary": {
@@ -134,7 +152,7 @@ def build_robot_keyword_registry(raw_root: Path) -> dict[str, Any]:
     domain_counts = Counter(_domain_hint(entry["name"]) for entry in keyword_entries)
     return {
         "schema_version": "aegis-robot-keyword-registry.v1",
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": _generated_at(),
         "source": "fixtures/reference_corpus/raw_sanitized/custom-libs",
         "safety": {
             "static_parse_only": True,
@@ -208,7 +226,7 @@ def build_robot_style_profile(raw_root: Path) -> dict[str, Any]:
 
     return {
         "schema_version": "aegis-robot-style-profile.v1",
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": _generated_at(),
         "source": "fixtures/reference_corpus/raw_sanitized/robot-tests",
         "summary": {
             "robot_files": len(files),
@@ -253,7 +271,7 @@ def build_report_profile(raw_root: Path) -> dict[str, Any]:
             excerpts.append(_safe_excerpt(text, 450))
     return {
         "schema_version": "aegis-report-profile.v1",
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": _generated_at(),
         "source": "fixtures/reference_corpus/raw_sanitized/report-example",
         "summary": {
             "report_files": len(files),
@@ -281,7 +299,7 @@ def build_execution_evidence_profile(raw_root: Path) -> dict[str, Any]:
     artifact_count = sum(profile["artifact_count"] for profile in profiles.values())
     return {
         "schema_version": "aegis-execution-evidence-profile.v1",
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": _generated_at(),
         "source": "fixtures/reference_corpus/raw_sanitized/executions",
         "summary": {
             "artifact_count": artifact_count,
@@ -424,7 +442,10 @@ def _risk_hint(name: str) -> str:
 
 def _safe_source_label(path: str) -> str:
     suffix = Path(path).suffix.lower() or ".txt"
-    digest = abs(hash(path)) % 100000
+    # Use a stable cryptographic digest, not Python's builtin hash(): the latter
+    # is salted per-process (PYTHONHASHSEED), which made the "sanitized" label
+    # change on every run and left regenerated profiles non-reproducible.
+    digest = int(hashlib.sha256(path.encode("utf-8")).hexdigest(), 16) % 100000
     return f"sanitized_source_{digest:05d}{suffix}"
 
 

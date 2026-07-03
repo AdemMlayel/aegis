@@ -15,7 +15,12 @@ from backend.graph.state import (
     utc_now,
 )
 from backend.storage.audit import append_audit_event, list_audit_events
-from backend.storage.contexts import list_contexts, load_context, save_context
+from backend.storage.contexts import (
+    OptimisticConcurrencyError,
+    list_contexts,
+    load_context,
+    save_context,
+)
 from backend.storage.database import SQLITE_DB_PATH, initialize_database
 from backend.storage.migrations import list_applied_migrations
 from backend.storage.execution_events import (
@@ -209,4 +214,61 @@ def test_workflow_control_migration_is_recorded() -> None:
         (4, "agent_invocation_observability"),
         (5, "token_budget_reservations"),
         (6, "request_observation_identity"),
+        (7, "workflow_context_row_version"),
     } <= applied
+
+
+def test_first_save_starts_at_row_version_one() -> None:
+    context = _workflow_context(f"VER-{uuid4().hex[:8]}")
+    save_context(context)
+    assert context.row_version == 1
+    reloaded = load_context(context.context_id)
+    assert reloaded is not None
+    assert reloaded.row_version == 1
+
+
+def test_serial_load_mutate_save_advances_version_without_conflict() -> None:
+    """The common single-writer path must never raise a false conflict; each
+    load -> mutate -> save advances the row_version by one (W1)."""
+    context = _workflow_context(f"VER-SERIAL-{uuid4().hex[:8]}")
+    save_context(context)  # row_version 1
+
+    for expected in (2, 3, 4):
+        reloaded = load_context(context.context_id)
+        assert reloaded is not None
+        reloaded.mark(f"step_{expected}")
+        save_context(reloaded)
+        assert reloaded.row_version == expected
+
+
+def test_concurrent_stale_write_is_rejected_without_data_loss() -> None:
+    """W1: two writers load the same context; the first commits and the second
+    (still holding the stale version) must be rejected rather than silently
+    overwriting the first writer's change (last-writer-wins)."""
+    context = _workflow_context(f"VER-RACE-{uuid4().hex[:8]}")
+    save_context(context)  # row_version 1
+
+    writer_a = load_context(context.context_id)
+    writer_b = load_context(context.context_id)
+    assert writer_a is not None and writer_b is not None
+    assert writer_a.row_version == writer_b.row_version == 1
+
+    writer_a.mark("a_committed")
+    save_context(writer_a)
+    assert writer_a.row_version == 2
+
+    writer_b.mark("b_should_be_rejected")
+    try:
+        save_context(writer_b)
+    except OptimisticConcurrencyError as exc:
+        assert exc.context_id == context.context_id
+        assert exc.expected == 1
+        assert exc.actual == 2
+    else:  # pragma: no cover - the save must raise
+        raise AssertionError("stale concurrent write was not rejected")
+
+    # Writer A's change survived; writer B did not clobber it.
+    final = load_context(context.context_id)
+    assert final is not None
+    assert final.workflow_status == "a_committed"
+    assert final.row_version == 2

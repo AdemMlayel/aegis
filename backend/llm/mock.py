@@ -69,6 +69,17 @@ def _structured_mock_response(
                 "summary": summary,
                 "ambiguities": [],
                 "confidence": 0.82 if knowledge_count else 0.68,
+                # Deterministic mock affirms only what its retrieved grounding
+                # supports; everything else is "no opinion" (null) so adjudication
+                # falls back to the heuristic. Honest: the mock has no ticket text.
+                "checklist_assessment": {
+                    "expected_outcome_specified": True if knowledge_count else None,
+                    "actor_identified": None,
+                    "preconditions_defined": None,
+                    "error_scenarios_mentioned": None,
+                    "data_constraints_defined": None,
+                    "performance_expectations_set": None,
+                },
             },
             sort_keys=True,
         )

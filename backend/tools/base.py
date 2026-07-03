@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import time
 import traceback
 from abc import ABC, abstractmethod
@@ -13,6 +14,8 @@ from backend.governance.gateway import GatewayLimitExceeded
 from backend.governance.policy import agent_policy_engine
 from backend.governance.policy import AgentPolicyDenied
 
+logger = logging.getLogger("aegisqa.tools")
+
 @dataclass(frozen=True)
 class ToolSpec:
     name: str
@@ -22,6 +25,13 @@ class ToolSpec:
     timeout_seconds: int = 30
     max_retries: int = 0
     audited: bool = True
+    # Risk tier governs the authorization posture. High/critical tools are
+    # state-changing or otherwise dangerous and must run inside a governed agent
+    # scope; they are denied on the ungoverned direct-API path (W6).
+    risk_tier: str = "low"
+    # Exceptions on which a retry is permitted. Empty tuple (default) means NO
+    # retry is ever safe -- side-effecting tools must not double-execute (S5).
+    retryable_exceptions: tuple[type[Exception], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -78,6 +88,8 @@ class ToolRegistry:
         timeout_seconds: int = 30,
         max_retries: int = 0,
         audited: bool = True,
+        risk_tier: str = "low",
+        retryable_exceptions: tuple[type[Exception], ...] = (),
     ):
         normalized_name = _require_name(name)
         spec = ToolSpec(
@@ -88,6 +100,8 @@ class ToolRegistry:
             timeout_seconds=timeout_seconds,
             max_retries=max_retries,
             audited=audited,
+            risk_tier=risk_tier,
+            retryable_exceptions=retryable_exceptions,
         )
 
         def decorator(tool_cls: type[BaseTool]) -> type[BaseTool]:
@@ -108,7 +122,13 @@ class ToolRegistry:
         try:
             return self._tools[normalized_name]
         except KeyError as exc:
-            raise KeyError(f"Tool '{normalized_name}' is not registered") from exc
+            # N4: raise the typed registration error (not a bare KeyError) and
+            # emit a failed audit record so a lookup miss is observable, not
+            # silently swallowed by a generic ``except KeyError`` upstream.
+            _audit_registry_miss(normalized_name)
+            raise ToolRegistrationError(
+                f"Tool '{normalized_name}' is not registered"
+            ) from exc
 
     def create(self, name: str, **kwargs: object) -> BaseTool:
         return self.get(name)(**kwargs)
@@ -125,6 +145,7 @@ class ToolRegistry:
         agent_policy_engine.authorize_tool(
             current_agent_execution(),
             name,
+            risk_tier=self.get(name).spec.risk_tier,
         )
         tool = self.create(name)
         return execute_tool(
@@ -177,7 +198,15 @@ def execute_tool(
             raise
         except Exception as exc:  # noqa: BLE001 - contract records tool failures.
             last_error = exc
-            if attempts > spec.max_retries:
+            # S5: only retry when the tool explicitly declared this exception
+            # type retryable. The default empty allowlist means NO retry is ever
+            # attempted, so a side-effecting tool cannot silently double-execute
+            # on a transient-looking error. ``max_retries`` still bounds the
+            # count for tools that DO opt in.
+            retryable = spec.retryable_exceptions and isinstance(
+                exc, spec.retryable_exceptions
+            )
+            if attempts > spec.max_retries or not retryable:
                 break
 
     duration_ms = int((time.perf_counter() - start) * 1000)
@@ -254,6 +283,21 @@ def _require_name(name: str) -> str:
     if not normalized_name:
         raise ToolRegistrationError("Registry names cannot be empty")
     return normalized_name
+
+
+def _audit_registry_miss(name: str) -> None:
+    """N4: make a tool-registry lookup miss observable.
+
+    A miss means generated/agent code referenced a tool that was never
+    registered — a real defect, not a routine condition. We log it at WARNING so
+    it surfaces in the structured log / monitoring rather than vanishing inside a
+    generic exception handler upstream.
+    """
+    logger.warning(
+        "Tool registry lookup miss for unregistered tool '%s'",
+        name,
+        extra={"event_type": "tool_registry_miss", "tool_name": name},
+    )
 
 
 tool_registry = ToolRegistry()

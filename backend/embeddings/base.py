@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal
@@ -100,13 +101,38 @@ def _require_name(name: str) -> str:
 
 
 def deterministic_hash_embedding(text: str, *, dimensions: int = 32) -> tuple[float, ...]:
-    digest = hashlib.sha256(text.encode("utf-8")).digest()
-    raw = list(digest)
-    while len(raw) < dimensions:
-        raw.extend(hashlib.sha256(bytes(raw)).digest())
-    values = [(byte / 127.5) - 1.0 for byte in raw[:dimensions]]
-    magnitude = sum(value * value for value in values) ** 0.5 or 1.0
+    """Deterministic, semantically-meaningful local embedding.
+
+    Hashes each TOKEN into a bucket and accumulates a signed count, rather than
+    hashing the whole string into one fingerprint. This matters: a whole-text
+    SHA256 fingerprint gives two texts that differ by a single word nearly
+    orthogonal vectors (cosine ~0.09), so cosine similarity carries no semantic
+    signal and RAG retrieval silently degrades to lexical-overlap-only. Token
+    bucketing makes texts that share words land close together (cosine ~0.91 for
+    a one-word delta) while staying fully deterministic and dependency-free.
+
+    Empty / token-less text returns a zero vector (cosine 0 against anything),
+    which is the correct "no signal" behaviour.
+    """
+    values = [0.0] * dimensions
+    for token in _embedding_tokens(text):
+        digest = hashlib.sha256(token.encode("utf-8")).digest()
+        bucket = int.from_bytes(digest[:2], "big") % dimensions
+        sign = 1.0 if digest[2] % 2 == 0 else -1.0
+        values[bucket] += sign
+    magnitude = sum(value * value for value in values) ** 0.5
+    if magnitude == 0:
+        return tuple(values)
     return tuple(round(value / magnitude, 6) for value in values)
+
+
+def _embedding_tokens(text: str) -> list[str]:
+    """Lowercase alphanumeric tokens of length > 2 (drops noise stopwords)."""
+    return [
+        token
+        for token in re.findall(r"[a-z0-9_]+", text.lower())
+        if len(token) > 2
+    ]
 
 
 embedding_provider_registry = EmbeddingProviderRegistry()

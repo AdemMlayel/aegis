@@ -1,4 +1,4 @@
-import { X, XCircle } from "lucide-react";
+import { CircleDashed, X, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   cancelChatAction,
@@ -10,6 +10,7 @@ import {
   editAutomationArtifact,
   executeWorkflow,
   getAgentGovernanceCatalog,
+  getAgentInvocations,
   getAgentModelProfiles,
   getAutomationFile,
   getEmbeddingProviders,
@@ -26,7 +27,9 @@ import {
   listDemoTickets,
   listExecutionEvents,
   listExecutionRuns,
+  listChatSessions,
   listWorkflowTimeline,
+  subscribeWorkflowTimeline,
   listWorkflows,
   pauseWorkflowSession,
   regenerateWorkflowStage,
@@ -39,14 +42,17 @@ import {
 } from "./api";
 import { AgentConfigPanel } from "./components/AgentConfigPanel";
 import { CopilotPanel } from "./components/CopilotPanel";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import {
+  ChatHeader,
+  CompanionPanel,
+  SettingsSheet
+} from "./components/ChatShell";
+import { deriveCompanionView } from "./companionView";
 import {
   ConversationWorkspace,
   type WorkspaceView
 } from "./components/ConversationWorkspace";
-import {
-  WorkspaceNav,
-  type WorkspaceFilter
-} from "./components/WorkspaceNav";
 import { OPERATOR_ID } from "./config";
 import type {
   AgentModelProfile,
@@ -79,11 +85,15 @@ export default function App() {
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
   const [context, setContext] = useState<TestContext | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState("");
-  const [workspaceQuery, setWorkspaceQuery] = useState("");
-  const [workspaceFilter, setWorkspaceFilter] = useState<WorkspaceFilter>("all");
   const [view, setView] = useState<WorkspaceView>("conversation");
-  const [configCollapsed, setConfigCollapsed] = useState(false);
+  const [companionCollapsed, setCompanionCollapsed] = useState(false);
+  // Adaptive companion: when "pinned" the user has clicked a specific view and
+  // we stop auto-following the orchestrator until they reset (or a new workflow
+  // loads). Default false = follow the workflow automatically (V2 behavior).
+  const [companionPinned, setCompanionPinned] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [chatSession, setChatSession] = useState<ChatSession | null>(null);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
 
   const [providerCatalog, setProviderCatalog] = useState<ProviderCatalog | null>(null);
   const [llmProviders, setLlmProviders] = useState<LLMProvider[]>([]);
@@ -114,6 +124,10 @@ export default function App() {
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // S13: when live polling fails repeatedly, surface a non-blocking "live
+  // updates paused" badge instead of silently freezing on stale data.
+  const [liveStale, setLiveStale] = useState(false);
+  const pollFailures = useRef(0);
 
   const selectedTicket = useMemo(
     () => tickets.find((ticket) => ticket.id === selectedTicketId) ?? tickets[0] ?? null,
@@ -126,17 +140,36 @@ export default function App() {
     [context, selectedTestId]
   );
 
-  function selectTicket(ticketId: string) {
-    setSelectedTicketId(ticketId);
-    if (context?.ticket?.id !== ticketId) {
-      setContext(null);
-      setTimeline([]);
-      timelineCursor.current = 0;
-    }
-  }
-
   useEffect(() => {
     void refreshBootstrap();
+  }, []);
+
+  // Heartbeat: poll a lightweight endpoint so we can surface a non-blocking
+  // "live updates paused" badge when the backend becomes unreachable. (The
+  // live agent activity itself is rendered from workflow context in the
+  // companion's activity rail, not from this poll.)
+  useEffect(() => {
+    let cancelled = false;
+    const STALE_THRESHOLD = 3;
+    const poll = async () => {
+      const invocations = await getAgentInvocations(12).catch(() => null);
+      if (cancelled) return;
+      if (invocations) {
+        pollFailures.current = 0;
+        setLiveStale((current) => (current ? false : current));
+      } else {
+        pollFailures.current += 1;
+        if (pollFailures.current >= STALE_THRESHOLD) {
+          setLiveStale((current) => (current ? current : true));
+        }
+      }
+    };
+    void poll();
+    const interval = window.setInterval(() => void poll(), 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -168,11 +201,29 @@ export default function App() {
       setTimeline((current) => mergeEvents(current, response.events));
     };
 
+    // Prime with the current backlog once, then prefer a live SSE stream so the
+    // execution trace ticks in real time (G2 / Part B2). If EventSource is
+    // unavailable or errors, fall back to the existing 2.2s poll so the trace
+    // never silently stalls.
     void poll();
-    const interval = window.setInterval(() => void poll(), 2200);
+    const unsubscribe = subscribeWorkflowTimeline(
+      context.context_id,
+      timelineCursor.current,
+      (event) => {
+        if (cancelled) return;
+        timelineCursor.current = Math.max(timelineCursor.current, event.sequence);
+        setTimeline((current) => mergeEvents(current, [event]));
+      }
+    );
+
+    let interval: number | undefined;
+    if (!unsubscribe) {
+      interval = window.setInterval(() => void poll(), 2200);
+    }
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      if (unsubscribe) unsubscribe();
+      if (interval !== undefined) window.clearInterval(interval);
     };
   }, [context?.context_id]);
 
@@ -262,11 +313,47 @@ export default function App() {
     }
   }
 
+  // Adaptive companion (V2): follow the orchestrator. Whenever the workflow
+  // advances to a new stage, switch the companion to the view that best shows
+  // what the system is doing — unless the user has pinned a specific view.
+  useEffect(() => {
+    if (companionPinned) return;
+    const derived = deriveCompanionView(context);
+    setView((current) => (current === derived ? current : derived));
+  }, [
+    context?.context_id,
+    context?.workflow_control.current_stage,
+    context?.workflow_control.next_stage,
+    context?.execution?.status,
+    context?.reports?.summary,
+    companionPinned
+  ]);
+
+  // A fresh workflow resets the companion back to auto-follow.
+  useEffect(() => {
+    setCompanionPinned(false);
+    setCompanionCollapsed(false);
+  }, [context?.context_id]);
+
+  function selectCompanionView(next: WorkspaceView) {
+    setCompanionPinned(true);
+    setView(next);
+  }
+
   async function refreshBootstrap() {
     await runAction("refresh", async () => {
+      // W13: critical data (tickets + workflows) is fetched first and must
+      // succeed for a usable cockpit. Telemetry/enrichment is fetched with
+      // allSettled so one failing non-critical endpoint can no longer blank
+      // the entire dashboard — each piece degrades independently.
+      const [ticketList, workflowList] = await Promise.all([
+        listDemoTickets(),
+        listWorkflows({ limit: 20 })
+      ]);
+      setTickets(ticketList);
+      setWorkflows(workflowList);
+
       const [
-        ticketList,
-        workflowList,
         catalog,
         providers,
         embeddings,
@@ -277,9 +364,7 @@ export default function App() {
         telemetry,
         budget,
         serviceHealth
-      ] = await Promise.all([
-        listDemoTickets(),
-        listWorkflows({ limit: 20 }),
+      ] = await Promise.allSettled([
         getProviderCatalog(),
         getLLMProviders(),
         getEmbeddingProviders(),
@@ -291,25 +376,72 @@ export default function App() {
         getTokenBudgetStatus(),
         getOperationalHealth()
       ]);
-      setTickets(ticketList);
-      setWorkflows(workflowList);
-      setProviderCatalog(catalog);
-      setLlmProviders(providers);
-      setEmbeddingProviders(embeddings);
-      setAgentRouting(routing);
-      setOllamaHealth(health);
-      setOllamaProfiles(profiles);
-      setAgentGovernance(governance);
-      setObservability(telemetry);
-      setTokenBudget(budget);
-      setOperationalHealth(serviceHealth);
-      initializeRuntimeDefaults(routing, providers, embeddings, health);
-      const chat = await createChatSession({
-        created_by: OPERATOR_ID,
-        ticket_id: ticketList[0]?.id ?? null,
-        title: "AegisQA Copilot"
-      }).catch(() => null);
-      if (chat) setChatSession(chat);
+
+      // Apply each enrichment slice only when it resolved; leave prior state
+      // intact otherwise. Surface a non-blocking note if any degraded.
+      const settledFailures: string[] = [];
+      const apply = <T,>(
+        result: PromiseSettledResult<T>,
+        setter: (value: T) => void,
+        label: string
+      ) => {
+        if (result.status === "fulfilled") {
+          setter(result.value);
+        } else {
+          settledFailures.push(label);
+        }
+      };
+      apply(catalog, setProviderCatalog, "providers");
+      apply(providers, setLlmProviders, "LLM providers");
+      apply(embeddings, setEmbeddingProviders, "embedding providers");
+      apply(routing, setAgentRouting, "agent routing");
+      apply(health, setOllamaHealth, "Ollama health");
+      apply(profiles, setOllamaProfiles, "Ollama profiles");
+      apply(governance, setAgentGovernance, "agent governance");
+      apply(telemetry, setObservability, "observability");
+      apply(budget, setTokenBudget, "token budget");
+      apply(serviceHealth, setOperationalHealth, "service health");
+
+      if (
+        routing.status === "fulfilled"
+        && providers.status === "fulfilled"
+        && embeddings.status === "fulfilled"
+        && health.status === "fulfilled"
+      ) {
+        initializeRuntimeDefaults(
+          routing.value,
+          providers.value,
+          embeddings.value,
+          health.value
+        );
+      }
+      if (settledFailures.length) {
+        setError(
+          `Some panels couldn't load (${settledFailures.join(", ")}). `
+            + "Core workflow data is available; retry refresh for the rest."
+        );
+      }
+      // Load existing chat history; reuse the most recent session if present,
+      // otherwise start a fresh one. Either way the session list is populated
+      // so the left rail shows real chat history.
+      const existingSessions = await listChatSessions(20).catch(() => []);
+      let activeChat: ChatSession | null = existingSessions[0] ?? null;
+      if (!activeChat) {
+        activeChat = await createChatSession({
+          created_by: OPERATOR_ID,
+          ticket_id: ticketList[0]?.id ?? null,
+          title: "AegisQA Copilot"
+        }).catch(() => null);
+      }
+      if (activeChat) {
+        const active = activeChat;
+        setChatSession(active);
+        setChatSessions(
+          existingSessions.some((item) => item.session_id === active.session_id)
+            ? existingSessions
+            : [active, ...existingSessions]
+        );
+      }
 
       const storedContextId = localStorage.getItem("aegisqa:lastContextId");
       if (storedContextId) {
@@ -393,14 +525,6 @@ export default function App() {
     setExecutionEvents(
       latest ? await listExecutionEvents(latest.run_id).catch(() => []) : []
     );
-  }
-
-  async function openWorkflow(contextId: string) {
-    const loaded = await runAction("load", () => getWorkflow(contextId));
-    if (loaded) {
-      applyContext(loaded);
-      setView("conversation");
-    }
   }
 
   async function createWorkspace() {
@@ -588,6 +712,38 @@ export default function App() {
     );
     if (!response) return;
     setChatSession(response.session);
+    upsertChatSession(response.session);
+  }
+
+  function upsertChatSession(session: ChatSession) {
+    setChatSessions((current) => {
+      const without = current.filter((item) => item.session_id !== session.session_id);
+      return [session, ...without];
+    });
+  }
+
+  async function openChatSession(sessionId: string) {
+    const session = chatSessions.find((item) => item.session_id === sessionId);
+    if (!session) return;
+    setChatSession(session);
+    if (session.context_id) {
+      const loaded = await getWorkflow(session.context_id).catch(() => null);
+      if (loaded) applyContext(loaded);
+    }
+  }
+
+  async function startNewChat() {
+    const created = await runAction("chat", () =>
+      createChatSession({
+        created_by: OPERATOR_ID,
+        context_id: context?.context_id ?? null,
+        ticket_id: selectedTicket?.id ?? null,
+        title: "AegisQA Copilot"
+      })
+    );
+    if (!created) return;
+    setChatSession(created);
+    upsertChatSession(created);
   }
 
   async function confirmCopilotAction(actionId: string) {
@@ -601,6 +757,7 @@ export default function App() {
     );
     if (!response) return;
     setChatSession(response.session);
+    upsertChatSession(response.session);
     if (response.session.context_id) {
       const loaded = await getWorkflow(response.session.context_id).catch(() => null);
       if (loaded) {
@@ -735,82 +892,110 @@ export default function App() {
     if (profiles) setOllamaProfiles(profiles);
   }
 
-  return (
-    <div className={`app-frame ${configCollapsed ? "config-collapsed" : ""}`}>
-      <WorkspaceNav
-        tickets={tickets}
-        workflows={workflows}
-        selectedContextId={context?.context_id ?? null}
-        selectedTicketId={selectedTicketId}
-        query={workspaceQuery}
-        filter={workspaceFilter}
-        busy={busy !== null}
-        onQueryChange={setWorkspaceQuery}
-        onFilterChange={setWorkspaceFilter}
-        onSelectTicket={selectTicket}
-        onOpenWorkflow={(contextId) => void openWorkflow(contextId)}
-        onCreateWorkspace={() => void createWorkspace()}
-        onRefresh={() => void refreshBootstrap()}
-      />
+  const companionVisible = Boolean(context) && !companionCollapsed;
 
-      <div className="center-column">
+  return (
+    <div className={`app-shell ${companionVisible ? "with-companion" : "solo"}`}>
+      <section className="chat-column">
+        <ChatHeader
+          chatSessions={chatSessions}
+          activeChatId={chatSession?.session_id ?? null}
+          busy={busy !== null}
+          companionCollapsed={companionCollapsed}
+          hasWorkflow={Boolean(context)}
+          onOpenChat={(sessionId) => void openChatSession(sessionId)}
+          onNewChat={() => void startNewChat()}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onShowCompanion={() => setCompanionCollapsed(false)}
+          onRefresh={() => void refreshBootstrap()}
+        />
+
         {error ? (
-          <div className="global-error">
+          <div className="global-error" role="alert">
             <XCircle />
             <span>{error}</span>
             <button onClick={() => setError(null)} title="Dismiss error"><X /></button>
           </div>
         ) : null}
-        <CopilotPanel
-          session={chatSession}
-          busy={busy === "chat"}
-          disabled={false}
-          onSend={(message) => void sendCopilotMessage(message)}
-          onConfirmAction={(actionId) => void confirmCopilotAction(actionId)}
-          onCancelAction={(actionId) => void cancelCopilotAction(actionId)}
-        />
-        <ConversationWorkspace
-          context={context}
-          selectedTicket={selectedTicket}
-          timeline={timeline}
-          view={view}
-          selectedTestId={selectedTestId}
-          artifactContent={artifactContent}
-          artifactDraft={artifactDraft}
-          artifactEditing={artifactEditing}
-          artifactRevisions={artifactRevisions}
-          executionRuns={executionRuns}
-          executionEvents={executionEvents}
-          reportPackage={reportPackage}
-          busy={busy}
-          configCollapsed={configCollapsed}
-          onViewChange={setView}
-          onSelectTest={setSelectedTestId}
-          onOpenConfig={() => setConfigCollapsed(false)}
-          onCreateWorkspace={() => void createWorkspace()}
-          onResume={() => void resume()}
-          onNext={() => void runNext()}
-          onPause={() => void pause()}
-          onReviewStage={(stage, decision, comment) => void reviewStage(stage, decision, comment)}
-          onRegenerateStage={(stage, comment) => void regenerateStage(stage, comment)}
-          onApproveWorkflow={() => void approvePackage()}
-          onExecuteWorkflow={() => void executeApproved()}
-          onSendMessage={(message) => void sendMessage(message)}
-          onStartArtifactEdit={() => {
-            setArtifactDraft(artifactContent);
-            setArtifactEditing(true);
-          }}
-          onCancelArtifactEdit={() => {
-            setArtifactDraft(artifactContent);
-            setArtifactEditing(false);
-          }}
-          onArtifactDraftChange={setArtifactDraft}
-          onSaveArtifact={(comment) => void saveArtifact(comment)}
-          onDownloadReport={(format) => void downloadReport(format)}
-        />
-      </div>
+        {liveStale ? (
+          <div className="live-stale-badge" role="status">
+            <CircleDashed />
+            <span>Live updates paused — reconnecting. Displayed data may be stale.</span>
+          </div>
+        ) : null}
 
-      {!configCollapsed ? (
+        <div className="chat-column-body">
+          <CopilotPanel
+            session={chatSession}
+            busy={busy === "chat"}
+            disabled={false}
+            onSend={(message) => void sendCopilotMessage(message)}
+            onConfirmAction={(actionId) => void confirmCopilotAction(actionId)}
+            onCancelAction={(actionId) => void cancelCopilotAction(actionId)}
+          />
+        </div>
+      </section>
+
+      <CompanionPanel
+        context={context}
+        collapsed={!companionVisible}
+        pinned={companionPinned}
+        onToggleCollapse={() => setCompanionCollapsed(true)}
+        onTogglePinned={() => {
+          if (companionPinned) {
+            // Re-enable auto-follow and snap to the orchestrator's view now.
+            setCompanionPinned(false);
+            setView(deriveCompanionView(context));
+          } else {
+            setCompanionPinned(true);
+          }
+        }}
+      >
+        <ErrorBoundary section="the workflow companion">
+          <ConversationWorkspace
+            context={context}
+            selectedTicket={selectedTicket}
+            timeline={timeline}
+            view={view}
+            selectedTestId={selectedTestId}
+            artifactContent={artifactContent}
+            artifactDraft={artifactDraft}
+            artifactEditing={artifactEditing}
+            artifactRevisions={artifactRevisions}
+            executionRuns={executionRuns}
+            executionEvents={executionEvents}
+            reportPackage={reportPackage}
+            busy={busy}
+            configCollapsed
+            compact
+            onViewChange={selectCompanionView}
+            onSelectTest={setSelectedTestId}
+            onOpenConfig={() => setSettingsOpen(true)}
+            onCreateWorkspace={() => void createWorkspace()}
+            onResume={() => void resume()}
+            onNext={() => void runNext()}
+            onPause={() => void pause()}
+            onReviewStage={(stage, decision, comment) => void reviewStage(stage, decision, comment)}
+            onRegenerateStage={(stage, comment) => void regenerateStage(stage, comment)}
+            onApproveWorkflow={() => void approvePackage()}
+            onExecuteWorkflow={() => void executeApproved()}
+            onSendMessage={(message) => void sendMessage(message)}
+            onStartArtifactEdit={() => {
+              setArtifactDraft(artifactContent);
+              setArtifactEditing(true);
+            }}
+            onCancelArtifactEdit={() => {
+              setArtifactDraft(artifactContent);
+              setArtifactEditing(false);
+            }}
+            onArtifactDraftChange={setArtifactDraft}
+            onSaveArtifact={(comment) => void saveArtifact(comment)}
+            onDownloadReport={(format) => void downloadReport(format)}
+          />
+        </ErrorBoundary>
+      </CompanionPanel>
+
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)}>
         <AgentConfigPanel
           routing={agentRouting}
           providers={llmProviders}
@@ -827,7 +1012,7 @@ export default function App() {
           tokenBudget={tokenBudget}
           operationalHealth={operationalHealth}
           smokeBusy={busy === "smoke"}
-          onClose={() => setConfigCollapsed(true)}
+          onClose={() => setSettingsOpen(false)}
           onModeChange={setWorkflowMode}
           onApplyPreset={applyRoutingPreset}
           onProviderChange={updateAgentProvider}
@@ -835,10 +1020,16 @@ export default function App() {
           onEmbeddingProviderChange={setSelectedEmbeddingProvider}
           onEmbeddingModelChange={setEmbeddingModel}
           onSmokeTest={() => void smokeTest()}
-          onOpenLogs={() => setView("evidence")}
-          onOpenMemory={() => setView("evidence")}
+          onOpenLogs={() => {
+            setSettingsOpen(false);
+            selectCompanionView("evidence");
+          }}
+          onOpenMemory={() => {
+            setSettingsOpen(false);
+            selectCompanionView("evidence");
+          }}
         />
-      ) : null}
+      </SettingsSheet>
     </div>
   );
 }

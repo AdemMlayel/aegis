@@ -45,8 +45,38 @@ def readiness_status() -> tuple[dict[str, object], int]:
         "errors": configuration_errors,
     }
 
+    # Honest model-provider readiness. When a real LLM provider is configured
+    # (i.e. not the deterministic mock), probe its reachability so /health/ready
+    # doesn't report "ready" while every model call is actually degrading to
+    # mock. The probe is REPORTED always; it only blocks readiness (503) when
+    # fail-closed is enabled (allow_mock_fallback=False) — otherwise an
+    # intentionally-degrading demo stays ready, but the truth is still visible.
+    provider = settings.default_llm_provider
+    if provider == "mock_llm":
+        checks["model_provider"] = {
+            "status": "ready",
+            "provider": provider,
+            "detail": "Deterministic mock provider; no external dependency.",
+        }
+    else:
+        reachable, detail = _probe_model_provider(provider)
+        if reachable:
+            provider_status = "ready"
+        elif settings.allow_mock_fallback:
+            # Degrades to mock rather than failing the request, so the service
+            # is still "ready" — but we surface the degraded truth explicitly.
+            provider_status = "degraded"
+        else:
+            provider_status = "not_ready"
+        checks["model_provider"] = {
+            "status": provider_status,
+            "provider": provider,
+            "fail_closed": not settings.allow_mock_fallback,
+            "detail": detail,
+        }
+
     ready = all(
-        check["status"] == "ready"
+        check["status"] in {"ready", "degraded"}
         for check in checks.values()
     )
     return (
@@ -60,6 +90,51 @@ def readiness_status() -> tuple[dict[str, object], int]:
     )
 
 
+def _probe_model_provider(provider: str) -> tuple[bool, str]:
+    """Best-effort reachability probe for a configured real LLM provider.
+
+    Returns (reachable, human-readable detail). Never raises — a probe failure
+    is reported as unreachable, not as a server error.
+    """
+    try:
+        if provider == "ollama":
+            from backend.llm.ollama import ollama_health
+
+            health = ollama_health()
+            return bool(health.get("available")), str(
+                health.get("message", "")
+            )
+        if provider == "openai_compatible":
+            # We don't burn a real completion here; reachability of an external
+            # endpoint is asserted by configuration presence + circuit state.
+            base_url = settings.openai_compatible_base_url
+            if not base_url:
+                return (
+                    False,
+                    "openai_compatible selected but "
+                    "AEGISQA_OPENAI_COMPATIBLE_BASE_URL is unset.",
+                )
+            open_providers = {
+                item["provider"]
+                for item in circuit_breakers.status()
+                if item["state"] == "open"
+            }
+            if provider in open_providers:
+                return (
+                    False,
+                    f"Circuit breaker is open for {provider}.",
+                )
+            return True, f"Configured external provider at {base_url}."
+        # Unknown/custom provider: we can't probe it, so report unknown rather
+        # than falsely asserting readiness.
+        return (
+            False,
+            f"No reachability probe implemented for provider {provider!r}.",
+        )
+    except Exception as exc:  # noqa: BLE001 - readiness probe must never raise.
+        return False, f"Provider probe failed: {type(exc).__name__}: {exc}"
+
+
 def operational_health(
     *,
     organization_id: str | None = None,
@@ -69,11 +144,16 @@ def operational_health(
     request_errors = int(summary["requests"]["server_errors"])
     agent_total = int(summary["agents"]["total"])
     agent_failures = int(summary["agents"]["failed"])
+    model_total = int(summary["model_calls"]["total"])
+    mock_fallbacks = int(summary["model_calls"]["mock_fallbacks"])
     request_error_rate = (
         request_errors / request_total if request_total else 0.0
     )
     agent_failure_rate = (
         agent_failures / agent_total if agent_total else 0.0
+    )
+    mock_fallback_rate = (
+        mock_fallbacks / model_total if model_total else 0.0
     )
     open_circuits = [
         item
@@ -114,10 +194,24 @@ def operational_health(
                 ],
             }
         )
+    if mock_fallback_rate > settings.observability_mock_fallback_rate_threshold:
+        signals.append(
+            {
+                "name": "mock_fallback_rate",
+                "severity": "warning",
+                "value": round(mock_fallback_rate, 4),
+                "threshold": (
+                    settings.observability_mock_fallback_rate_threshold
+                ),
+                "mock_fallbacks": mock_fallbacks,
+                "model_calls": model_total,
+            }
+        )
     return {
         "status": "degraded" if signals else "healthy",
         "request_error_rate": round(request_error_rate, 4),
         "agent_failure_rate": round(agent_failure_rate, 4),
+        "mock_fallback_rate": round(mock_fallback_rate, 4),
         "open_provider_circuits": len(open_circuits),
         "signals": signals,
     }

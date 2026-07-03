@@ -8,6 +8,7 @@ from pathlib import Path
 
 from backend.graph.artifacts import (
     GENERATED_GIT_HANDOFF_ROOT,
+    GENERATED_ROBOT_ROOT,
     PROJECT_ROOT,
     relative_to_project,
     slug,
@@ -113,12 +114,39 @@ def _handoff_payload(
     }
 
 
+def _safe_review_items(items: list[str], errors: list[str]) -> list[str]:
+    """Return only the review items that resolve inside GENERATED_ROBOT_ROOT.
+
+    ``git add -f`` bypasses .gitignore, so each path must be re-validated at
+    handoff time (W8) -- a traversal sequence, absolute path, or symlink that
+    escapes the generated robot root is dropped and recorded as an error rather
+    than force-added. Operates on the already-stored project-relative review
+    item strings, mirroring resolve_robot_file's containment check.
+    """
+    robot_root = GENERATED_ROBOT_ROOT.resolve()
+    safe: list[str] = []
+    for item in items:
+        candidate = Path(item)
+        if not candidate.is_absolute():
+            candidate = PROJECT_ROOT / candidate
+        try:
+            resolved = candidate.resolve()
+            resolved.relative_to(robot_root)
+        except (ValueError, OSError):
+            errors.append(
+                f"Refusing to stage '{item}': path escapes the generated robot "
+                "root (possible traversal or symlink); dropped from handoff."
+            )
+            continue
+        safe.append(item)
+    return safe
+
+
 def create_git_handoff(context: TestContext, reviewed_by: str) -> GitExecutionResult:
     if context.approval is None:
         raise ValueError("Git handoff requires approval state")
     if context.ticket is None:
         raise ValueError("Git handoff requires ticket data")
-
     branch = context.approval.git_branch or f"aegis/{slug(context.ticket.id)}"
     original_branch = _current_branch()
     pr_title = f"[AegisQA] {context.ticket.id} - {context.ticket.title}"
@@ -156,8 +184,15 @@ def create_git_handoff(context: TestContext, reviewed_by: str) -> GitExecutionRe
     if switch_result.returncode != 0:
         errors.append(_command_error(f"git {' '.join(switch_args)}", switch_result))
 
-    if not errors:
-        add_result = _run_git(["add", "-f", "--", *context.approval.review_items])
+    # W8: re-validate every review item resolves *inside* the generated robot
+    # root before force-adding. `git add -f` bypasses .gitignore, so a reviewer-
+    # or context-controlled path that escaped the artifact root (traversal,
+    # absolute path, symlink) could otherwise stage arbitrary files. Items that
+    # fail the check are dropped and recorded as errors rather than added.
+    safe_items = _safe_review_items(context.approval.review_items, errors)
+
+    if not errors and safe_items:
+        add_result = _run_git(["add", "-f", "--", *safe_items])
         if add_result.returncode != 0:
             errors.append(_command_error("git add", add_result))
 

@@ -368,6 +368,19 @@ def observability_summary(
             """,
             agent_parameters,
         ).fetchone()
+        model_calls = connection.execute(
+            f"""
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(
+                    SUM(CASE WHEN status = 'fallback' THEN 1 ELSE 0 END), 0
+                ) AS mock_fallbacks
+            FROM model_invocations
+            WHERE substr(created_at, 1, 10) = ?
+            {agent_scope}
+            """,
+            agent_parameters,
+        ).fetchone()
     return {
         "date": today,
         "requests": {
@@ -383,6 +396,10 @@ def observability_summary(
             organization_id=organization_id,
             today_only=True,
         ),
+        "model_calls": {
+            "total": int(model_calls["total"]),
+            "mock_fallbacks": int(model_calls["mock_fallbacks"]),
+        },
         "agents": {
             "total": int(agents["total"]),
             "failed": int(agents["failed"]),

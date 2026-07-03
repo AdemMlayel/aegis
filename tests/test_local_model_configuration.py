@@ -59,7 +59,27 @@ def test_intelligence_model_endpoints_are_demo_safe() -> None:
     assert "embedding_model" in body
 
 
-def test_ollama_role_profiles_match_planned_local_stack() -> None:
+def _pin_planned_local_stack(monkeypatch) -> None:
+    """Pin the Ollama role models to their documented planned-stack defaults.
+
+    The model names are env-configurable (``AEGISQA_OLLAMA_*_MODEL``), so a local
+    ``.env`` that points the stack at smaller models for a constrained host would
+    otherwise break these assertions. These tests verify the *code defaults* /
+    intended design, independent of any local override.
+    """
+    monkeypatch.setattr(settings, "ollama_rag_model", "qwen3:3b")
+    monkeypatch.setattr(settings, "ollama_baseline_model", "llama3.1:8b")
+    monkeypatch.setattr(settings, "ollama_coding_model", "qwen3-coder")
+    monkeypatch.setattr(settings, "ollama_fast_model", "phi4-mini")
+    monkeypatch.setattr(settings, "ollama_fast_fallback_model", "gemma3:4b")
+    monkeypatch.setattr(settings, "ollama_reasoning_model", "deepseek-r1:8b")
+    monkeypatch.setattr(settings, "ollama_reasoning_fallback_model", "deepseek-r1:7b")
+    monkeypatch.setattr(settings, "ollama_embedding_model", "qwen3-embedding:0.6b")
+    monkeypatch.setattr(settings, "ollama_embedding_fallback_model", "nomic-embed-text")
+
+
+def test_ollama_role_profiles_match_planned_local_stack(monkeypatch) -> None:
+    _pin_planned_local_stack(monkeypatch)
     profiles = {profile.role: profile for profile in list_ollama_profiles()}
 
     assert profiles["main_rag"].model == "qwen3:3b"
@@ -74,6 +94,7 @@ def test_ollama_role_profiles_match_planned_local_stack() -> None:
 
 
 def test_ollama_profile_endpoints_are_demo_safe(monkeypatch) -> None:
+    _pin_planned_local_stack(monkeypatch)
     client = TestClient(app)
 
     monkeypatch.setattr(
@@ -130,6 +151,7 @@ def test_ollama_profile_endpoints_are_demo_safe(monkeypatch) -> None:
 
 
 def test_ollama_prompt_stages_route_to_role_models(monkeypatch) -> None:
+    _pin_planned_local_stack(monkeypatch)
     calls: list[tuple[str, str | None]] = []
 
     def fake_complete(self, **kwargs):

@@ -43,6 +43,12 @@ def install_gateway_middleware(app: FastAPI) -> None:
             request.headers.get("X-Aegis-Organization")
             or "local"
         )
+        # Rate-limit key includes the client IP (S7). The X-Aegis-* headers are
+        # unauthenticated and trivially rotated, so keying on them alone lets an
+        # attacker evade the limit by cycling header values. The peer IP is not
+        # client-controllable at the socket level, so it anchors the key.
+        client_host = request.client.host if request.client else "unknown"
+        rate_limit_key = f"{client_host}:{organization_id}:{actor}"
         request.state.request_id = request_id
         started = perf_counter()
         status_code = 500
@@ -55,9 +61,7 @@ def install_gateway_middleware(app: FastAPI) -> None:
         ):
             try:
                 if request.url.path not in UNMETERED_PATHS:
-                    gateway_limiter.check_rate(
-                        f"{organization_id}:{actor}"
-                    )
+                    gateway_limiter.check_rate(rate_limit_key)
                     if (
                         count_requests_today(organization_id=organization_id)
                         >= settings.gateway_daily_request_quota

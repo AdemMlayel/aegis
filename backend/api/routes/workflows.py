@@ -24,6 +24,9 @@ from backend.intelligence.providers import (
     validate_llm_provider_selection,
 )
 from backend.intelligence.routing import list_llm_agent_names
+from backend.governance.gateway import GatewayLimitExceeded
+from backend.governance.context import system_tool_scope
+from backend.governance.policy import AgentPolicyDenied
 from backend.storage.audit import append_audit_event
 from backend.storage.contexts import list_contexts, load_context, save_context
 from backend.security import Capability, Principal, require_capability
@@ -121,7 +124,37 @@ def run_and_persist_workflow_start(
         ticket=ticket,
         intelligence_config=intelligence_config,
     )
-    completed_context = run_workflow(context)
+    try:
+        completed_context = run_workflow(context)
+    except (HTTPException, GatewayLimitExceeded, AgentPolicyDenied):
+        # Deliberate, well-formed responses raised inside nodes -- an HTTP error,
+        # a token-quota limit (-> 429), or an agent-policy denial (-> 403) -- are
+        # already correct and have dedicated app-level handlers. Never rewrap them
+        # as a generic 500; let them propagate untouched.
+        raise
+    except Exception as exc:
+        # run_workflow has already recorded state="failed" + last_error on the
+        # control block. Persist the partial context so the failed run is
+        # inspectable via the API/UI instead of vanishing, then surface a 500.
+        save_context(context)
+        append_audit_event(
+            actor=created_by,
+            event_type="workflow_failed",
+            summary=f"Workflow start failed: {exc}",
+            metadata={
+                "context_id": context.context_id,
+                "ticket_id": context.ticket.id if context.ticket else None,
+                "failed_stage": context.workflow_control.current_stage,
+                "exception_type": type(exc).__name__,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=(
+                f"Workflow failed at stage "
+                f"'{context.workflow_control.current_stage or 'unknown'}': {exc}"
+            ),
+        ) from exc
     summary = "Workflow started and completed the current synchronous pipeline."
     metadata = {
         "context_id": completed_context.context_id,
@@ -443,14 +476,49 @@ def decide_workflow_approval(
             detail="Workflow cannot be approved until all automation passes validation",
         )
 
-    git_tool_result = tool_registry.execute(
-        "LocalGitHandoffTool",
-        actor="system",
+    # W2 -- re-assert approval status immediately before the irreversible Git
+    # handoff. The earlier ``status != 'pending_review'`` check (line ~408) and
+    # this handoff are ~70 lines apart; two concurrent approvals could both pass
+    # the early check and each run LocalGitHandoffTool (double push/PR). Re-load
+    # the row and bail if another approval has already advanced it. The final
+    # save_context is additionally guarded by optimistic concurrency (W1).
+    fresh = load_context(context_id)
+    if fresh is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workflow context was not found",
+        )
+    if fresh.approval is None or fresh.approval.status != "pending_review":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Workflow approval is no longer pending review "
+                f"(now {fresh.approval.status if fresh.approval else 'unset'}); "
+                "a concurrent approval may have already run the Git handoff."
+            ),
+        )
+    # Carry the freshly-observed concurrency token so our terminal save detects
+    # any writer that commits during the handoff itself.
+    context.row_version = fresh.row_version
+
+    # W6: LocalGitHandoffTool is a high-risk, state-changing tool. Run it inside
+    # an explicit, audited system authorization scope (this endpoint is gated by
+    # the APPROVE_WORKFLOW capability and the pending_review re-check above)
+    # rather than the ungoverned execution=None path, which is now denied for
+    # high-risk tools.
+    with system_tool_scope(
+        tool_names=("LocalGitHandoffTool",),
         context_id=context.context_id,
-        audit_sink=context.record_event,
-        context=context,
-        reviewed_by=request.reviewed_by,
-    )
+        caller="approval_endpoint",
+    ):
+        git_tool_result = tool_registry.execute(
+            "LocalGitHandoffTool",
+            actor="system",
+            context_id=context.context_id,
+            audit_sink=context.record_event,
+            context=context,
+            reviewed_by=request.reviewed_by,
+        )
     git_result = git_tool_result.value
     if not isinstance(git_result, GitExecutionResult):
         raise TypeError("LocalGitHandoffTool must return GitExecutionResult")

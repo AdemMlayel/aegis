@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from backend.graph.state import CoveragePlan, RequirementAnalysis, TestCase, TestContext, TicketData
 from backend.intelligence.context import (
@@ -15,6 +15,7 @@ from backend.intelligence.context import (
 from backend.prompts import prompt_registry
 from backend.intelligence.structured_outputs import (
     TestCaseLLMOutput,
+    build_json_contract,
     parse_structured_llm_response,
 )
 from backend.tools.base import BaseTool, tool_registry
@@ -49,6 +50,46 @@ class LocalTestCaseHeuristicTool(BaseTool):
         )
 
 
+def _refs_for(coverage_plan: CoveragePlan, test_case_id: str, fallback: str) -> list[str]:
+    """Resolve a test case's requirement_refs from the derived coverage matrix.
+
+    The matrix keys are 'REQ-00N <description>'; values are the planned TC slots.
+    We invert it so each test case is tagged to the real requirement(s) covering
+    it, instead of the old hardcoded REQ-001/2/3. Falls back to the given default
+    when (legacy/empty matrix) nothing maps to this slot.
+    """
+    refs: list[str] = []
+    for key, tc_ids in coverage_plan.coverage_matrix.items():
+        if test_case_id in tc_ids:
+            req_id = key.split(" ", 1)[0]
+            if req_id and req_id not in refs:
+                refs.append(req_id)
+    return refs or [fallback]
+
+
+def _requirement_test_type(
+    requirement: Any,
+) -> Literal["functional", "negative", "boundary", "regression", "edge"]:
+    """Pick a TestCase type for a derived requirement from its declared test_types.
+
+    Falls back to the origin: checklist-origin error requirements lean negative,
+    everything else functional. Always returns a valid TestCase.type literal.
+    """
+    valid: tuple[Literal["functional", "negative", "boundary", "regression", "edge"], ...] = (
+        "functional",
+        "negative",
+        "boundary",
+        "regression",
+        "edge",
+    )
+    for candidate in requirement.test_types:
+        if candidate in valid:
+            return candidate
+    if requirement.origin == "checklist":
+        return "negative"
+    return "functional"
+
+
 def generate_test_cases(
     *,
     analysis: RequirementAnalysis,
@@ -71,6 +112,7 @@ def generate_test_cases(
             test_types_required=coverage_plan.test_types_required,
             knowledge_context=format_knowledge_context(knowledge_results),
             memory_context=format_memory_context(memory_results),
+            json_contract=build_json_contract(TestCaseLLMOutput),
         )
         reviewer_feedback = consume_stage_feedback(context, "tests")
         rendered_prompt = append_feedback_to_prompt(
@@ -104,7 +146,7 @@ def generate_test_cases(
             title=f"{analysis.business_action} - Happy Path",
             type="functional",
             priority="critical" if coverage_plan.risk_level == "critical" else "high",
-            requirement_refs=["REQ-001"],
+            requirement_refs=_refs_for(coverage_plan, "TC001", "REQ-001"),
             preconditions=analysis.preconditions,
             steps=_primary_steps(ticket, analysis),
             expected_outcome=_primary_expected_outcome(ticket),
@@ -125,7 +167,7 @@ def generate_test_cases(
             title=f"{analysis.business_action} - Rejected Input",
             type="negative",
             priority="high",
-            requirement_refs=["REQ-002"],
+            requirement_refs=_refs_for(coverage_plan, "TC002", "REQ-002"),
             preconditions=analysis.preconditions,
             steps=[
                 f"Sign in as {analysis.actor}",
@@ -147,7 +189,7 @@ def generate_test_cases(
             title=f"{analysis.business_action} - Boundary Condition",
             type="boundary",
             priority="medium",
-            requirement_refs=["REQ-003"],
+            requirement_refs=_refs_for(coverage_plan, "TC003", "REQ-003"),
             preconditions=analysis.preconditions,
             steps=[
                 f"Sign in as {analysis.actor}",
@@ -166,7 +208,47 @@ def generate_test_cases(
         ),
     ]
 
-    for index, regression_ref in enumerate(coverage_plan.regression_tests_to_rerun, start=4):
+    # One covering test case per DERIVED requirement beyond the first three (which
+    # the functional/negative/boundary archetypes above already cover). This closes
+    # the matrix↔generator gap: every requirement the coverage plan derived now has
+    # a covering case, instead of REQ-004+ having planned slots with no test.
+    base_count = len(test_cases)
+    extra_requirements = coverage_plan.requirement_items[base_count:]
+    for offset, requirement in enumerate(extra_requirements):
+        index = base_count + offset + 1
+        tc_id = f"TC{index:03d}"
+        req_type = _requirement_test_type(requirement)
+        test_cases.append(
+            TestCase(
+                id=tc_id,
+                title=f"{analysis.business_action} - {requirement.description[:60]}",
+                type=req_type,
+                priority="high" if req_type in {"negative", "functional"} else "medium",
+                requirement_refs=_refs_for(coverage_plan, tc_id, requirement.requirement_id),
+                preconditions=analysis.preconditions,
+                steps=[
+                    f"Sign in as {analysis.actor}",
+                    f"Exercise: {requirement.description}",
+                    f"Run {analysis.business_action}",
+                    "Verify the requirement holds",
+                ],
+                expected_outcome=requirement.description,
+                test_data_requirements={
+                    "users": ["valid_user"],
+                    "records": [f"{req_type}_record"],
+                },
+                evidence_refs=evidence_refs,
+                memory_refs=memory_refs,
+                generation_notes=[
+                    f"Derived from coverage requirement {requirement.requirement_id} "
+                    f"(origin: {requirement.origin}).",
+                ],
+            )
+        )
+
+    for index, regression_ref in enumerate(
+        coverage_plan.regression_tests_to_rerun, start=len(test_cases) + 1
+    ):
         test_cases.append(
             TestCase(
                 id=f"TC{index:03d}",

@@ -10,13 +10,16 @@ services:
       AEGISQA_ENV: compose
       AEGISQA_SQLITE_DB_PATH: /app/generated/storage/aegisqa.sqlite3
       AEGISQA_EXECUTION_WORKER_BACKEND: celery
-      AEGISQA_CELERY_BROKER_URL: redis://redis:6379/0
-      AEGISQA_CELERY_RESULT_BACKEND: redis://redis:6379/1
+      AEGISQA_CELERY_BROKER_URL: redis://:${AEGIS_REDIS_PASSWORD:-changeme}@redis:6379/0
+      AEGISQA_CELERY_RESULT_BACKEND: redis://:${AEGIS_REDIS_PASSWORD:-changeme}@redis:6379/1
       AEGISQA_CELERY_FALLBACK_TO_LOCAL: "true"
     ports:
       - "8000:8000"
+    # S11: no source bind-mount. The image already contains the code (COPY . .);
+    # mounting the host tree over /app would (a) run un-reviewed host code in the
+    # container and (b) re-introduce root-owned files. Only the named volume for
+    # generated artifacts is mounted, so writes persist without exposing source.
     volumes:
-      - .:/app
       - aegis-generated:/app/generated
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
@@ -39,10 +42,9 @@ services:
       AEGISQA_ENV: compose
       AEGISQA_SQLITE_DB_PATH: /app/generated/storage/aegisqa.sqlite3
       AEGISQA_EXECUTION_WORKER_BACKEND: celery
-      AEGISQA_CELERY_BROKER_URL: redis://redis:6379/0
-      AEGISQA_CELERY_RESULT_BACKEND: redis://redis:6379/1
+      AEGISQA_CELERY_BROKER_URL: redis://:${AEGIS_REDIS_PASSWORD:-changeme}@redis:6379/0
+      AEGISQA_CELERY_RESULT_BACKEND: redis://:${AEGIS_REDIS_PASSWORD:-changeme}@redis:6379/1
     volumes:
-      - .:/app
       - aegis-generated:/app/generated
     depends_on:
       redis:
@@ -65,10 +67,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # S11: require a password and do NOT publish 6379 to the host. Redis is only
+    # reached over the internal compose network by api/worker; an unauthenticated
+    # port mapped to the host is a trivial data-exfiltration / RCE foothold.
+    command: ["redis-server", "--requirepass", "${AEGIS_REDIS_PASSWORD:-changeme}"]
+    expose:
+      - "6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${AEGIS_REDIS_PASSWORD:-changeme}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10

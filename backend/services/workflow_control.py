@@ -473,6 +473,39 @@ def get_artifact_revisions(
     )
 
 
+def _stage_completion_failure(
+    context: TestContext,
+    stage: WorkflowStageName,
+) -> str | None:
+    """Return a failure reason when a stage finished without raising but lacks
+    real success evidence, else ``None``.
+
+    The validation loop is the key case: ``_run_validation_stage`` returns
+    normally after exhausting its retries even when artifacts never passed
+    dry-run (``workflow_status == 'automation_validation_exhausted'``). Marking
+    that stage completed would misreport a failed gate as passed. Evidence: every
+    automation block must exist and have ``dry_run_passed is True`` (mirrors the
+    autonomous path's ``_apply_honest_completion`` validation predicate, N1).
+    """
+    if stage != "validation":
+        return None
+    if not context.automation:
+        return "Validation produced no automation artifacts to validate."
+    unvalidated = [
+        block.robot_file
+        for block in context.automation.values()
+        if block.validation.dry_run_passed is not True
+    ]
+    if unvalidated:
+        return (
+            "Validation did not pass for all automation artifacts "
+            f"(retries exhausted at {context.validation_retry_count}/"
+            f"{context.max_validation_retries}); unvalidated: "
+            f"{', '.join(unvalidated)}"
+        )
+    return None
+
+
 def _run_stage(
     *,
     context: TestContext,
@@ -513,6 +546,31 @@ def _run_stage(
             metadata={"exception_type": type(exc).__name__},
         )
         raise
+
+    # S2: a stage can finish without raising yet still have genuinely failed --
+    # most importantly the validation loop, which returns normally after
+    # exhausting its retries with artifacts that never passed dry-run. Marking
+    # such a stage "completed" would misreport a failed gate as passed (the same
+    # honesty principle as _apply_honest_completion on the autonomous path). Gate
+    # the completion bookkeeping on real evidence and fail honestly otherwise.
+    stage_failure = _stage_completion_failure(context, stage)
+    if stage_failure is not None:
+        control = context.workflow_control
+        control.state = "failed"
+        control.current_stage = stage
+        control.last_error = stage_failure
+        context.mark(f"{stage}_failed")
+        save_context(context)
+        append_workflow_event(
+            context_id=context.context_id,
+            kind="error",
+            actor=actor,
+            stage=stage,
+            status="failed",
+            message=f"{stage.replace('_', ' ').title()} stage failed: {stage_failure}",
+            metadata={"evidence_gate": True},
+        )
+        return context
 
     control = context.workflow_control
     persisted = load_context(context.context_id)
@@ -595,6 +653,12 @@ def _invalidate_from_stage(
     if restart_index <= WORKFLOW_STAGE_SEQUENCE.index("automation"):
         context.automation = {}
         context.validation_summary = None
+        # The validation loop is about to run fresh from regenerated automation.
+        # Reset the retry bookkeeping so a context that previously exhausted its
+        # retries does not enter validation already maxed-out and skip repair
+        # while still being marked completed (W5).
+        context.validation_retry_count = 0
+        context.graph_iteration = 1
     if restart_index <= WORKFLOW_STAGE_SEQUENCE.index("approval"):
         context.approval = None
     if restart_stage != "report":
@@ -628,6 +692,11 @@ def _invalidate_after_artifact_edit(
     )
     control.next_stage = "validation"
     control.current_stage = None
+    # A manual artifact edit re-runs validation from regenerated automation.
+    # Reset retry bookkeeping so the re-validation gets its full retry budget
+    # instead of inheriting an exhausted count from a prior run (W5).
+    context.validation_retry_count = 0
+    context.graph_iteration = 1
     if control.mode == "approval_required":
         control.stage_reviews["automation"] = StageReviewBlock(
             stage="automation",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from backend.chat.action_planner import plan_actions
 from backend.chat.intent_classifier import classify_chat_intent
+from backend.chat.intent_preamble import interpreted_intent_preamble
 from backend.chat.response_builder import build_assistant_response
 from backend.chat.safety import ensure_action_allowed
 from backend.chat.schemas import (
@@ -128,6 +129,18 @@ def handle_chat_message(
         message_context_id=context_id,
         message_ticket_id=ticket_id,
     )
+    # G1 (Part B1): when a mutating action is queued for confirmation, lead with
+    # a plain-language statement of what the copilot understood and what it will
+    # ask the orchestrator to do. Only pending (non-blocked) actions get a
+    # preamble -- a blocked action already explains itself via result_summary.
+    pending_actions = [
+        action
+        for action in planned_actions
+        if action.status == "pending_confirmation"
+    ]
+    preamble = interpreted_intent_preamble(pending_actions)
+    if preamble:
+        response_text = f"{preamble}\n\n{response_text}"
     assistant_message = ChatMessage(
         role="assistant",
         content=response_text,

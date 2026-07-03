@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -20,8 +21,10 @@ BUILTIN_KEYWORDS = {
     "log",
     "should be true",
     "should be equal",
+    "should be equal as strings",
     "should contain",
     "should not contain",
+    "should not be empty",
     "create dictionary",
     "create list",
     "set variable",
@@ -123,10 +126,41 @@ def _run_robot_dryrun(robot_file: Path) -> AutomationValidation:
     if command is None:
         return _run_local_robot_syntax_check(robot_file)
 
+    # Robot may be the system CLI rather than the venv's, so its subprocess does
+    # not automatically have the project root importable. Generated suites import
+    # backend.robot_libraries.* (the telecom trace library), so we put PROJECT_ROOT
+    # on both PYTHONPATH and robot's --pythonpath; without this the library fails to
+    # import and every keyword reports "No keyword found".
+    #
+    # S4: build a *minimal* env rather than os.environ.copy(). The dry-run runs
+    # untrusted generated suites; copying the whole environment would leak every
+    # AEGISQA_* secret, API key, and token into that subprocess. Pass only what
+    # Robot genuinely needs to locate Python, the venv, and the project package.
+    project_root = str(PROJECT_ROOT)
+    existing_pythonpath = os.environ.get("PYTHONPATH", "")
+    scrubbed_pythonpath = (
+        f"{project_root}{os.pathsep}{existing_pythonpath}"
+        if existing_pythonpath
+        else project_root
+    )
+    env = {
+        "PATH": os.environ.get("PATH", ""),
+        "PYTHONPATH": scrubbed_pythonpath,
+        "PYTHONDONTWRITEBYTECODE": "1",
+    }
+    # Preserve the active virtualenv pointer when present so the right Python and
+    # site-packages are used, without dragging the rest of the environment along.
+    for passthrough in ("VIRTUAL_ENV", "PYTHONHOME", "SYSTEMROOT", "TEMP", "TMP"):
+        value = os.environ.get(passthrough)
+        if value:
+            env[passthrough] = value
+
     try:
         result = subprocess.run(
             [
                 *command,
+                "--pythonpath",
+                project_root,
                 "--dryrun",
                 "--output",
                 "NONE",
@@ -141,6 +175,7 @@ def _run_robot_dryrun(robot_file: Path) -> AutomationValidation:
             text=True,
             timeout=30,
             check=False,
+            env=env,
         )
     except subprocess.TimeoutExpired:
         return AutomationValidation(
@@ -224,6 +259,12 @@ def _validate_known_keywords(robot_file: Path) -> list[str]:
         if not cells:
             continue
         first_cell = cells[0].strip()
+        # Skip variable-assignment cells (e.g. "${USERS} =" / "@{LIST} ="): the
+        # keyword is the NEXT cell, which we validate instead.
+        if first_cell.startswith(("${", "@{", "&{")):
+            if len(cells) < 2:
+                continue
+            first_cell = cells[1].strip()
         lowered = first_cell.lower()
         if first_cell.startswith("[") or lowered in ROBOT_CONTROL_TOKENS:
             continue

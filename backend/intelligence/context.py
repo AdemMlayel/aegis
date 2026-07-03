@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from time import perf_counter
 
 from backend.config.settings import settings
@@ -8,6 +9,7 @@ from backend.governance.context import (
     current_request_context,
 )
 from backend.governance.gateway import (
+    CircuitOpenError,
     GatewayLimitExceeded,
     circuit_breakers,
 )
@@ -36,6 +38,10 @@ from backend.storage.observability import (
     ModelInvocation,
     save_model_invocation,
 )
+from backend.observability.structured_logging import log_event
+
+
+logger = logging.getLogger("aegisqa.intelligence")
 
 
 def build_ticket_query(ticket: TicketData) -> str:
@@ -338,6 +344,69 @@ def complete_with_configured_llm(
     except (AgentPolicyDenied, GatewayLimitExceeded):
         release_model_tokens(reservation)
         raise
+    except CircuitOpenError as exc:
+        # S8: the breaker is open (or its single half-open probe is already in
+        # flight). This is the breaker doing its job protecting a known-sick
+        # provider — NOT a fresh provider failure, so we must NOT call
+        # record_failure here (doing so would inflate the count and extend the
+        # outage). Degrade to the same observable fallback path as a provider
+        # error, but leave the circuit state untouched.
+        error_type = type(exc).__name__
+        fallback_from = (
+            f"{provider_name}:{model_override}"
+            if model_override
+            else provider_name
+        )
+        log_event(
+            logger,
+            "llm_circuit_open",
+            level=logging.WARNING,
+            provider=provider_name,
+            model=model_override or configured_model,
+            agent_name=agent_name,
+            prompt_name=prompt_name,
+            error_type=error_type,
+            error=str(exc),
+            context_id=context.context_id if context else None,
+            fail_closed=not settings.allow_mock_fallback,
+        )
+        if not settings.allow_mock_fallback:
+            release_model_tokens(reservation)
+            raise
+        agent_policy_engine.authorize_provider(execution, "mock_llm")
+        try:
+            fallback = llm_provider_registry.create("mock_llm").complete(
+                prompt_name=prompt_name,
+                prompt_version=prompt_version,
+                rendered_prompt=rendered_prompt,
+                system_instruction=system_instruction,
+                model_override=None,
+                max_output_tokens=max_output_tokens,
+            )
+        except Exception:
+            release_model_tokens(reservation)
+            raise
+        fallback_origin = (
+            f"{provider_name}:{model_override}"
+            if model_override and provider_name != "mock_llm"
+            else provider_name
+        )
+        fallback_text = (
+            f"{fallback.text} Selected provider {provider_name!r} circuit is "
+            f"open: {type(exc).__name__}: {exc}"
+        )[: max_output_tokens * 4]
+        fallback_output_tokens = _estimate_tokens(fallback_text)
+        response = LLMResponse(
+            provider="mock_llm",
+            model=f"{fallback.model} (circuit-open fallback from {fallback_origin})",
+            prompt_name=prompt_name,
+            prompt_version=prompt_version,
+            text=fallback_text,
+            deterministic=True,
+            input_tokens=fallback.input_tokens,
+            output_tokens=fallback_output_tokens,
+            total_tokens=fallback.input_tokens + fallback_output_tokens,
+        )
     except Exception as exc:  # noqa: BLE001 - provider boundary must degrade gracefully in local demos.
         circuit_breakers.record_failure(provider_name)
         error_type = type(exc).__name__
@@ -346,6 +415,29 @@ def complete_with_configured_llm(
             if model_override
             else provider_name
         )
+        # Make the silent degradation LOUD. A real provider failing and the
+        # output quietly becoming a deterministic mock is the system's #1 trust
+        # risk; it must never pass unobserved. We always emit a WARNING log here
+        # (the only human-facing signal at the fallback site), and when
+        # allow_mock_fallback is False we refuse to substitute mock output and
+        # re-raise so the caller fails closed instead of returning fake content
+        # as if it were real.
+        log_event(
+            logger,
+            "llm_mock_fallback",
+            level=logging.WARNING,
+            provider=provider_name,
+            model=model_override or configured_model,
+            agent_name=agent_name,
+            prompt_name=prompt_name,
+            error_type=error_type,
+            error=str(exc),
+            context_id=context.context_id if context else None,
+            fail_closed=not settings.allow_mock_fallback,
+        )
+        if not settings.allow_mock_fallback:
+            release_model_tokens(reservation)
+            raise
         agent_policy_engine.authorize_provider(execution, "mock_llm")
         try:
             fallback = llm_provider_registry.create("mock_llm").complete(

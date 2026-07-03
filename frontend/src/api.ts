@@ -2,6 +2,7 @@ import type {
   AgentModelRoute,
   AgentRoutingCatalog,
   AgentGovernanceCatalog,
+  AgentInvocation,
   ApprovalStatus,
   ArtifactRevision,
   EmbeddingProvider,
@@ -30,6 +31,38 @@ import type {
 } from "./types";
 import { API_ROOT } from "./config";
 
+// W12: every request gets a wall-clock timeout via AbortController. Without
+// this, a backend that accepts the socket but never responds leaves the UI
+// spinning on `busy` forever with no error. On timeout we surface a clear,
+// user-facing message instead of hanging.
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+export class RequestTimeoutError extends Error {
+  constructor(url: string) {
+    super(`Request timed out: ${url}`);
+    this.name = "RequestTimeoutError";
+  }
+}
+
+async function apiFetch(
+  input: string,
+  init: RequestInit = {},
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (reason) {
+    if (reason instanceof DOMException && reason.name === "AbortError") {
+      throw new RequestTimeoutError(input);
+    }
+    throw reason;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 type IntelligenceConfigPayload = {
   llm_provider?: string;
   embedding_provider?: string;
@@ -48,52 +81,59 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 export async function getProviderCatalog(): Promise<ProviderCatalog> {
-  const response = await fetch(`${API_ROOT}/integrations/providers?include_external=true`);
+  const response = await apiFetch(`${API_ROOT}/integrations/providers?include_external=true`);
   return parseResponse<ProviderCatalog>(response);
 }
 
 export async function getLLMProviders(): Promise<LLMProvider[]> {
-  const response = await fetch(`${API_ROOT}/intelligence/llm-providers`);
+  const response = await apiFetch(`${API_ROOT}/intelligence/llm-providers`);
   return parseResponse<LLMProvider[]>(response);
 }
 
 export async function getEmbeddingProviders(): Promise<EmbeddingProvider[]> {
-  const response = await fetch(`${API_ROOT}/intelligence/embedding-providers`);
+  const response = await apiFetch(`${API_ROOT}/intelligence/embedding-providers`);
   return parseResponse<EmbeddingProvider[]>(response);
 }
 
 export async function getAgentModelProfiles(): Promise<AgentRoutingCatalog> {
-  const response = await fetch(`${API_ROOT}/intelligence/agent-model-profiles`);
+  const response = await apiFetch(`${API_ROOT}/intelligence/agent-model-profiles`);
   return parseResponse<AgentRoutingCatalog>(response);
 }
 
 export async function getAgentGovernanceCatalog(): Promise<AgentGovernanceCatalog> {
-  const response = await fetch(`${API_ROOT}/governance/agents`);
+  const response = await apiFetch(`${API_ROOT}/governance/agents`);
   return parseResponse<AgentGovernanceCatalog>(response);
 }
 
 export async function getObservabilitySummary(): Promise<ObservabilitySummary> {
-  const response = await fetch(`${API_ROOT}/observability/summary`);
+  const response = await apiFetch(`${API_ROOT}/observability/summary`);
   return parseResponse<ObservabilitySummary>(response);
 }
 
+export async function getAgentInvocations(limit = 12): Promise<AgentInvocation[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const response = await apiFetch(`${API_ROOT}/observability/agent-invocations?${params.toString()}`);
+  const body = await parseResponse<{ invocations: AgentInvocation[] }>(response);
+  return body.invocations;
+}
+
 export async function getTokenBudgetStatus(): Promise<TokenBudgetStatus> {
-  const response = await fetch(`${API_ROOT}/observability/token-budget`);
+  const response = await apiFetch(`${API_ROOT}/observability/token-budget`);
   return parseResponse<TokenBudgetStatus>(response);
 }
 
 export async function getOperationalHealth(): Promise<OperationalHealth> {
-  const response = await fetch(`${API_ROOT}/observability/health`);
+  const response = await apiFetch(`${API_ROOT}/observability/health`);
   return parseResponse<OperationalHealth>(response);
 }
 
 export async function getOllamaHealth(): Promise<OllamaHealth> {
-  const response = await fetch(`${API_ROOT}/intelligence/ollama/health`);
+  const response = await apiFetch(`${API_ROOT}/intelligence/ollama/health`);
   return parseResponse<OllamaHealth>(response);
 }
 
 export async function getOllamaProfiles(): Promise<OllamaModelProfiles> {
-  const response = await fetch(`${API_ROOT}/intelligence/ollama/profiles`);
+  const response = await apiFetch(`${API_ROOT}/intelligence/ollama/profiles`);
   return parseResponse<OllamaModelProfiles>(response);
 }
 
@@ -101,7 +141,7 @@ export async function smokeTestOllamaProfiles(payload: {
   roles?: string[] | null;
   prompt?: string;
 } = {}): Promise<OllamaSmokeTestResult[]> {
-  const response = await fetch(`${API_ROOT}/intelligence/ollama/profiles/smoke-test`, {
+  const response = await apiFetch(`${API_ROOT}/intelligence/ollama/profiles/smoke-test`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -126,7 +166,7 @@ export async function listDemoTickets(payload: {
   if (payload.status) params.set("status", payload.status);
   if (payload.assignee) params.set("assignee", payload.assignee);
   if (payload.label) params.set("label", payload.label);
-  const response = await fetch(`${API_ROOT}/tickets/demo${params.toString() ? `?${params}` : ""}`);
+  const response = await apiFetch(`${API_ROOT}/tickets/demo${params.toString() ? `?${params}` : ""}`);
   const body = await parseResponse<{ tickets: TicketData[] }>(response);
   return body.tickets;
 }
@@ -137,7 +177,7 @@ export async function createWorkflowSession(payload: {
   mode: WorkflowMode;
   intelligence?: IntelligenceConfigPayload;
 }): Promise<TestContext> {
-  const response = await fetch(`${API_ROOT}/workflows/sessions`, {
+  const response = await apiFetch(`${API_ROOT}/workflows/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
@@ -150,7 +190,7 @@ export async function resumeWorkflowSession(payload: {
   contextId: string;
   actor: string;
 }): Promise<TestContext> {
-  const response = await fetch(`${API_ROOT}/workflows/${payload.contextId}/resume`, {
+  const response = await apiFetch(`${API_ROOT}/workflows/${payload.contextId}/resume`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ actor: payload.actor })
@@ -163,7 +203,7 @@ export async function runNextWorkflowStage(payload: {
   contextId: string;
   actor: string;
 }): Promise<TestContext> {
-  const response = await fetch(`${API_ROOT}/workflows/${payload.contextId}/next`, {
+  const response = await apiFetch(`${API_ROOT}/workflows/${payload.contextId}/next`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ actor: payload.actor })
@@ -176,7 +216,7 @@ export async function pauseWorkflowSession(payload: {
   contextId: string;
   actor: string;
 }): Promise<TestContext> {
-  const response = await fetch(`${API_ROOT}/workflows/${payload.contextId}/pause`, {
+  const response = await apiFetch(`${API_ROOT}/workflows/${payload.contextId}/pause`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ actor: payload.actor })
@@ -192,7 +232,7 @@ export async function reviewWorkflowStage(payload: {
   reviewedBy: string;
   comment?: string;
 }): Promise<TestContext> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_ROOT}/workflows/${payload.contextId}/stages/${payload.stage}/review`,
     {
       method: "POST",
@@ -214,7 +254,7 @@ export async function regenerateWorkflowStage(payload: {
   actor: string;
   comment: string;
 }): Promise<TestContext> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_ROOT}/workflows/${payload.contextId}/stages/${payload.stage}/regenerate`,
     {
       method: "POST",
@@ -238,10 +278,46 @@ export async function listWorkflowTimeline(
     after_sequence: String(afterSequence),
     limit: String(limit)
   });
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_ROOT}/workflows/${contextId}/timeline?${params.toString()}`
   );
   return parseResponse<{ events: WorkflowEvent[]; next_sequence: number }>(response);
+}
+
+/**
+ * Subscribe to the live workflow trace via Server-Sent Events (G2 / Part B2).
+ *
+ * Returns an unsubscribe function. Each parsed WorkflowEvent is delivered to
+ * `onEvent`. The browser's EventSource transparently reconnects and resumes
+ * from the last sequence (the server bounds each connection and emits
+ * Last-Event-ID), so callers see one continuous live stream. Returns null when
+ * EventSource is unavailable so the caller can fall back to polling.
+ */
+export function subscribeWorkflowTimeline(
+  contextId: string,
+  afterSequence: number,
+  onEvent: (event: WorkflowEvent) => void,
+  onError?: () => void
+): (() => void) | null {
+  if (typeof EventSource === "undefined") return null;
+  const params = new URLSearchParams({ after_sequence: String(afterSequence) });
+  const source = new EventSource(
+    `${API_ROOT}/workflows/${contextId}/timeline/stream?${params.toString()}`
+  );
+  source.addEventListener("workflow_event", (evt) => {
+    try {
+      onEvent(JSON.parse((evt as MessageEvent).data) as WorkflowEvent);
+    } catch {
+      /* ignore malformed frame; the next poll/stream cycle recovers */
+    }
+  });
+  source.addEventListener("stream_end", () => source.close());
+  source.onerror = () => {
+    // EventSource auto-reconnects on transient errors; surface a hook so the
+    // caller can show a "live updates paused" badge / fall back to polling.
+    if (onError) onError();
+  };
+  return () => source.close();
 }
 
 export async function sendWorkflowMessage(payload: {
@@ -249,7 +325,7 @@ export async function sendWorkflowMessage(payload: {
   actor: string;
   message: string;
 }): Promise<WorkflowEvent> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_ROOT}/workflows/${payload.contextId}/timeline/messages`,
     {
       method: "POST",
@@ -268,7 +344,7 @@ export async function editAutomationArtifact(payload: {
   content: string;
   comment?: string;
 }): Promise<{ context: TestContext; revision: ArtifactRevision }> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_ROOT}/workflows/${payload.contextId}/artifacts/${payload.testCaseId}`,
     {
       method: "PUT",
@@ -287,7 +363,7 @@ export async function listArtifactRevisions(
   contextId: string,
   testCaseId: string
 ): Promise<ArtifactRevision[]> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_ROOT}/workflows/${contextId}/artifacts/${testCaseId}/revisions`
   );
   const body = await parseResponse<{ revisions: ArtifactRevision[] }>(response);
@@ -295,7 +371,7 @@ export async function listArtifactRevisions(
 }
 
 export async function getWorkflow(contextId: string): Promise<TestContext> {
-  const response = await fetch(`${API_ROOT}/workflows/${contextId}`);
+  const response = await apiFetch(`${API_ROOT}/workflows/${contextId}`);
   const body = await parseResponse<{ context: TestContext }>(response);
   return body.context;
 }
@@ -303,7 +379,7 @@ export async function getWorkflow(contextId: string): Promise<TestContext> {
 export async function getReportPackageManifest(
   contextId: string
 ): Promise<ReportPackageManifest> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_ROOT}/workflows/${encodeURIComponent(contextId)}/package/manifest`
   );
   return parseResponse<ReportPackageManifest>(response);
@@ -316,7 +392,7 @@ export async function downloadWorkflowReport(
   const suffix = format === "package"
     ? "package.zip"
     : `package/${format}.md`;
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_ROOT}/workflows/${encodeURIComponent(contextId)}/${suffix}`
   );
   if (!response.ok) {
@@ -346,7 +422,7 @@ export async function listWorkflows(payload: {
   if (payload.query) params.set("q", payload.query);
   if (payload.approvalStatus) params.set("approval_status", payload.approvalStatus);
   if (payload.limit) params.set("limit", String(payload.limit));
-  const response = await fetch(`${API_ROOT}/workflows${params.toString() ? `?${params}` : ""}`);
+  const response = await apiFetch(`${API_ROOT}/workflows${params.toString() ? `?${params}` : ""}`);
   const body = await parseResponse<{ workflows: WorkflowSummary[] }>(response);
   return body.workflows;
 }
@@ -357,7 +433,7 @@ export async function decideApproval(payload: {
   reviewed_by: string;
   comment?: string;
 }): Promise<TestContext> {
-  const response = await fetch(`${API_ROOT}/workflows/${payload.contextId}/approval`, {
+  const response = await apiFetch(`${API_ROOT}/workflows/${payload.contextId}/approval`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -374,7 +450,7 @@ export async function executeWorkflow(payload: {
   contextId: string;
   run_by: string;
 }): Promise<TestContext> {
-  const response = await fetch(`${API_ROOT}/workflows/${payload.contextId}/execute`, {
+  const response = await apiFetch(`${API_ROOT}/workflows/${payload.contextId}/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ run_by: payload.run_by })
@@ -392,14 +468,14 @@ export async function listExecutionRuns(payload: {
   if (payload.contextId) params.set("context_id", payload.contextId);
   if (payload.status) params.set("status", payload.status);
   if (payload.limit) params.set("limit", String(payload.limit));
-  const response = await fetch(`${API_ROOT}/results${params.toString() ? `?${params}` : ""}`);
+  const response = await apiFetch(`${API_ROOT}/results${params.toString() ? `?${params}` : ""}`);
   const body = await parseResponse<{ runs: ExecutionRunRecord[] }>(response);
   return body.runs;
 }
 
 export async function listExecutionEvents(runId: string, limit = 200): Promise<ExecutionEvent[]> {
   const params = new URLSearchParams({ limit: String(limit) });
-  const response = await fetch(`${API_ROOT}/results/${encodeURIComponent(runId)}/logs?${params.toString()}`);
+  const response = await apiFetch(`${API_ROOT}/results/${encodeURIComponent(runId)}/logs?${params.toString()}`);
   const body = await parseResponse<{ events: ExecutionEvent[] }>(response);
   return body.events;
 }
@@ -407,7 +483,7 @@ export async function listExecutionEvents(runId: string, limit = 200): Promise<E
 export async function getAutomationFile(ticketId: string, robotFile: string): Promise<string> {
   const fileName = robotFile.split("/").pop();
   if (!fileName) throw new Error("Robot file path is empty");
-  const response = await fetch(`${API_ROOT}/automation/files/${encodeURIComponent(ticketId)}/${encodeURIComponent(fileName)}`);
+  const response = await apiFetch(`${API_ROOT}/automation/files/${encodeURIComponent(ticketId)}/${encodeURIComponent(fileName)}`);
   const body = await parseResponse<{ content: string }>(response);
   return body.content;
 }
@@ -419,7 +495,7 @@ export async function createChatSession(payload: {
   ticket_id?: string | null;
   title?: string | null;
 }): Promise<ChatSession> {
-  const response = await fetch(`${API_ROOT}/chat/sessions`, {
+  const response = await apiFetch(`${API_ROOT}/chat/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
@@ -430,7 +506,7 @@ export async function createChatSession(payload: {
 
 export async function listChatSessions(limit = 20): Promise<ChatSession[]> {
   const params = new URLSearchParams({ limit: String(limit) });
-  const response = await fetch(`${API_ROOT}/chat/sessions?${params.toString()}`);
+  const response = await apiFetch(`${API_ROOT}/chat/sessions?${params.toString()}`);
   const body = await parseResponse<{ sessions: ChatSession[] }>(response);
   return body.sessions;
 }
@@ -442,7 +518,7 @@ export async function sendChatMessage(payload: {
   context_id?: string | null;
   ticket_id?: string | null;
 }): Promise<{ session: ChatSession; message: ChatMessage }> {
-  const response = await fetch(`${API_ROOT}/chat/sessions/${payload.sessionId}/messages`, {
+  const response = await apiFetch(`${API_ROOT}/chat/sessions/${payload.sessionId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -460,7 +536,7 @@ export async function confirmChatAction(payload: {
   actionId: string;
   actor: string;
 }): Promise<{ session: ChatSession; action: ChatAction; message: ChatMessage }> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_ROOT}/chat/sessions/${payload.sessionId}/actions/${payload.actionId}/confirm`,
     {
       method: "POST",
@@ -476,7 +552,7 @@ export async function cancelChatAction(payload: {
   actionId: string;
   actor: string;
 }): Promise<{ session: ChatSession; action: ChatAction; message: ChatMessage }> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_ROOT}/chat/sessions/${payload.sessionId}/actions/${payload.actionId}/cancel`,
     {
       method: "POST",

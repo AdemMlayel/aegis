@@ -24,6 +24,7 @@ from backend.prompts import prompt_registry
 from backend.reference_corpus.profiles import load_report_profile
 from backend.intelligence.structured_outputs import (
     ReportLLMOutput,
+    build_json_contract,
     parse_structured_llm_response,
 )
 from backend.tools.base import BaseTool, tool_registry
@@ -120,7 +121,6 @@ def generate_report(
     model_confidence: float | None = None
     reviewer_feedback: list[str] = []
     report_profile = load_report_profile()
-    profile_summary = report_profile.get("summary", {}) if isinstance(report_profile, dict) else {}
     profile_sections = []
     if isinstance(report_profile.get("profile"), dict):
         raw_sections = report_profile["profile"].get("preferred_sections", [])
@@ -137,6 +137,7 @@ def generate_report(
             execution_status=execution_status,
             knowledge_refs=knowledge_refs,
             memory_refs=memory_refs,
+            json_contract=build_json_contract(ReportLLMOutput),
         )
         reviewer_feedback = consume_stage_feedback(context, "report")
         rendered_prompt = append_feedback_to_prompt(
@@ -168,6 +169,40 @@ def generate_report(
         if "report_generation_v1@1.0.0" not in prompt_refs:
             prompt_refs.append("report_generation_v1@1.0.0")
 
+    # Consume the investigation's WEIGHTED evidence score (Layer 7) instead of a
+    # hardcoded literal. When an investigation produced findings, the report's
+    # confidence reflects the traceable evidence score; the top signals and score
+    # are surfaced in the summary so the number is auditable in the report itself.
+    investigation_evidence_line = ""
+    investigation_confidence: float | None = None
+    if investigation is not None and investigation.status == "completed":
+        if investigation.findings:
+            investigation_confidence = round(investigation.evidence_score / 100.0, 4)
+            top_signals = ", ".join(
+                f"{hit.signal}({hit.weight})" for hit in investigation.matched_signals[:5]
+            )
+            investigation_evidence_line = (
+                f" Investigation weighted-evidence score "
+                f"{investigation.evidence_score:.1f}/100"
+                + (f" (signals: {top_signals})." if top_signals else ".")
+            )
+        else:
+            investigation_evidence_line = (
+                " Investigation found no failed cases (clean execution evidence)."
+            )
+
+    # Report confidence precedence: a grounded model figure wins; else the
+    # investigation evidence score (when findings exist) carries forward; else the
+    # ref-grounded heuristic base. Each branch is explicit — no silent literal.
+    if model_confidence is not None:
+        report_confidence = model_confidence
+    elif investigation_confidence is not None:
+        report_confidence = investigation_confidence
+    elif knowledge_refs or memory_refs:
+        report_confidence = 0.82
+    else:
+        report_confidence = 0.68
+
     return ReportBlock(
         summary=model_summary or (
             f"Generated {len(test_cases)} starter test cases and "
@@ -178,6 +213,7 @@ def generate_report(
             f"execution status is {execution_status}; "
             f"investigation status is {investigation_status}; "
             f"memory status is {memory_status}."
+            f"{investigation_evidence_line}"
         ),
         total_test_cases=len(test_cases),
         highest_risk=coverage_plan.risk_level,
@@ -200,5 +236,5 @@ def generate_report(
         knowledge_refs_used=knowledge_refs,
         memory_refs_used=memory_refs,
         prompt_versions_used=prompt_refs,
-        confidence=model_confidence if model_confidence is not None else 0.82 if knowledge_refs or memory_refs else 0.68,
+        confidence=report_confidence,
     )

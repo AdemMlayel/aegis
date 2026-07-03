@@ -305,6 +305,12 @@ CREATE INDEX IF NOT EXISTS idx_request_observations_organization
 """
 
 
+WORKFLOW_CONTEXT_ROW_VERSION_SCHEMA_SQL = """
+ALTER TABLE workflow_contexts
+    ADD COLUMN row_version INTEGER NOT NULL DEFAULT 1;
+"""
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(
         version=1,
@@ -335,6 +341,11 @@ MIGRATIONS: tuple[Migration, ...] = (
         version=6,
         name="request_observation_identity",
         sql=REQUEST_OBSERVATION_ID_SCHEMA_SQL,
+    ),
+    Migration(
+        version=7,
+        name="workflow_context_row_version",
+        sql=WORKFLOW_CONTEXT_ROW_VERSION_SCHEMA_SQL,
     ),
 )
 

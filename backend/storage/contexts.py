@@ -8,6 +8,25 @@ from backend.graph.state import TestContext
 from backend.storage.database import SQLITE_DB_PATH, connect, initialize_database
 
 
+class OptimisticConcurrencyError(RuntimeError):
+    """Raised when a context save loses an optimistic-concurrency check (W1).
+
+    A context loaded at ``row_version = N`` is saved back, but the row has since
+    advanced past ``N`` -- another writer (e.g. a concurrent resume + approve)
+    committed in between. Surfacing this instead of silently overwriting
+    prevents last-writer-wins data loss on a shared ``context_id``.
+    """
+
+    def __init__(self, context_id: str, expected: int, actual: int | None) -> None:
+        self.context_id = context_id
+        self.expected = expected
+        self.actual = actual
+        super().__init__(
+            f"Concurrent modification of context '{context_id}': expected "
+            f"row_version {expected}, found {actual}. Reload and retry."
+        )
+
+
 def _workflow_search_blob(context: TestContext) -> str:
     ticket = context.ticket
     return " ".join(
@@ -50,77 +69,101 @@ def _context_row_values(context: TestContext) -> dict[str, object]:
     }
 
 
+# Column bookkeeping shared by the insert/upsert and conditional-update paths so
+# the two SQL statements never drift. ``row_version`` is handled separately.
+_CONTEXT_FIELD_NAMES: tuple[str, ...] = (
+    "context_id",
+    "payload_json",
+    "ticket_id",
+    "ticket_title",
+    "workflow_status",
+    "approval_status",
+    "created_by",
+    "created_at",
+    "updated_at",
+    "test_count",
+    "automation_revision",
+    "highest_risk",
+    "git_status",
+    "execution_status",
+    "execution_passed",
+    "execution_failed",
+    "execution_skipped",
+    "executed_at",
+    "search_blob",
+)
+_CONTEXT_COLUMNS = ",\n                ".join(_CONTEXT_FIELD_NAMES)
+_CONTEXT_VALUE_PLACEHOLDERS = ",\n                ".join(
+    f":{name}" for name in _CONTEXT_FIELD_NAMES
+)
+# For ON CONFLICT ... DO UPDATE (context_id is the conflict key, never updated).
+_CONTEXT_UPDATE_ASSIGNMENTS = ",\n                ".join(
+    f"{name} = excluded.{name}"
+    for name in _CONTEXT_FIELD_NAMES
+    if name != "context_id"
+)
+# For a direct UPDATE ... WHERE (named params bound from the values dict).
+_CONTEXT_UPDATE_ASSIGNMENTS_SELF = ",\n            ".join(
+    f"{name} = :{name}"
+    for name in _CONTEXT_FIELD_NAMES
+    if name != "context_id"
+)
+
+
 def _save_context_row(
     connection: sqlite3.Connection,
     context: TestContext,
 ) -> None:
-    values = _context_row_values(context)
-    connection.execute(
-        """
-        INSERT INTO workflow_contexts (
-            context_id,
-            payload_json,
-            ticket_id,
-            ticket_title,
-            workflow_status,
-            approval_status,
-            created_by,
-            created_at,
-            updated_at,
-            test_count,
-            automation_revision,
-            highest_risk,
-            git_status,
-            execution_status,
-            execution_passed,
-            execution_failed,
-            execution_skipped,
-            executed_at,
-            search_blob
+    existing = connection.execute(
+        "SELECT row_version FROM workflow_contexts WHERE context_id = ?",
+        (context.context_id,),
+    ).fetchone()
+
+    if existing is None:
+        # First write for this context_id: plain insert at row_version 1.
+        context.row_version = 1
+        values = _context_row_values(context)
+        values["row_version"] = 1
+        connection.execute(
+            f"""
+            INSERT INTO workflow_contexts (
+                {_CONTEXT_COLUMNS}, row_version
+            )
+            VALUES (
+                {_CONTEXT_VALUE_PLACEHOLDERS}, :row_version
+            )
+            """,
+            values,
         )
-        VALUES (
-            :context_id,
-            :payload_json,
-            :ticket_id,
-            :ticket_title,
-            :workflow_status,
-            :approval_status,
-            :created_by,
-            :created_at,
-            :updated_at,
-            :test_count,
-            :automation_revision,
-            :highest_risk,
-            :git_status,
-            :execution_status,
-            :execution_passed,
-            :execution_failed,
-            :execution_skipped,
-            :executed_at,
-            :search_blob
-        )
-        ON CONFLICT(context_id) DO UPDATE SET
-            payload_json = excluded.payload_json,
-            ticket_id = excluded.ticket_id,
-            ticket_title = excluded.ticket_title,
-            workflow_status = excluded.workflow_status,
-            approval_status = excluded.approval_status,
-            created_by = excluded.created_by,
-            created_at = excluded.created_at,
-            updated_at = excluded.updated_at,
-            test_count = excluded.test_count,
-            automation_revision = excluded.automation_revision,
-            highest_risk = excluded.highest_risk,
-            git_status = excluded.git_status,
-            execution_status = excluded.execution_status,
-            execution_passed = excluded.execution_passed,
-            execution_failed = excluded.execution_failed,
-            execution_skipped = excluded.execution_skipped,
-            executed_at = excluded.executed_at,
-            search_blob = excluded.search_blob
+        return
+
+    # The row exists. ``context.row_version`` is the version this in-memory copy
+    # believes it holds; do a conditional UPDATE and bump. If the row has since
+    # advanced (a concurrent writer committed between our load and this save),
+    # the WHERE clause matches nothing and we surface the conflict (W1) rather
+    # than silently overwriting the other writer's changes.
+    expected_version = context.row_version
+    next_version = expected_version + 1
+    context.row_version = next_version
+    values = _context_row_values(context)  # payload reflects the bumped version
+    values["expected_version"] = expected_version
+    values["next_version"] = next_version
+    cursor = connection.execute(
+        f"""
+        UPDATE workflow_contexts SET
+            {_CONTEXT_UPDATE_ASSIGNMENTS_SELF},
+            row_version = :next_version
+        WHERE context_id = :context_id AND row_version = :expected_version
         """,
         values,
     )
+    if cursor.rowcount == 0:
+        context.row_version = expected_version  # roll back the in-memory bump
+        raise OptimisticConcurrencyError(
+            context.context_id,
+            expected_version,
+            existing["row_version"],
+        )
 
 
 _legacy_contexts_migrated = False
@@ -161,14 +204,19 @@ def load_context(context_id: str) -> TestContext | None:
     _migrate_legacy_context_files()
     with connect() as connection:
         row = connection.execute(
-            "SELECT payload_json FROM workflow_contexts WHERE context_id = ?",
+            "SELECT payload_json, row_version FROM workflow_contexts "
+            "WHERE context_id = ?",
             (context_id,),
         ).fetchone()
     if row is None:
         return None
-    return _normalize_legacy_workflow_control(
+    context = _normalize_legacy_workflow_control(
         TestContext.model_validate_json(row["payload_json"])
     )
+    # The DB column is the authoritative concurrency token; reconcile the
+    # in-memory copy to it in case the persisted payload ever lags (W1).
+    context.row_version = row["row_version"]
+    return context
 
 
 def list_contexts() -> list[TestContext]:
@@ -177,7 +225,7 @@ def list_contexts() -> list[TestContext]:
     with connect() as connection:
         rows = connection.execute(
             """
-            SELECT payload_json
+            SELECT payload_json, row_version
             FROM workflow_contexts
             ORDER BY updated_at DESC
             """
@@ -185,13 +233,13 @@ def list_contexts() -> list[TestContext]:
 
     for row in rows:
         try:
-            contexts.append(
-                _normalize_legacy_workflow_control(
-                    TestContext.model_validate_json(row["payload_json"])
-                )
+            context = _normalize_legacy_workflow_control(
+                TestContext.model_validate_json(row["payload_json"])
             )
         except ValueError:
             continue
+        context.row_version = row["row_version"]
+        contexts.append(context)
     return contexts
 
 

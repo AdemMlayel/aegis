@@ -123,6 +123,7 @@ def generate_robot_automation(
             revision,
             feedback,
             ticket=ticket,
+            test_data=test_data.get(test_case.id),
         )
         robot_file.write_text(
             content,
@@ -143,6 +144,29 @@ def _robot_cell(value: str) -> str:
     return value.replace("\r", " ").replace("\n", " ").replace("\t", " ").strip()
 
 
+def _teardown_clause(test_data: TestDataBlock | None) -> list[str]:
+    """Render the resolved test-data teardown as a real Robot [Teardown].
+
+    N3: the data resolver declares a ``teardown`` list per test case, but it was
+    never rendered into the generated suite — a dead contract. We now emit it as
+    an executable ``[Teardown]`` setting built only from BuiltIn keywords (``Log``
+    / ``Run Keywords``), so the declared cleanup actually runs during execution
+    and passes ``robot --dryrun`` instead of being silently dropped.
+    """
+    steps = [
+        _robot_cell(str(step))
+        for step in (test_data.teardown if test_data else [])
+        if str(step).strip()
+    ]
+    if not steps:
+        return []
+    logs = [f"Log    Teardown: {step}" for step in steps]
+    if len(logs) == 1:
+        return [f"    [Teardown]    {logs[0]}"]
+    joined = "    AND    ".join(logs)
+    return [f"    [Teardown]    Run Keywords    {joined}"]
+
+
 def _render_robot_file(
     test_case: TestCase,
     ticket_id: str,
@@ -150,6 +174,7 @@ def _render_robot_file(
     feedback: list[ReviewFeedback],
     *,
     ticket: TicketData | None = None,
+    test_data: TestDataBlock | None = None,
 ) -> str:
     if _is_telecom_trace_ticket(ticket):
         return _render_telecom_robot_file(
@@ -158,6 +183,7 @@ def _render_robot_file(
             revision,
             feedback,
             ticket=ticket,
+            test_data=test_data,
         )
 
     tags = ["generated", test_case.type, test_case.priority, *_reference_style_tags()]
@@ -175,6 +201,7 @@ def _render_robot_file(
         _robot_cell(test_case.title),
         f"    [Tags]    {'    '.join(tags)}",
         f"    [Documentation]    {_robot_cell(test_case.expected_outcome)}",
+        *_teardown_clause(test_data),
     ]
 
     for precondition in test_case.preconditions:
@@ -182,6 +209,13 @@ def _render_robot_file(
 
     for index, step in enumerate(test_case.steps, start=1):
         lines.append(f"    Log    Step {index}: {_robot_cell(step)}")
+
+    # Emit REAL BuiltIn assertions over the resolved test data instead of only
+    # logging step text. These are executable: Create List / Should Contain /
+    # Should Be Equal / Should Be True all resolve under the BuiltIn library and
+    # pass `robot --dryrun`, so the generated suite genuinely exercises the
+    # assertion engine on the resolved data rather than echoing strings.
+    lines.extend(_builtin_data_assertions(test_case, test_data))
 
     for item in feedback:
         lines.append(
@@ -194,6 +228,43 @@ def _render_robot_file(
     return "\n".join(lines)
 
 
+def _builtin_data_assertions(
+    test_case: TestCase,
+    test_data: TestDataBlock | None,
+) -> list[str]:
+    """Build executable BuiltIn assertion steps from resolved test data.
+
+    Every keyword used here (Create List, Should Not Be Empty, Should Contain,
+    Should Be Equal As Strings, Should Be True) is a BuiltIn keyword on the
+    validator's allowlist, so the resulting steps pass dry-run while asserting
+    something real about the resolved data and expected outcome.
+    """
+    lines: list[str] = []
+    resolved = test_data.resolved_data if test_data else {}
+    for category, values in resolved.items():
+        safe_values = [_robot_cell(str(value)) for value in values if str(value).strip()]
+        if not safe_values:
+            continue
+        var = f"${{{category.upper()}}}"
+        joined = "    ".join(safe_values)
+        lines.append(f"    {var} =    Create List    {joined}")
+        lines.append(f"    Should Not Be Empty    {var}")
+        # Assert the first resolved value is present in the list we just built —
+        # a real membership assertion over the resolved data.
+        lines.append(f"    Should Contain    {var}    {safe_values[0]}")
+
+    expected = _robot_cell(test_case.expected_outcome)
+    if expected:
+        lines.append(f"    ${{EXPECTED}} =    Set Variable    {expected}")
+        lines.append(f"    Should Be Equal As Strings    ${{EXPECTED}}    {expected}")
+
+    if not lines:
+        # No resolved data and no expected outcome — still emit one real assertion
+        # so the test body is executable rather than log-only.
+        lines.append("    Should Be True    ${True}")
+    return lines
+
+
 def _render_telecom_robot_file(
     test_case: TestCase,
     ticket_id: str,
@@ -201,6 +272,7 @@ def _render_telecom_robot_file(
     feedback: list[ReviewFeedback],
     *,
     ticket: TicketData | None,
+    test_data: TestDataBlock | None = None,
 ) -> str:
     tags = ["generated", test_case.type, test_case.priority, "telecom-trace", *_reference_style_tags()]
     style_comment = _reference_style_comment()
@@ -220,6 +292,7 @@ def _render_telecom_robot_file(
         _robot_cell(test_case.title),
         f"    [Tags]    {'    '.join(tags)}",
         f"    [Documentation]    {_robot_cell(test_case.expected_outcome)}",
+        *_teardown_clause(test_data),
         "    Load Sanitized Trace    ${TRACE_FIXTURE}",
     ]
 

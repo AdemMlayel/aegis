@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-28T21:24:11.057683+00:00",
+  "generated_at": "1970-01-01T00:00:00+00:00",
   "generation_guidance": [
     "Prefer known project keywords from the normalized keyword registry.",
     "Preserve readable Robot sections: Settings, Variables when needed, Test Cases.",

@@ -32,6 +32,41 @@ def test_chat_session_can_answer_system_questions() -> None:
     assert message["actions"] == []
 
 
+def test_chat_session_explains_system_knowledge_topics() -> None:
+    client = TestClient(app)
+    created = client.post("/api/v1/chat/sessions", json={"created_by": "chat-tester"})
+    session_id = created.json()["session"]["session_id"]
+
+    cases = [
+        ("what are the workflow stages", "eight ordered stages"),
+        ("what agents are there", "requirement_agent"),
+        ("how does governance work", "tool registry"),
+        ("explain the architecture", "React dashboard"),
+    ]
+    for message, expected_fragment in cases:
+        response = client.post(
+            f"/api/v1/chat/sessions/{session_id}/messages",
+            json={"actor": "chat-tester", "message": message},
+        )
+        assert response.status_code == 200
+        body = response.json()["message"]
+        assert body["intent"] == "system_knowledge", message
+        assert expected_fragment in body["content"], message
+        # System-knowledge answers are informational only — never an action.
+        assert body["actions"] == [], message
+
+
+def test_system_knowledge_intent_does_not_shadow_operational_intents() -> None:
+    """Adding conceptual answers must not break action routing."""
+    from backend.chat.intent_classifier import classify_chat_intent
+
+    assert classify_chat_intent("start analysis").intent == "workflow_start"
+    assert classify_chat_intent("where are we").intent == "workflow_status"
+    assert classify_chat_intent("run next stage").intent == "workflow_step"
+    assert classify_chat_intent("approve").intent == "approval_request"
+    assert classify_chat_intent("execute the tests").intent == "execution_request"
+
+
 def test_chat_workflow_start_action_requires_confirmation_and_creates_context() -> None:
     client = TestClient(app)
 

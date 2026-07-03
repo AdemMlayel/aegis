@@ -7,11 +7,13 @@ from functools import wraps
 from time import perf_counter
 from typing import ClassVar
 
+from backend.config.settings import settings
 from backend.governance.context import (
     agent_execution_scope,
     current_request_context,
 )
 from backend.governance.policy import (
+    AgentPolicyDenied,
     RiskTier,
     agent_policy_engine,
 )
@@ -106,6 +108,20 @@ class AgentRegistry:
             ) -> TestContext:
                 started = perf_counter()
                 request_context = current_request_context()
+                # W7: enforce the previously-inert require_human_approval flag
+                # when the operator opts in. An approval-required agent may then
+                # only run once the workflow context carries a granted approval.
+                if (
+                    settings.enforce_agent_human_approval
+                    and spec.require_human_approval
+                    and (context.approval is None or context.approval.status != "approved")
+                ):
+                    raise AgentPolicyDenied(
+                        f"Agent '{normalized_name}' requires human approval; "
+                        "the workflow context has no granted approval "
+                        f"(status="
+                        f"{context.approval.status if context.approval else 'none'})"
+                    )
                 with agent_execution_scope(
                     agent_id=identity.agent_id,
                     agent_name=normalized_name,
@@ -181,7 +197,10 @@ class AgentRegistry:
         try:
             return self._agents[normalized_name]
         except KeyError as exc:
-            raise KeyError(f"Agent '{normalized_name}' is not registered") from exc
+            # N4: raise the typed registration error, not a bare KeyError.
+            raise AgentRegistrationError(
+                f"Agent '{normalized_name}' is not registered"
+            ) from exc
 
     def create(self, name: str, **kwargs: object) -> BaseAgent:
         return self.get(name)(**kwargs)

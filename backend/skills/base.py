@@ -75,7 +75,10 @@ class SkillRegistry:
         try:
             return self._skills[normalized_name]
         except KeyError as exc:
-            raise KeyError(f"Skill '{normalized_name}' is not registered") from exc
+            # N4: raise the typed registration error, not a bare KeyError.
+            raise SkillRegistrationError(
+                f"Skill '{normalized_name}' is not registered"
+            ) from exc
 
     def create(self, name: str, **kwargs: object) -> BaseSkill:
         skill = self.get(name)(**kwargs)

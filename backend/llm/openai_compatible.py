@@ -32,6 +32,11 @@ class OpenAICompatibleLLMProvider(BaseLLMProvider):
                 "and AEGISQA_OPENAI_COMPATIBLE_API_KEY, or use a configured Ollama provider."
             )
         model = model_override or settings.openai_compatible_chat_model
+        max_output_tokens = self._clamp_output_tokens(
+            max_output_tokens=max_output_tokens,
+            system_instruction=system_instruction,
+            rendered_prompt=rendered_prompt,
+        )
         payload = {
             "model": model,
             "messages": [
@@ -81,3 +86,33 @@ class OpenAICompatibleLLMProvider(BaseLLMProvider):
                 or input_tokens + output_tokens
             ),
         )
+
+    @staticmethod
+    def _clamp_output_tokens(
+        *,
+        max_output_tokens: int | None,
+        system_instruction: str | None,
+        rendered_prompt: str,
+    ) -> int | None:
+        """Clamp requested output tokens to fit the served model's context window.
+
+        Servers like vLLM reject a request when ``prompt_tokens + max_tokens``
+        exceeds ``max_model_len`` (HTTP 400), which would silently degrade the
+        whole workflow to the mock provider. When a context window is configured,
+        we leave room for the estimated prompt and never request more output than
+        the window allows, down to a configured minimum.
+        """
+        window = settings.openai_compatible_context_window
+        if window <= 0:
+            return max_output_tokens
+
+        # Rough token estimate (~4 chars/token), with headroom for chat framing.
+        prompt_chars = len(system_instruction or "") + len(rendered_prompt)
+        estimated_prompt_tokens = (prompt_chars // 4) + 32
+        budget = window - estimated_prompt_tokens
+        floor = settings.openai_compatible_min_output_tokens
+        # Always leave at least the floor available, even if the estimate is tight.
+        allowed = max(floor, budget)
+        if max_output_tokens is None:
+            return allowed
+        return max(1, min(max_output_tokens, allowed))

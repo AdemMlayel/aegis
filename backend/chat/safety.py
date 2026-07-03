@@ -14,10 +14,13 @@ ACTION_CAPABILITIES: dict[ChatActionKind, Capability] = {
 READ_ONLY_INTENTS: set[ChatIntent] = {
     "system_question",
     "ticket_question",
+    "test_case_suggestion",
     "workflow_status",
+    "show_stage_output",
     "artifact_question",
     "validation_question",
     "investigation_question",
+    "self_healing_question",
     "report_request",
     "knowledge_question",
     "action_history",

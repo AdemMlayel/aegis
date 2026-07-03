@@ -92,6 +92,7 @@ export function ConversationWorkspace({
   reportPackage,
   busy,
   configCollapsed,
+  compact = false,
   onViewChange,
   onSelectTest,
   onOpenConfig,
@@ -124,6 +125,9 @@ export function ConversationWorkspace({
   reportPackage: ReportPackageManifest | null;
   busy: string | null;
   configCollapsed: boolean;
+  /** Companion mode: drop the heavy heading + duplicate rails so the detail
+   * panel reads as one focused surface inside the chat-first shell. */
+  compact?: boolean;
   onViewChange: (view: WorkspaceView) => void;
   onSelectTest: (testId: string) => void;
   onOpenConfig: () => void;
@@ -181,15 +185,17 @@ export function ConversationWorkspace({
   const displayEvents = timeline.length ? timeline : eventsFromTrace(context);
 
   return (
-    <main className="operations-workspace">
-      <header className="workspace-header">
+    <main className={`operations-workspace ${compact ? "compact" : ""}`}>
+      <header className={`workspace-header ${compact ? "compact" : ""}`}>
         <div className="workspace-heading">
           <div className="workspace-title-row">
             <span className="ticket-key">{context.ticket?.id ?? "UNTITLED"}</span>
             <StatusPill value={control.state} />
           </div>
-          <h1>{context.ticket?.title ?? "Untitled workflow"}</h1>
-          <p>{context.ticket?.description || "No ticket description available."}</p>
+          {compact ? null : <h1>{context.ticket?.title ?? "Untitled workflow"}</h1>}
+          {compact ? null : (
+            <p>{context.ticket?.description || "No ticket description available."}</p>
+          )}
         </div>
         <div className="workspace-header-actions">
           <WorkflowControls
@@ -201,7 +207,7 @@ export function ConversationWorkspace({
             onApprove={onApproveWorkflow}
             onExecute={onExecuteWorkflow}
           />
-          {configCollapsed ? (
+          {!compact && configCollapsed ? (
             <button className="icon-command" onClick={onOpenConfig} title="Open agent configuration">
               <PanelRightOpen />
             </button>
@@ -209,9 +215,11 @@ export function ConversationWorkspace({
         </div>
       </header>
 
+      <ProviderDegradationBanner trace={context.intelligence_trace} />
+
       <AgentActivityRail context={context} timeline={displayEvents} />
 
-      <TicketStructuredPanel ticket={context.ticket} />
+      {compact ? null : <TicketStructuredPanel ticket={context.ticket} />}
 
       <nav className="workspace-tabs" aria-label="Workspace views">
         <TabButton active={view === "conversation"} icon={<MessageSquare />} label="Activity" onClick={() => onViewChange("conversation")} />
@@ -278,6 +286,7 @@ export function ConversationWorkspace({
             <textarea
               aria-label="Message the workflow"
               value={message}
+              maxLength={10000}
               onChange={(event) => setMessage(event.target.value)}
               placeholder="Add guidance or a decision note to this workspace..."
               rows={2}
@@ -600,7 +609,7 @@ function LatestDeliverable({
         <div className="deliverable-metrics">
           <Metric label="Tests" value={String(context.reports.total_test_cases)} />
           <Metric label="Risk" value={context.reports.highest_risk} />
-          <Metric label="Confidence" value={`${Math.round(context.reports.confidence * 100)}%`} />
+          <Metric label="Heuristic confidence" value={`${Math.round(context.reports.confidence * 100)}%`} />
         </div>
       </section>
     );
@@ -1334,7 +1343,7 @@ function ReportWorkspace({
           value={execution?.status ?? "not started"}
         />
         <Metric
-          label="Confidence"
+          label="Heuristic confidence"
           value={`${Math.round(report.confidence * 100)}%`}
         />
       </div>
@@ -1433,7 +1442,7 @@ function ReportWorkspace({
                       <div>
                         <strong>{finding.test_case_id ?? "Workflow"} - {finding.category}</strong>
                         <p>{finding.summary}</p>
-                        <small>Confidence {Math.round(finding.confidence * 100)}%</small>
+                        <small>Heuristic confidence {Math.round(finding.confidence * 100)}%</small>
                       </div>
                     </article>
                   ))}
@@ -1592,6 +1601,11 @@ function EvidenceWorkspace({
             title={call.agent_name?.replace("Agent", "") ?? call.prompt_name}
             detail={`${call.provider} - ${call.model}`}
             body={call.summary}
+            badge={
+              call.deterministic
+                ? { label: "MOCK", tone: "mock" }
+                : { label: "LIVE", tone: "real" }
+            }
           />
         ))}
       </EvidenceSection>
@@ -1637,18 +1651,51 @@ function EvidenceSection({
   );
 }
 
+function ProviderDegradationBanner({
+  trace
+}: {
+  trace: TestContext["intelligence_trace"];
+}) {
+  // Surface the system's #1 trust risk honestly: when the provider that
+  // actually answered differs from the configured provider, the run silently
+  // degraded (typically a real provider failing over to the deterministic
+  // mock). Also flag when any model call in the trace was deterministic/mock.
+  const providerMismatch =
+    trace.configured_llm_provider !== trace.llm_provider;
+  const hasMockCall = trace.llm_calls.some((call) => call.deterministic);
+  if (!providerMismatch && !hasMockCall) {
+    return null;
+  }
+  const message = providerMismatch
+    ? `Configured provider “${trace.configured_llm_provider}” but answers came from “${trace.llm_provider}”. Output may be deterministic mock, not a real model.`
+    : "One or more steps used the deterministic mock provider. These outputs are not from a real model.";
+  return (
+    <div className="provider-degradation-banner" role="status">
+      <TriangleAlert />
+      <span>{message}</span>
+    </div>
+  );
+}
+
+
 function EvidenceRow({
   title,
   detail,
-  body
+  body,
+  badge
 }: {
   title: string;
   detail: string;
   body: string;
+  badge?: { label: string; tone: "mock" | "real" };
 }) {
   return (
     <article className="evidence-row">
-      <div><strong>{title}</strong><span>{detail}</span></div>
+      <div>
+        <strong>{title}</strong>
+        {badge ? <span className={`trace-badge trace-badge-${badge.tone}`}>{badge.label}</span> : null}
+        <span>{detail}</span>
+      </div>
       <p>{body}</p>
     </article>
   );

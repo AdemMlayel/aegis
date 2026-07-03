@@ -77,6 +77,15 @@ class Settings(BaseModel):
     auth_mode: str = Field(default_factory=lambda: os.getenv("AEGISQA_AUTH_MODE", "permissive"))
     local_user: str = Field(default_factory=lambda: os.getenv("AEGISQA_LOCAL_USER", "local-user"))
     local_role: str = Field(default_factory=lambda: os.getenv("AEGISQA_LOCAL_ROLE", "qa_lead"))
+    # Shared secret that a trusted reverse proxy must send (header
+    # X-Aegis-Auth-Secret) for X-Aegis-* identity headers to be honored. When
+    # unset, header identity is trusted as-is (local/demo behavior). Set this in
+    # any exposed deployment so identity headers can't be spoofed by arbitrary
+    # callers. Secrets belong only in the gitignored .env, never committed.
+    trusted_auth_header_secret: str | None = Field(default_factory=lambda: os.getenv("AEGISQA_TRUSTED_AUTH_HEADER_SECRET"))
+    # Comma-separated list of allowed browser origins for CORS. Empty means the
+    # local dev origins only. Never use "*" together with credentials.
+    cors_allow_origins: str = Field(default_factory=lambda: os.getenv("AEGISQA_CORS_ALLOW_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"))
 
     default_ticket_connector: str = Field(default_factory=lambda: _provider_default("AEGISQA_DEFAULT_TICKET_CONNECTOR", "demo", "demo"))
     default_execution_adapter: str = Field(default_factory=lambda: _provider_default("AEGISQA_DEFAULT_EXECUTION_ADAPTER", "robot", "mock"))
@@ -108,6 +117,23 @@ class Settings(BaseModel):
     openai_compatible_base_url: str | None = Field(default_factory=lambda: os.getenv("AEGISQA_OPENAI_COMPATIBLE_BASE_URL"))
     openai_compatible_api_key: str | None = Field(default_factory=lambda: os.getenv("AEGISQA_OPENAI_COMPATIBLE_API_KEY"))
     openai_compatible_chat_model: str = Field(default_factory=lambda: os.getenv("AEGISQA_OPENAI_COMPATIBLE_CHAT_MODEL", "gpt-4o-mini"))
+    # Total context window (prompt + output) of the served model. Used to clamp
+    # requested max_output_tokens so prompt+max_tokens never exceeds the window —
+    # otherwise servers like vLLM reject the request with HTTP 400 and the agent
+    # silently falls back to the mock provider. 0 disables clamping.
+    openai_compatible_context_window: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_OPENAI_COMPATIBLE_CONTEXT_WINDOW", "0")))
+    # Minimum output tokens to preserve when clamping, so a large prompt still
+    # leaves room for a usable answer.
+    openai_compatible_min_output_tokens: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_OPENAI_COMPATIBLE_MIN_OUTPUT_TOKENS", "256")))
+
+    # When true, chat messages that the deterministic classifier maps to
+    # "unknown" are answered by the configured LLM, grounded with system
+    # knowledge and retrieved RAG context, instead of the generic fallback.
+    # The LLM is used for free-form ANSWERS only — it never triggers actions.
+    # Off by default (and forced off in deterministic demo mode) so the copilot
+    # stays fully deterministic unless a real provider is explicitly enabled.
+    chat_llm_fallback_enabled: bool = Field(default_factory=lambda: (not _deterministic_demo_mode()) and _env_bool("AEGISQA_CHAT_LLM_FALLBACK_ENABLED", False))
+    chat_llm_max_output_tokens: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_CHAT_LLM_MAX_OUTPUT_TOKENS", "512")))
 
     execution_worker_backend: str = Field(default_factory=lambda: os.getenv("AEGISQA_EXECUTION_WORKER_BACKEND", "local"))
     execution_worker_batch_size: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_EXECUTION_WORKER_BATCH_SIZE", "10")))
@@ -125,12 +151,29 @@ class Settings(BaseModel):
     agent_max_model_calls_per_workflow: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_AGENT_MAX_MODEL_CALLS_PER_WORKFLOW", "24")))
     agent_max_tokens_per_call: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_AGENT_MAX_TOKENS_PER_CALL", "16000")))
     agent_max_tokens_per_workflow: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_AGENT_MAX_TOKENS_PER_WORKFLOW", "120000")))
+    # W7: when True, an agent whose policy carries require_human_approval=True
+    # may only run inside a workflow context that already holds a granted human
+    # approval -- a real runtime gate instead of inert advisory metadata. Default
+    # False preserves the autonomous generate-then-approve pipeline (those agents
+    # legitimately produce the artifacts a human later approves); turn it on for
+    # deployments that must hard-block approval-required agents pre-approval.
+    enforce_agent_human_approval: bool = Field(default_factory=lambda: _env_bool("AEGISQA_ENFORCE_AGENT_HUMAN_APPROVAL", False))
     organization_daily_token_quota: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_ORGANIZATION_DAILY_TOKEN_QUOTA", "1000000")))
     token_reservation_ttl_seconds: int = Field(default_factory=lambda: int(os.getenv("AEGISQA_TOKEN_RESERVATION_TTL_SECONDS", "300")))
     external_input_cost_per_1k: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_EXTERNAL_INPUT_COST_PER_1K", "0.00015")))
     external_output_cost_per_1k: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_EXTERNAL_OUTPUT_COST_PER_1K", "0.0006")))
     observability_error_rate_threshold: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_OBSERVABILITY_ERROR_RATE_THRESHOLD", "0.05")))
     observability_agent_failure_rate_threshold: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_OBSERVABILITY_AGENT_FAILURE_RATE_THRESHOLD", "0.10")))
+    # Operational-health signal: warn when the share of model calls that silently
+    # degraded to the deterministic mock provider exceeds this fraction of today's
+    # calls. Catches the system's #1 trust risk (a real provider failing and the
+    # output quietly becoming mock) which no other health signal observes.
+    observability_mock_fallback_rate_threshold: float = Field(default_factory=lambda: float(os.getenv("AEGISQA_OBSERVABILITY_MOCK_FALLBACK_RATE_THRESHOLD", "0.0")))
+    # When False, a failed real-LLM call raises instead of silently returning a
+    # deterministic mock response. Default True preserves the local/demo
+    # graceful-degradation behavior; set False in any environment where a mock
+    # answer presented as real output is unacceptable (fail-closed).
+    allow_mock_fallback: bool = Field(default_factory=lambda: _env_bool("AEGISQA_ALLOW_MOCK_FALLBACK", True))
 
 
 @lru_cache(maxsize=1)

@@ -36,7 +36,7 @@ def configure_structured_logging() -> None:
     handler._aegisqa_json_handler = True  # type: ignore[attr-defined]
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
-    logger.propagate = False
+    logger.propagate = True
 
 
 def log_event(

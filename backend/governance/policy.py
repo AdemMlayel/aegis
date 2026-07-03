@@ -115,12 +115,34 @@ class AgentPolicyEngine:
                 f"'{skill_name}'"
             )
 
+    # Tool risk tiers that may never run outside a governed agent scope. These
+    # are state-changing or otherwise dangerous; running them on the ungoverned
+    # direct-API path (execution is None) would bypass all tool authorization.
+    _UNGOVERNED_DENY_TIERS: frozenset[str] = frozenset({"high", "critical"})
+
     def authorize_tool(
         self,
         execution: AgentExecutionContext | None,
         tool_name: str,
+        *,
+        risk_tier: str = "low",
     ) -> None:
         if execution is None:
+            # No governed scope. Low/medium tools are permitted on the direct API
+            # path, but high/critical tools are denied: a state-changing tool
+            # must run inside an agent scope so it is subject to skill/tool
+            # authorization (W6). The approval endpoint that drives the Git
+            # handoff opens an explicit system_tool_scope instead of relying on
+            # this ungoverned path.
+            if risk_tier in self._UNGOVERNED_DENY_TIERS:
+                raise AgentPolicyDenied(
+                    f"High-risk tool '{tool_name}' (risk_tier='{risk_tier}') "
+                    "cannot run outside a governed agent scope"
+                )
+            return
+        # An explicit, RBAC-gated system caller authorizes a fixed set of tools
+        # without an agent skill graph. Honor it only for the named tools.
+        if tool_name in execution.system_authorized_tools:
             return
         if execution.skill_name is None:
             raise AgentPolicyDenied(

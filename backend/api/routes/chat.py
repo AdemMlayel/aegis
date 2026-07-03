@@ -97,7 +97,7 @@ def create_message(
     try:
         session, message = handle_chat_message(
             session_id=session_id,
-            actor=request.actor,
+            actor=principal.user_id,
             message=request.message,
             context_id=request.context_id,
             ticket_id=request.ticket_id,
@@ -122,7 +122,7 @@ def confirm_action(
         session, action, message = confirm_chat_action(
             session_id=session_id,
             action_id=action_id,
-            actor=request.actor,
+            actor=principal.user_id,
             principal=principal,
         )
     except ChatSessionNotFound as exc:
@@ -149,7 +149,7 @@ def cancel_action(
         session, action, message = cancel_chat_action(
             session_id=session_id,
             action_id=action_id,
-            actor=request.actor,
+            actor=principal.user_id,
         )
     except ChatSessionNotFound as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

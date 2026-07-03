@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.api.routes.workflows import (
@@ -26,10 +28,21 @@ from backend.services.workflow_control import (
     review_workflow_stage,
 )
 from backend.storage.artifact_revisions import ArtifactRevision
-from backend.storage.workflow_events import WorkflowEvent
+from backend.storage.workflow_events import WorkflowEvent, list_workflow_events
 
 
 router = APIRouter(tags=["workflow-control"])
+
+# G2 (Part B2): live trace streaming bounds. The gateway middleware wraps every
+# request in a timeout, and tunnels/proxies kill idle long-lived connections, so
+# each SSE response is intentionally short-lived: it streams new events for at
+# most _STREAM_MAX_SECONDS, polling the same event store the poll endpoint uses,
+# then closes cleanly. The browser's EventSource auto-reconnects and resumes from
+# the last sequence (via the standard Last-Event-ID header), so the user sees one
+# continuous live ticker. A terminal control event closes the stream early.
+_STREAM_MAX_SECONDS = 25.0
+_STREAM_POLL_INTERVAL = 1.0
+_STREAM_TERMINAL_STATUSES = frozenset({"completed", "failed"})
 
 
 class CreateWorkflowSessionRequest(BaseModel):
@@ -253,6 +266,87 @@ def read_timeline(
     return WorkflowTimelineResponse(
         events=events,
         next_sequence=events[-1].sequence if events else after_sequence,
+    )
+
+
+def _sse_pack(event: WorkflowEvent) -> str:
+    """Serialize one workflow event as an SSE record.
+
+    The ``id:`` field carries the sequence so the browser sends it back as
+    Last-Event-ID on reconnect, letting the stream resume exactly where it left
+    off with no gaps or duplicates.
+    """
+    return (
+        f"id: {event.sequence}\n"
+        f"event: workflow_event\n"
+        f"data: {event.model_dump_json()}\n\n"
+    )
+
+
+async def _workflow_event_stream(context_id: str, request: Request, after_sequence: int):
+    cursor = after_sequence
+    # Tell the client how long to wait before reconnecting after we close.
+    yield "retry: 1500\n\n"
+    loop = asyncio.get_event_loop()
+    deadline = loop.time() + _STREAM_MAX_SECONDS
+    while True:
+        if await request.is_disconnected():
+            return
+        # Same data source as the poll endpoint; run the sync DB read in a
+        # thread so we never block the event loop.
+        events = await asyncio.to_thread(
+            list_workflow_events, context_id=context_id, after_sequence=cursor
+        )
+        for event in events:
+            cursor = event.sequence
+            yield _sse_pack(event)
+            if event.kind == "control" and event.status in _STREAM_TERMINAL_STATUSES:
+                # Workflow reached a terminal state -- close the stream cleanly;
+                # the client stops reconnecting once it sees this status.
+                yield "event: stream_end\ndata: {}\n\n"
+                return
+        if loop.time() >= deadline:
+            # Bounded lifetime: close so we stay under the gateway timeout and
+            # don't hold a tunnel connection open. EventSource reconnects with
+            # Last-Event-ID and resumes from `cursor`.
+            yield "event: stream_idle\ndata: {}\n\n"
+            return
+        # Heartbeat comment keeps intermediaries from idling the connection out.
+        yield ": keep-alive\n\n"
+        await asyncio.sleep(_STREAM_POLL_INTERVAL)
+
+
+@router.get("/workflows/{context_id}/timeline/stream")
+async def stream_timeline(
+    context_id: str,
+    request: Request,
+    principal: Annotated[
+        Principal,
+        Depends(require_capability(Capability.READ_WORKFLOW)),
+    ],
+    after_sequence: int = Query(default=0, ge=0),
+) -> StreamingResponse:
+    """Server-Sent Events stream of workflow trace events (G2 / Part B2).
+
+    A strict enhancement over ``/timeline``: it reads the same event store but
+    pushes new events live so the chat shows a real-time execution ticker
+    instead of waiting for the next poll. The ``after_sequence`` query param (or
+    the ``Last-Event-ID`` header the browser sends on reconnect) resumes the
+    stream without gaps. The poll endpoint remains as a fallback for clients
+    without EventSource.
+    """
+    # On reconnect the browser sends the last sequence it saw; prefer it so we
+    # never replay or drop events across a reconnect.
+    last_event_id = request.headers.get("Last-Event-ID")
+    if last_event_id and last_event_id.isdigit():
+        after_sequence = int(last_event_id)
+    return StreamingResponse(
+        _workflow_event_stream(context_id, request, after_sequence),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

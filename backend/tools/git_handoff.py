@@ -13,6 +13,7 @@ from backend.tools.base import BaseTool, tool_registry
     description="Creates the local Git handoff payload and attempts branch/commit/PR when Git is available.",
     timeout_seconds=90,
     max_retries=0,
+    risk_tier="high",
 )
 class LocalGitHandoffTool(BaseTool):
     def invoke(self, **kwargs: Any) -> GitExecutionResult:

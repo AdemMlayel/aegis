@@ -190,6 +190,19 @@ class RequirementAnalysis(StrictModel):
     prompt_versions_used: list[str] = Field(default_factory=list)
     llm_summary: str | None = None
     confidence: float = Field(default=0.7, ge=0, le=1)
+    # Traceable record of how heuristic and LLM signals were reconciled
+    # (checklist flips, confidence adjustment, dropped/added questions). Empty
+    # when the LLM gave no usable signal and the heuristic stands alone.
+    adjudication_notes: list[str] = Field(default_factory=list)
+
+
+class RequirementCoverageItem(StrictModel):
+    """One requirement derived for coverage, tagged to the test case(s) covering it."""
+
+    requirement_id: str
+    description: str
+    origin: Literal["acceptance_criteria", "checklist", "default"] = "default"
+    test_types: list[str] = Field(default_factory=list)
 
 
 class CoveragePlan(StrictModel):
@@ -203,6 +216,14 @@ class CoveragePlan(StrictModel):
     memory_refs_used: list[str] = Field(default_factory=list)
     knowledge_refs_used: list[str] = Field(default_factory=list)
     risk_rationale: list[str] = Field(default_factory=list)
+    # Confidence propagated from requirement analysis and adjusted by coverage
+    # completeness (how much of the checklist the plan could act on). Replaces the
+    # previous behavior where each stage reinvented confidence from scratch.
+    confidence: float = Field(default=0.7, ge=0, le=1)
+    # The concrete requirements this plan derived from the ticket (one matrix row
+    # each). Test-case generation reads these to emit a covering case per
+    # requirement instead of a fixed three.
+    requirement_items: list[RequirementCoverageItem] = Field(default_factory=list)
 
 
 class TestCase(StrictModel):
@@ -335,6 +356,21 @@ class InvestigationEvidenceItem(StrictModel):
     content_excerpt: str = ""
 
 
+class EvidenceSignalHit(StrictModel):
+    """A single weighted evidence signal that fired during investigation scoring.
+
+    The weighted-evidence model (blueprint Layer 7) makes every confidence point
+    traceable: ``InvestigationFinding.evidence_score`` is the deterministic sum of
+    these matched weights divided by the model's total weight budget. Each hit
+    records why it fired so the number is auditable line-by-line.
+    """
+
+    signal: str
+    weight: int = Field(ge=0)
+    category: Literal["test", "application", "environment", "data", "unknown"] = "unknown"
+    detail: str = ""
+
+
 class InvestigationFinding(StrictModel):
     test_case_id: str | None = None
     severity: Literal["info", "warning", "high", "critical"] = "info"
@@ -342,6 +378,10 @@ class InvestigationFinding(StrictModel):
     summary: str
     evidence_refs: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.5, ge=0, le=1)
+    # Deterministic weighted-evidence score (0-100) and its traceable basis.
+    evidence_score: float = Field(default=0.0, ge=0, le=100)
+    matched_signals: list[EvidenceSignalHit] = Field(default_factory=list)
+    score_basis: str = ""
     recommended_actions: list[str] = Field(default_factory=list)
 
 
@@ -352,6 +392,10 @@ class InvestigationBlock(StrictModel):
     findings: list[InvestigationFinding] = Field(default_factory=list)
     root_cause_summary: str | None = None
     confidence: float = Field(default=0.0, ge=0, le=1)
+    # Overall weighted-evidence score (0-100) across all findings, and the
+    # rolled-up set of distinct signals that fired (for the report/chat breakdown).
+    evidence_score: float = Field(default=0.0, ge=0, le=100)
+    matched_signals: list[EvidenceSignalHit] = Field(default_factory=list)
 
 
 class MemoryArchiveBlock(StrictModel):
@@ -362,6 +406,59 @@ class MemoryArchiveBlock(StrictModel):
     tags: list[str] = Field(default_factory=list)
     source_refs: list[str] = Field(default_factory=list)
     indexed_refs: list[str] = Field(default_factory=list)
+
+
+class HealingCandidate(StrictModel):
+    """A single proposed replacement for a broken reference (self-healing)."""
+
+    value: str
+    strategy: str = "unknown"
+    similarity: float = Field(default=0.0, ge=0.0, le=1.0)
+    stability: float = Field(default=0.0, ge=0.0, le=1.0)
+    score: float = Field(default=0.0, ge=0.0, le=1.0)
+    stability_label: Literal["high", "medium", "low"] = "medium"
+    source: str = ""
+    rationale: str = ""
+
+
+class HealingSuggestion(StrictModel):
+    """A human-gated repair suggestion for one broken reference.
+
+    ``status`` is always ``awaiting_approval`` on creation — the engine never
+    applies a fix. No file is modified until a human confirms.
+    """
+
+    suggestion_id: str
+    kind: Literal["locator", "keyword"]
+    test_case_id: str | None = None
+    robot_file: str | None = None
+    line: int | None = None
+    broken_reference: str
+    broken_strategy: str = "unknown"
+    detected_from: str = ""
+    candidates: list[HealingCandidate] = Field(default_factory=list)
+    recommended: HealingCandidate | None = None
+    memory_match: str | None = None
+    status: Literal["awaiting_approval", "approved", "rejected"] = "awaiting_approval"
+    created_at: datetime = Field(default_factory=utc_now)
+
+    @property
+    def confidence(self) -> float:
+        return self.recommended.score if self.recommended else 0.0
+
+
+class SelfHealingBlock(StrictModel):
+    """Self-healing stage output: detected broken references + ranked repairs.
+
+    Informational and human-gated — suggestions never auto-apply. ``status``
+    reflects whether the detector ran and what it found.
+    """
+
+    status: Literal["not_started", "completed", "skipped"] = "not_started"
+    generated_at: datetime | None = None
+    suggestions: list[HealingSuggestion] = Field(default_factory=list)
+    summary: str | None = None
+
 
 
 WorkflowStageName = Literal[
@@ -421,6 +518,7 @@ class WorkflowControlBlock(StrictModel):
 
 AuditEventType = Literal[
     "workflow_started",
+    "workflow_failed",
     "automation_file_read",
     "approval_requested",
     "approval_decision",
@@ -539,11 +637,20 @@ class TestContext(StrictModel):
     execution_request: ExecutionRequestBlock | None = None
     execution: ExecutionBlock | None = None
     investigation: InvestigationBlock | None = None
+    self_healing: SelfHealingBlock | None = None
     memory_archive: MemoryArchiveBlock | None = None
     approval: ApprovalBlock | None = None
     review_feedback: list[ReviewFeedback] = Field(default_factory=list)
     audit_log: list[AuditEvent] = Field(default_factory=list)
     reports: ReportBlock | None = None
+
+    # Optimistic-concurrency token (W1). A normal field so it round-trips cleanly
+    # through LangGraph state and payload_json serialization. The storage layer
+    # treats the DB column as authoritative: a save does a conditional UPDATE
+    # ``WHERE row_version = <this>`` and raises OptimisticConcurrencyError when a
+    # concurrent writer has advanced the row, preventing last-writer-wins loss on
+    # a shared context_id.
+    row_version: int = Field(default=1, ge=1)
 
     def sync_intelligence_trace_config(self) -> None:
         self.intelligence_trace.configured_llm_provider = self.intelligence_config.llm_provider

@@ -759,3 +759,17 @@ export type ChatSession = {
   created_at: string;
   updated_at: string;
 };
+
+export type AgentInvocation = {
+  id: string;
+  request_id: string;
+  context_id: string | null;
+  organization_id: string;
+  actor: string;
+  agent_id: string;
+  agent_name: string;
+  status: string;
+  duration_ms: number;
+  error_type: string | null;
+  created_at: string;
+};

@@ -242,7 +242,10 @@ def test_successful_selected_models_contribute_visible_agent_guidance(
         "Guidance from requirement_analysis_v1"
     )
     assert result.coverage_plan is not None
-    assert "Guidance from coverage_planning_v1" in result.coverage_plan.risk_rationale[-1]
+    assert any(
+        "Guidance from coverage_planning_v1" in note
+        for note in result.coverage_plan.risk_rationale
+    )
     assert result.test_cases
     assert "Guidance from test_case_generation_v1" in result.test_cases[0].generation_notes[-1]
     assert result.reports is not None
