@@ -20,7 +20,7 @@ def get_chrome_driver_with_ssl_bypass(driver_path):
     chrome_options.add_argument("--disable-web-security")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
-    
+
     service = Service(driver_path)  # specify your path here
     return HOSTNAME_PLACEHOLDER(service=service, options=chrome_options)
 

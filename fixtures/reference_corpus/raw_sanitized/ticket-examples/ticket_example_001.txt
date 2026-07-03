@@ -1,0 +1,234 @@
+FROM ubuntu:20.04
+
+#=====================================================================
+# Environment variables
+#=====================================================================
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ANDROID_HOME=LOCAL_PATH_PLACEHOLDER
+ENV PATH="$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+ENV TZ=Europe/Berlin
+ENV ANDROID_ADB_SERVER_PORT=5040
+
+#=====================================================================
+# Labels
+#=====================================================================
+LABEL maintainer="IMS Germany Automation"
+LABEL description="This docker image contains python, adb, appium and chromedrivers"
+
+USER root
+
+#=====================================================================
+# System update and upgrade
+#=====================================================================
+RUN apt-get update && \
+    apt-get dist-upgrade -y && \
+    apt-get clean && rm -rf LOCAL_PATH_PLACEHOLDER/*
+
+#=====================================================================
+# Install core dependencies (Python, Java, utilities)
+#=====================================================================
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        openjdk-11-jdk \
+        python3.8 \
+        HOSTNAME_PLACEHOLDER \
+        python3-pip \
+        ca-certificates \
+        tzdata \
+        zip \
+        jq \
+        unzip \
+        curl \
+        wget \
+        libqt5webkit5 \
+        libgconf-2-4 \
+        swig \
+        wget \
+        libasound2-dev \
+        libssl-dev \
+        libpulse-dev \
+        xvfb \
+        gnupg \
+        nano && \
+    python3 -m pip install --upgrade pip && \
+    python3 -m pip install setuptools==58.2.0 && \
+    python3 -m pip install setuptools-rust==0.12.1 && \
+    ln -fs LOCAL_PATH_PLACEHOLDER LOCAL_PATH_PLACEHOLDER && \
+    apt-get clean && \
+    rm -rf LOCAL_PATH_PLACEHOLDER/*
+
+#=====================================================================
+# Build sipp from source and install
+#=====================================================================
+# Set working directory
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        pkg-config \
+        dh-autoreconf \
+        ncurses-dev \
+        build-essential \
+        libssl-dev \
+        libpcap-dev \
+        libncurses5-dev \
+        libsctp-dev \
+        lksctp-tools \
+        cmake \
+        libgsl-dev \
+        git \
+        wget \
+        curl \
+        ca-certificates \
+        unzip \
+        nano && \
+    rm -rf LOCAL_PATH_PLACEHOLDER/*
+RUN git clone --recurse-submodules URL_PLACEHOLDER LOCAL_PATH_PLACEHOLDER && \
+    cd LOCAL_PATH_PLACEHOLDER && \
+    cmake . -DUSE_SSL=1 -DUSE_SCTP=1 -DUSE_PCAP=1 -DUSE_GSL=1 && \
+    make -j$(nproc) && \
+    cp sipp LOCAL_PATH_PLACEHOLDER/
+
+#=====================================================================
+# Install TShark (Wireshark CLI) for network packet capture
+#=====================================================================
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends software-properties-common && \
+    add-apt-repository ppa:wireshark-dev/stable && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends tshark && \
+    apt-get clean && rm -rf LOCAL_PATH_PLACEHOLDER/*
+
+# copy the wireshark config from host to container
+COPY wireshark/ LOCAL_PATH_PLACEHOLDER/
+
+#=====================================================================
+# Configure timezone
+#=====================================================================
+RUN ln -snf LOCAL_PATH_PLACEHOLDER/$TZ LOCAL_PATH_PLACEHOLDER && echo $TZ > LOCAL_PATH_PLACEHOLDER
+
+#=====================================================================
+# Install HOSTNAME_PLACEHOLDER, Appium, and Appium Doctor
+#=====================================================================
+RUN curl -fsSL URL_PLACEHOLDER | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g appium && \
+    npm install -g appium-doctor
+
+#=====================================================================
+# Install Android SDK tools
+#=====================================================================
+RUN mkdir -p $ANDROID_HOME/cmdline-tools && cd $ANDROID_HOME/cmdline-tools && \
+    curl -o HOSTNAME_PLACEHOLDER URL_PLACEHOLDER && \
+    unzip HOSTNAME_PLACEHOLDER -d $ANDROID_HOME/cmdline-tools && \
+    mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest && \
+    rm HOSTNAME_PLACEHOLDER
+
+#=====================================================================
+# Accept Android licenses and install required components
+#=====================================================================
+RUN yes | sdkmanager --licenses && \
+    sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+#=====================================================================
+# Verify Appium and ADB installations
+#=====================================================================
+RUN appium -v && adb --version
+
+#=====================================================================
+# Install Appium drivers
+#=====================================================================
+RUN appium driver install uiautomator2
+
+#=====================================================================
+# Setup working directory and copy adb keys
+#=====================================================================
+RUN mkdir -p /app
+COPY adbkeys/* LOCAL_PATH_PLACEHOLDER/
+
+# COPY resources LOCAL_PATH_PLACEHOLDER
+# COPY config LOCAL_PATH_PLACEHOLDER
+# COPY test_suites LOCAL_PATH_PLACEHOLDER
+# COPY libraries LOCAL_PATH_PLACEHOLDER
+
+#=====================================================================
+# Install Python libraries
+#=====================================================================
+COPY HOSTNAME_PLACEHOLDER ./
+RUN pip3 install --no-cache-dir -r HOSTNAME_PLACEHOLDER
+
+#=====================================================================
+# Install Pjsua for fixed ims
+#=====================================================================
+# WORKDIR /opt
+
+# RUN wget URL_PLACEHOLDER && \
+#     tar -xvzf 2.12.HOSTNAME_PLACEHOLDER && \
+#     rm 2.12.HOSTNAME_PLACEHOLDER
+# WORKDIR LOCAL_PATH_PLACEHOLDER
+
+# # Build PJSIP
+# RUN ./configure --enable-shared && \
+#     make dep && \
+#     make
+
+# # Build Python bindings (pjsua2)
+# WORKDIR LOCAL_PATH_PLACEHOLDER
+# RUN make && \
+#     cp _pjsua2.so HOSTNAME_PLACEHOLDER LOCAL_PATH_PLACEHOLDER/
+
+# # Test import
+# RUN python3 -c "import pjsua2; print('✅ PJSUA2 Python bindings installed')"
+
+# # Default workdir for your app
+# WORKDIR /app
+
+# =====================================================================
+# Copy SOURCE_NAME_PLACEHOLDER module
+# =====================================================================
+COPY libraries/HOSTNAME_PLACEHOLDER LOCAL_PATH_PLACEHOLDER
+
+#=====================================================================
+# Install the latest Chrome browser and matching ChromeDriver version
+#=====================================================================
+RUN wget -q -O - URL_PLACEHOLDER | apt-key add - && \
+    echo "deb [arch=amd64] URL_PLACEHOLDER stable main" > LOCAL_PATH_PLACEHOLDER && \
+    apt-get update && \
+    apt-get install -y google-chrome-stable jq && \
+    apt-get clean && \
+    rm -rf LOCAL_PATH_PLACEHOLDER/*
+
+# #=====================================================================
+# # Install the latest Chrome browser and matching ChromeDriver version
+# #=====================================================================
+# # Add Google Chrome repo and install Chrome
+# RUN wget -q -O - URL_PLACEHOLDER | apt-key add - && \
+#     echo "deb [arch=amd64] URL_PLACEHOLDER stable main" > LOCAL_PATH_PLACEHOLDER && \
+#     apt-get update && \
+#     apt-get install -y google-chrome-stable jq && \
+#     apt-get clean && \
+#     rm -rf LOCAL_PATH_PLACEHOLDER/*
+# # Download and install matching ChromeDriver
+# RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d '.' -f 1) && \
+#     echo "Installed Chrome major version: $CHROME_VERSION" && \
+#     curl -s URL_PLACEHOLDER -o LOCAL_PATH_PLACEHOLDER && \
+#     DRIVER_URL=$(jq -r --arg ver "$CHROME_VERSION" \
+#       '.HOSTNAME_PLACEHOLDER \
+#       | select(.version | startswith($ver + ".")) \
+#       | .HOSTNAME_PLACEHOLDER[] \
+#       | select(.platform == "linux64") \
+#       | .url' LOCAL_PATH_PLACEHOLDER | head -1) && \
+#     echo "Resolved DRIVER_URL: $DRIVER_URL" && \
+#     wget -O LOCAL_PATH_PLACEHOLDER "$DRIVER_URL" && \
+#     unzip LOCAL_PATH_PLACEHOLDER -d LOCAL_PATH_PLACEHOLDER && \
+#     mv LOCAL_PATH_PLACEHOLDER/*/chromedriver LOCAL_PATH_PLACEHOLDER && \
+#     chmod +x LOCAL_PATH_PLACEHOLDER && \
+#     mkdir -p LOCAL_PATH_PLACEHOLDER && \
+#     cp LOCAL_PATH_PLACEHOLDER LOCAL_PATH_PLACEHOLDER/ && \
+#     chmod +x LOCAL_PATH_PLACEHOLDER && \
+#     rm -rf LOCAL_PATH_PLACEHOLDER LOCAL_PATH_PLACEHOLDER LOCAL_PATH_PLACEHOLDER
+# ENV CHROMEDRIVER_PATH=LOCAL_PATH_PLACEHOLDER
+
+#=====================================================================
+# Final setup notes
+#=====================================================================
+# Ensure adb does not interact with host's device bus, run ADB in TCP mode
+# CMD ["sh", "-c", "appium server --port 4761 &"]

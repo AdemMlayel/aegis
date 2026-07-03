@@ -58,19 +58,19 @@ class SOURCE_NAME_PLACEHOLDER:
         """
         temp_profile = HOSTNAME_PLACEHOLDER()
         HOSTNAME_PLACEHOLDER = HOSTNAME_PLACEHOLDER()
-        #HOSTNAME_PLACEHOLDER.add_argument('--headless')      
+        #HOSTNAME_PLACEHOLDER.add_argument('--headless')
         HOSTNAME_PLACEHOLDER.add_argument('--no-proxy-server')
         HOSTNAME_PLACEHOLDER.add_argument('--ignore-ssl-errors=yes')
         HOSTNAME_PLACEHOLDER.add_argument('--ignore-certificate-errors')
         HOSTNAME_PLACEHOLDER.add_argument("--disable-dev-shm-usage")
         HOSTNAME_PLACEHOLDER.add_argument("--window-size=1920x1080")
-        HOSTNAME_PLACEHOLDER.add_argument("--disable-gpu") 
+        HOSTNAME_PLACEHOLDER.add_argument("--disable-gpu")
         HOSTNAME_PLACEHOLDER.add_argument(f'--user-data-dir={temp_profile}')
         HOSTNAME_PLACEHOLDER.add_argument('--no-sandbox')
-        
-       
+
+
         # Setting up Driver path
-        root_path = os.HOSTNAME_PLACEHOLDER(os.HOSTNAME_PLACEHOLDER(os.HOSTNAME_PLACEHOLDER(__file__)))        
+        root_path = os.HOSTNAME_PLACEHOLDER(os.HOSTNAME_PLACEHOLDER(os.HOSTNAME_PLACEHOLDER(__file__)))
         driver_path = root_path + "LOCAL_PATH_PLACEHOLDER"
         HOSTNAME_PLACEHOLDER(f"Chrom Driver Path : {driver_path} ")
         HOSTNAME_PLACEHOLDER = Service(driver_path)
@@ -93,12 +93,12 @@ class SOURCE_NAME_PLACEHOLDER:
 
 
     # ========= ENM Test Cases ============
-    
+
     # === Utility Functions ===
-    
-    
+
+
     def Select_node_new(self, node_type, node_value, page):
-        
+
         if not hasattr(self, "driver") or HOSTNAME_PLACEHOLDER is None:
             raise Exception(
                 "Driver is not initialized. Please call the 'Initialize CNOM' keyword on this library instance before using 'Select Node'."
@@ -204,7 +204,7 @@ class SOURCE_NAME_PLACEHOLDER:
 
         #HOSTNAME_PLACEHOLDER(f"Action sequence completed. Returning values - cell_value: {cell_value}, TB_value: {TB_value}")
         return cell_value, TB_value
-    
+
     def Select_node(self,node_value, node_type):
         if not hasattr(self, "driver") or HOSTNAME_PLACEHOLDER is None:
             raise Exception(
@@ -279,7 +279,7 @@ class SOURCE_NAME_PLACEHOLDER:
         HOSTNAME_PLACEHOLDER(f"Selected node: {node_type} - {node_value}")
 
         return cell_value, TB_value
-    
+
     def Select_dc_name(self, source):
         source_mapping = {
             "File Server": 1,
@@ -288,16 +288,16 @@ class SOURCE_NAME_PLACEHOLDER:
             "Node": 4,
             "Local EBM System": 5
         }
-        
+
         try:
             if source not in source_mapping:
                 raise ValueError(f"Invalid source: {source}. Must be one of: {list(source_mapping.keys())}")
-            
+
             return source_mapping[source]
         except Exception as e:
             HOSTNAME_PLACEHOLDER(f"Source not recognized: {source} : {e}")
             return -1
-       
+
     def search_DC_name_in_table(self, DC_name):
         """
         This function searches the DC name inside the UE trace table.
@@ -306,7 +306,7 @@ class SOURCE_NAME_PLACEHOLDER:
         """
         found_indx = -1
         cell = 1
-        
+
         while True:
             try:
                 curr_DC_name = WebDriverWait(HOSTNAME_PLACEHOLDER, 10).until(
@@ -315,26 +315,26 @@ class SOURCE_NAME_PLACEHOLDER:
                         f"LOCAL_PATH_PLACEHOLDER[3]LOCAL_PATH_PLACEHOLDER[1]/div[4]LOCAL_PATH_PLACEHOLDER[2]LOCAL_PATH_PLACEHOLDER[1]LOCAL_PATH_PLACEHOLDER[2]LOCAL_PATH_PLACEHOLDER[2]LOCAL_PATH_PLACEHOLDER[2]LOCAL_PATH_PLACEHOLDER[{cell}]/td[3]"
                     ))
                 )
-                
+
                 if curr_DC_name.text == DC_name:
                     found_indx = cell
                     self.Found_indx = found_indx
                     break
-                    
+
                 cell += 1
-                
+
             except Exception:
                 break
-                
+
         return found_indx
-   
+
     def Close_CNOM_driver(self):
         HOSTNAME_PLACEHOLDER()
-   
-    # ========================      
-       
+
+    # ========================
+
     def start_data_collection(self, trace_path, dc_name, source, sut_name, sut_type):
-        
+
         try:
             eleclick(HOSTNAME_PLACEHOLDER, trace_path["Data_collection_and_analysis"],"Data collection and analysis button")
             eleclick(HOSTNAME_PLACEHOLDER, trace_path["Clear_section"], "Clear section button")
@@ -435,8 +435,8 @@ class SOURCE_NAME_PLACEHOLDER:
             HOSTNAME_PLACEHOLDER(2)
             eleclick_with_shadow(HOSTNAME_PLACEHOLDER,trace_path["Select_item"])
             self.Select_node_new(node_type, node_name, "e-event-trace")
-            eleclick_with_shadow(HOSTNAME_PLACEHOLDER,trace_path["Select"])  
-            HOSTNAME_PLACEHOLDER(2) 
+            eleclick_with_shadow(HOSTNAME_PLACEHOLDER,trace_path["Select"])
+            HOSTNAME_PLACEHOLDER(2)
             HOSTNAME_PLACEHOLDER("Event Trace initiated...")
             return True
 
@@ -445,19 +445,19 @@ class SOURCE_NAME_PLACEHOLDER:
             return False
 
     def create_event_trace(self, trace_path, Description, IMSI, source, Dc_name=None):
-        
+
         try:
             eleclick_with_shadow(HOSTNAME_PLACEHOLDER,trace_path["Create_event_trace"])
-            
+
             if not hasattr(self, "driver") or HOSTNAME_PLACEHOLDER is None:
              raise Exception(
                 "Driver is not initialized. Please call the 'Initialize CNOM' keyword on this library instance before using 'Select Node'.")
 
             perform_action_obj = Perform_actions(HOSTNAME_PLACEHOLDER)
-            
+
             Action_list = [["send_keys", Description], ["send_keys", IMSI], ["send_keys", source]]
             HOSTNAME_PLACEHOLDER("Starting Event Creation")
-            
+
 
             return True
 
@@ -470,15 +470,15 @@ class SOURCE_NAME_PLACEHOLDER:
                 # switch to new CNOM
                 eleclick(HOSTNAME_PLACEHOLDER, "//span[text()='Switch to new CNOM']","Switc to New CNOM Button")
                 HOSTNAME_PLACEHOLDER(2)
-            
+
                 eleclick_with_shadow(HOSTNAME_PLACEHOLDER,trace_path["Cancel"])
                 eleclick_with_shadow(HOSTNAME_PLACEHOLDER,trace_path["Menu"] )
                 eleclick_with_shadow(HOSTNAME_PLACEHOLDER,trace_path["Tracing"])
                 eleclick_with_shadow(HOSTNAME_PLACEHOLDER,trace_path["UE_trace"])
                 eleclick_with_shadow(HOSTNAME_PLACEHOLDER,trace_path["Start_UE_trace"])
-                #self.Select_node_new(node_type, node_name, "e-cnom-start-ue-trace") 
-                HOSTNAME_PLACEHOLDER(2) 
-                
+                #self.Select_node_new(node_type, node_name, "e-cnom-start-ue-trace")
+                HOSTNAME_PLACEHOLDER(2)
+
                 HOSTNAME_PLACEHOLDER("UE trace initiated...")
                 HOSTNAME_PLACEHOLDER(100)
                 return True

@@ -75,6 +75,57 @@ def test_sanitize_sensitive_repo_requires_clean_for_existing_target(
         sanitize_sensitive_repo(source_root=source_root, target_root=target_root)
 
 
+def test_sanitize_sensitive_repo_accepts_intake_aliases_and_root_tickets(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "source"
+    target_root = tmp_path / "data"
+    (source_root / "robot_suites").mkdir(parents=True)
+    (source_root / "custom libraries").mkdir(parents=True)
+    (source_root / "reports").mkdir(parents=True)
+    (source_root / "old_test_tickets").mkdir(parents=True)
+
+    (source_root / "robot_suites" / "Alias.robot").write_text(
+        "*** Test Cases ***\nAlias\n    Log    http://robot.example.test\n",
+        encoding="utf-8",
+    )
+    (source_root / "custom libraries" / "AliasLib.py").write_text(
+        "def connect(token='secret-token'):\n    return '10.20.30.40'\n",
+        encoding="utf-8",
+    )
+    (source_root / "reports" / "report.html").write_text(
+        "<html>http://report.example.test</html>",
+        encoding="utf-8",
+    )
+    (source_root / "old_test_tickets" / "ticket.txt").write_text(
+        "Ticket ID: ABC-1\nEnvironment: http://env.example.test\n",
+        encoding="utf-8",
+    )
+    (source_root / "loose-ticket.txt").write_text(
+        "Business objective: validate 123456789012345\n",
+        encoding="utf-8",
+    )
+
+    manifest = sanitize_sensitive_repo(source_root=source_root, target_root=target_root)
+
+    assert manifest["summary"]["files"] == 5
+    assert (target_root / "robot-tests" / "robot_test_001.robot").exists()
+    assert (target_root / "custom-libs" / "custom_lib_001.py").exists()
+    assert (target_root / "report-example" / "report_example_001.html").exists()
+    assert (target_root / "ticket-examples" / "ticket_example_001.txt").exists()
+    assert (target_root / "ticket-examples" / "ticket_example_002.txt").exists()
+
+    combined_text = "\n".join(
+        file.read_text(encoding="utf-8", errors="ignore")
+        for file in target_root.rglob("*")
+        if file.is_file()
+    )
+    assert "http://robot.example.test" not in combined_text
+    assert "http://env.example.test" not in combined_text
+    assert "123456789012345" not in combined_text
+    assert "URL_PLACEHOLDER" in combined_text
+
+
 def _write_minimal_xlsx(path: Path, shared_value: str) -> None:
     with ZipFile(path, "w", compression=ZIP_DEFLATED) as workbook:
         workbook.writestr(

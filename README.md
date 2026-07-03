@@ -178,9 +178,9 @@ Safe flow:
 
 ```text
 aegis-sensitive-data/
-  -> scripts/sanitize_sensitive_data_repo.py
+  -> scripts/intake_reference_corpus.py
+  -> sanitize + safety scan
   -> fixtures/reference_corpus/raw_sanitized/
-  -> scripts/generate_reference_corpus_profiles.py
   -> fixtures/reference_corpus/normalized/
   -> agents/tools use normalized profiles only
 ```
@@ -191,25 +191,27 @@ Generated normalized profiles:
 - `fixtures/reference_corpus/normalized/robot_style_profile/profile.json`
 - `fixtures/reference_corpus/normalized/report_profile/profile.json`
 - `fixtures/reference_corpus/normalized/execution_evidence_profile/profile.json`
+- `fixtures/reference_corpus/normalized/ticket_profile/profile.json`
+- `fixtures/reference_corpus/INTAKE_SUMMARY.json`
 
 Current corpus state:
 
 ```text
-Sanitized files: 51
-Redactions applied: 7024
-Robot tests: 5
+Sanitized files: 61
+Redactions applied: 15073
+Robot test/support files: 14
 Custom library/reference files: 42
-Report examples: 1
+Report examples: 0 currently provided
 Successful execution artifacts: 3
 Failed execution artifacts: 0 currently provided
+Ticket/semi-structured input files: 2
 Extracted normalized Robot keywords: 238
 ```
 
 Run the safe grounding pipeline manually:
 
 ```bash
-python scripts/sanitize_sensitive_data_repo.py --clean
-python scripts/generate_reference_corpus_profiles.py
+python scripts/intake_reference_corpus.py --clean
 python -m pytest -q
 ```
 

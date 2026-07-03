@@ -12,7 +12,8 @@ The safe pipeline is:
 
 ```text
 aegis-sensitive-data/
-  -> sanitizer/redaction
+  -> scripts/intake_reference_corpus.py
+  -> sanitizer/redaction + safety scan
   -> fixtures/reference_corpus/raw_sanitized/
   -> normalized profiles
   -> agents/tools consume only normalized outputs
@@ -23,13 +24,14 @@ aegis-sensitive-data/
 Current sanitized corpus result:
 
 ```text
-Files sanitized: 51
-Redactions applied: 7024
-Robot test files: 5
+Files sanitized: 61
+Redactions applied: 15073
+Robot test/support files: 14
 Custom library/reference files: 42
-Report examples: 1
+Report examples: 0 currently provided
 Successful execution artifacts: 3
 Failed execution artifacts: 0 currently provided
+Ticket/semi-structured input files: 2
 LLD examples: 0 currently provided
 ```
 
@@ -44,16 +46,19 @@ fixtures/reference_corpus/normalized/robot_keywords/keyword_registry.json
 fixtures/reference_corpus/normalized/robot_style_profile/profile.json
 fixtures/reference_corpus/normalized/report_profile/profile.json
 fixtures/reference_corpus/normalized/execution_evidence_profile/profile.json
+fixtures/reference_corpus/normalized/ticket_profile/profile.json
 fixtures/reference_corpus/normalized/NORMALIZATION_SUMMARY.json
+fixtures/reference_corpus/INTAKE_SUMMARY.json
 ```
 
 Current normalized summary:
 
 ```text
 Robot keywords extracted: 238
-Robot style files analyzed: 5
-Report examples analyzed: 1
+Robot style files analyzed: 12
+Report examples analyzed: 0
 Execution artifacts analyzed: 3
+Ticket files analyzed: 2
 ```
 
 ## Agent/tool upgrades
@@ -91,11 +96,14 @@ The clean package keeps sanitized reference-corpus material under `fixtures/refe
 ## Verification
 
 ```bash
-python -m pytest -q
-# 148 passed
+python -m pytest tests/test_sensitive_data_sanitizer.py tests/test_reference_corpus_grounding.py tests/test_reference_corpus_intake.py -q
+# 12 passed
 
-python -m compileall -q backend scripts tests
+python -m ruff check scripts/sanitize_sensitive_data_repo.py scripts/generate_reference_corpus_profiles.py scripts/intake_reference_corpus.py tests/test_sensitive_data_sanitizer.py tests/test_reference_corpus_grounding.py tests/test_reference_corpus_intake.py
 # passed
+
+python scripts/verify_rag_corpus.py
+# 43 chunks, all 8 probes retrieved
 ```
 
 Frontend verification should be run with:
@@ -111,7 +119,6 @@ npm run build
 The failed execution example is not yet present. The current failed-execution profile correctly reports `has_failed_example=false`. Once a sanitized failed execution artifact is added, rerun:
 
 ```bash
-python scripts/sanitize_sensitive_data_repo.py --clean
-python scripts/generate_reference_corpus_profiles.py
+python scripts/intake_reference_corpus.py --clean
 python -m pytest -q
 ```

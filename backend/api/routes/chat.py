@@ -10,6 +10,7 @@ from backend.chat.schemas import (
     ChatActionHistoryResponse,
     ChatMessageRequest,
     ChatMessageResponse,
+    ChatTicketIntakeRequest,
     ConfirmChatActionRequest,
     ConfirmChatActionResponse,
     ListChatSessionsResponse,
@@ -25,6 +26,7 @@ from backend.chat.service import (
     cancel_chat_action,
     confirm_chat_action,
     create_chat_session,
+    handle_chat_ticket_intake,
     handle_chat_message,
     list_recent_chat_sessions,
     read_chat_session,
@@ -105,6 +107,29 @@ def create_message(
         )
     except ChatSessionNotFound as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return ChatMessageResponse(session=session, message=message)
+
+
+@router.post("/sessions/{session_id}/ticket-intake", response_model=ChatMessageResponse)
+def create_ticket_from_chat_intake(
+    session_id: str,
+    request: ChatTicketIntakeRequest,
+    principal: Annotated[Principal, Depends(get_current_principal)],
+) -> ChatMessageResponse:
+    try:
+        session, message = handle_chat_ticket_intake(
+            session_id=session_id,
+            request=request,
+            principal=principal,
+        )
+    except ChatSessionNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return ChatMessageResponse(session=session, message=message)
 
 
@@ -158,4 +183,3 @@ def cancel_action(
     except ChatActionConflict as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return CancelChatActionResponse(session=session, action=action, message=message)
-

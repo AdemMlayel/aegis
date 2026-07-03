@@ -702,17 +702,23 @@ export type ExecutionEvent = {
 
 export type ChatIntent =
   | "system_question"
+  | "system_knowledge"
   | "ticket_question"
+  | "test_case_suggestion"
   | "workflow_start"
   | "workflow_status"
   | "workflow_step"
+  | "show_stage_output"
   | "artifact_question"
   | "validation_question"
   | "approval_request"
   | "execution_request"
   | "investigation_question"
+  | "self_healing_question"
   | "report_request"
   | "knowledge_question"
+  | "action_history"
+  | "ticket_intake"
   | "help"
   | "unknown";
 
@@ -756,6 +762,7 @@ export type ChatSession = {
   ticket_id: string | null;
   messages: ChatMessage[];
   pending_actions: ChatAction[];
+  action_history: ChatAction[];
   created_at: string;
   updated_at: string;
 };

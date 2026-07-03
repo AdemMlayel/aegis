@@ -9,12 +9,14 @@ from backend.chat.schemas import (
     ChatAction,
     ChatMessage,
     ChatSession,
+    ChatTicketIntakeRequest,
     CreateChatSessionRequest,
 )
+from backend.chat.ticket_intake import TicketIntakeResult, intake_ticket_from_chat
 from backend.config.settings import settings
 from backend.graph.state import IntelligenceConfigBlock, utc_now
 from backend.graph.workflow import run_post_approval_workflow
-from backend.security import Principal
+from backend.security import Capability, Principal
 from backend.storage.audit import append_audit_event
 from backend.storage.contexts import load_context, save_context
 from backend.tickets import get_ticket_source
@@ -110,6 +112,51 @@ def handle_chat_message(
     session.append_message(user_message)
 
     classified = classify_chat_intent(message)
+    if classified.intent == "ticket_intake":
+        if not principal.can(Capability.WRITE_TICKETS):
+            assistant_message = ChatMessage(
+                role="assistant",
+                content="I can create a ticket from that scenario, but your current role does not have ticket-write permission.",
+                intent="ticket_intake",
+                metadata={
+                    "confidence": classified.confidence,
+                    "detected_language": classified.detected_language,
+                    "permission": "write:tickets",
+                },
+            )
+            session.append_message(assistant_message)
+            save_chat_session(session)
+            return session, assistant_message
+        result = intake_ticket_from_chat(
+            actor=principal.user_id,
+            session_id=session_id,
+            description=message,
+        )
+        actions = _intake_actions(result=result, principal=principal)
+        assistant_message = ChatMessage(
+            role="assistant",
+            content=_ticket_intake_response(result),
+            intent="ticket_intake",
+            actions=actions,
+            metadata={
+                "confidence": classified.confidence,
+                "detected_language": classified.detected_language,
+                "source": "ticket_intake",
+                "ticket_id": result.ticket.id,
+                "assessment": result.assessment.model_dump(mode="json"),
+                "redaction_count": result.redaction_count,
+            },
+        )
+        session.ticket_id = result.ticket.id
+        session.append_message(assistant_message)
+        _audit_ticket_intake(
+            actor=principal.user_id,
+            session=session,
+            result=result,
+        )
+        save_chat_session(session)
+        return session, assistant_message
+
     planned_actions = plan_actions(
         session=session,
         classified=classified,
@@ -154,6 +201,61 @@ def handle_chat_message(
         },
     )
     session.append_message(assistant_message)
+    save_chat_session(session)
+    return session, assistant_message
+
+
+def handle_chat_ticket_intake(
+    *,
+    session_id: str,
+    request: ChatTicketIntakeRequest,
+    principal: Principal,
+) -> tuple[ChatSession, ChatMessage]:
+    if not principal.can(Capability.WRITE_TICKETS):
+        raise PermissionError("Capability required: write:tickets")
+
+    session = read_chat_session(session_id)
+    result = intake_ticket_from_chat(
+        actor=principal.user_id,
+        session_id=session_id,
+        description=request.description,
+        file_name=request.file_name,
+        file_content=request.file_content,
+    )
+
+    source_label = request.file_name or "pasted description"
+    user_message = ChatMessage(
+        role="user",
+        content=f"Uploaded test scenario for intake: {source_label}",
+        metadata={
+            "actor": principal.user_id,
+            "source": "ticket_intake",
+            "file_name": request.file_name,
+            "content_type": request.content_type,
+        },
+    )
+    session.append_message(user_message)
+
+    actions = _intake_actions(result=result, principal=principal)
+    assistant_message = ChatMessage(
+        role="assistant",
+        content=_ticket_intake_response(result),
+        intent="ticket_intake",
+        actions=actions,
+        metadata={
+            "source": "ticket_intake",
+            "ticket_id": result.ticket.id,
+            "assessment": result.assessment.model_dump(mode="json"),
+            "redaction_count": result.redaction_count,
+        },
+    )
+    session.ticket_id = result.ticket.id
+    session.append_message(assistant_message)
+    _audit_ticket_intake(
+        actor=principal.user_id,
+        session=session,
+        result=result,
+    )
     save_chat_session(session)
     return session, assistant_message
 
@@ -205,6 +307,93 @@ def confirm_chat_action(
     session.append_message(message)
     save_chat_session(session)
     return session, action, message
+
+
+def _intake_actions(
+    *,
+    result: TicketIntakeResult,
+    principal: Principal,
+) -> list[ChatAction]:
+    if not result.assessment.automatable:
+        return []
+    action = ChatAction(
+        kind="start_workflow",
+        label="Start workflow from uploaded ticket",
+        description=(
+            f"Create an approval-required workflow session for sanitized ticket "
+            f"{result.ticket.id}."
+        ),
+        ticket_id=result.ticket.id,
+        payload={
+            "mode": "approval_required",
+            "source": "chat_ticket_intake",
+            "assessment": result.assessment.model_dump(mode="json"),
+        },
+    )
+    try:
+        ensure_action_allowed(action.kind, principal)
+    except PermissionError:
+        action.status = "blocked"
+        action.result_summary = "Current user does not have permission to start workflows."
+    return [action]
+
+
+def _audit_ticket_intake(
+    *,
+    actor: str,
+    session: ChatSession,
+    result: TicketIntakeResult,
+) -> None:
+    append_audit_event(
+        actor=actor,
+        event_type="chat_ticket_intake",
+        summary="Chat copilot created a sanitized ticket from scenario input.",
+        metadata={
+            "session_id": session.session_id,
+            "ticket_id": result.ticket.id,
+            "automatable": result.assessment.automatable,
+            "readiness": result.assessment.readiness,
+            "redaction_count": result.redaction_count,
+        },
+    )
+
+
+def _ticket_intake_response(result: TicketIntakeResult) -> str:
+    assessment = result.assessment
+    status_line = (
+        "I can automate this scenario."
+        if assessment.automatable
+        else "This scenario is not ready for automation yet."
+    )
+    lines = [
+        f"Created sanitized ticket `{result.ticket.id}` from the uploaded scenario.",
+        f"- Title: {result.ticket.title}",
+        f"- Automation readiness: `{assessment.readiness}`",
+        f"- Confidence: {assessment.confidence:.2f}",
+        f"- Redactions applied before storage: {result.redaction_count}",
+        f"- Recommended tools: {_join_or_none(assessment.recommended_tools)}",
+        status_line,
+    ]
+    if assessment.reasons:
+        lines.append("Signals found:")
+        lines.extend(f"- {reason}" for reason in assessment.reasons[:6])
+    if assessment.missing_information:
+        lines.append("Missing or weak information:")
+        lines.extend(f"- {item}" for item in assessment.missing_information[:6])
+    if assessment.blockers:
+        lines.append("Automation blockers:")
+        lines.extend(f"- {item}" for item in assessment.blockers[:6])
+    if assessment.automatable:
+        lines.append("Confirm the proposed action to create the workflow session.")
+    else:
+        lines.append(
+            "Add the missing details, then upload or paste the refined scenario again."
+        )
+    return "\n".join(lines)
+
+
+def _join_or_none(values: list[str]) -> str:
+    return ", ".join(values) if values else "none"
 
 
 def cancel_chat_action(

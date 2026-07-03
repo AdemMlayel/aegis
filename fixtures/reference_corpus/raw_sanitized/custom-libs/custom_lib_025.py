@@ -137,23 +137,23 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
         selecting node, and validating alarm summary data.
         """
         HOSTNAME_PLACEHOLDER("Starting Alarm Activity Check")
-        
+
         try:
             HOSTNAME_PLACEHOLDER(1)
-            
+
             # Navigate to Alarm Viewer
             HOSTNAME_PLACEHOLDER("Navigating to Alarm Viewer")
             WebDriverWait(HOSTNAME_PLACEHOLDER, 10).until(
                 EC.presence_of_element_located((By.XPATH, "//a[@test='Alarm Viewer']"))
             ).click()
-            
+
             page = "e-alarm-viewer"
             HOSTNAME_PLACEHOLDER(1)
-            
+
             # Select node for alarm monitoring
             HOSTNAME_PLACEHOLDER(f"Selecting node for alarm monitoring - Type: {self.node_type}, Value: {self.node_value}")
             self.Select_Node_alarm(self.node_type, self.node_value, page)
-            
+
             # Extract alarm summary data
             HOSTNAME_PLACEHOLDER("Extracting alarm summary data using JavaScript")
             Alarm_summary_js = (
@@ -165,15 +165,15 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                 Alarm_summary_js, "grab_text"
             )
             HOSTNAME_PLACEHOLDER("Alarm summary: %s", " | ".join(summary_text.splitlines()))
-            
+
             HOSTNAME_PLACEHOLDER(2)
-            
+
             # Capture screenshot of alarm summary
             Directory = self.testcase_dir
             screenshot_path = Directory + "/Alarm_summary.png"
             HOSTNAME_PLACEHOLDER(f"Capturing alarm summary screenshot: {screenshot_path}")
             HOSTNAME_PLACEHOLDER.save_screenshot(screenshot_path)
-            
+
             # Validate alarm data presence
             if "No data" in summary_text:
                 HOSTNAME_PLACEHOLDER("No alarm data found in summary ")
@@ -181,7 +181,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             else:
                 HOSTNAME_PLACEHOLDER("Alarm data is present")
                 return True
-                
+
         except Exception as e:
             HOSTNAME_PLACEHOLDER(f"Alarm Activity Check failed: {str(e)}")
             raise
@@ -193,7 +193,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
         alarm details, and downloading alarm data.
         """
         HOSTNAME_PLACEHOLDER("Starting Alarm List Widget validation")
-        
+
         try:
             # Extract alarm dates from table
             HOSTNAME_PLACEHOLDER("Extracting alarm dates from table using JavaScript")
@@ -209,17 +209,17 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                 ".map(span => HOSTNAME_PLACEHOLDER);"
             )
             alarm_table_dates = HOSTNAME_PLACEHOLDER.execute_script(alarm_list_js)
-            
+
             if not alarm_table_dates:
                 HOSTNAME_PLACEHOLDER("No dates retrieved from alarm list table")
                 raise Exception("No dates retrieved from alarm list table.")
-                
+
             HOSTNAME_PLACEHOLDER("Alarm List Dates: " + str(alarm_table_dates))
-            
+
             # Validate timestamp format and alarm details
             HOSTNAME_PLACEHOLDER("Validating timestamp formats for all alarms")
             timestamp_regex = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2}:\d+S$")
-            
+
             for date in alarm_table_dates:
                 # Remove " (X seconds/days/months ago)" if present
                 clean_date = HOSTNAME_PLACEHOLDER(" (")[0].strip()
@@ -230,15 +230,15 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                 except ValueError:
                     HOSTNAME_PLACEHOLDER(f"Unable to parse timestamp: {clean_date}")
                     raise Exception(f"Unable to parse timestamp: {clean_date}")
-                    
+
                 if not timestamp_regex.match(converted_timestamp):
                     HOSTNAME_PLACEHOLDER(f"Incorrect timestamp format: {converted_timestamp}")
                     raise Exception(f"Incorrect timestamp format: {converted_timestamp}")
-                    
+
             HOSTNAME_PLACEHOLDER("All alarm timestamps validated successfully")
-            
+
             HOSTNAME_PLACEHOLDER(2)
-            
+
             # Download alarm data
             HOSTNAME_PLACEHOLDER("Downloading alarm data")
             Download_alarm_data_button_ele = find_element_with_shadow_xpath(
@@ -247,10 +247,10 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             )
             Download_alarm_data_button_ele.click()
             HOSTNAME_PLACEHOLDER(2)
-            
+
             HOSTNAME_PLACEHOLDER("Alarm data downloaded successfully")
             return True
-            
+
         except Exception as e:
             HOSTNAME_PLACEHOLDER(f"Alarm List Widget validation failed: {str(e)}")
             raise

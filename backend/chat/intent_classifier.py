@@ -24,6 +24,7 @@ _MUTATING_INTENTS: frozenset[str] = frozenset(
         "workflow_step",
         "approval_request",
         "execution_request",
+        "ticket_intake",
     }
 )
 
@@ -92,6 +93,20 @@ INTENT_PATTERNS: dict[ChatIntent, list[str]] = {
         "iniciar analisis",
         "analise",
         "iniciar analise",
+    ],
+    "ticket_intake": [
+        "create ticket from",
+        "create a ticket from",
+        "turn this into a ticket",
+        "make this a ticket",
+        "intake ticket",
+        "upload scenario",
+        "manual scenario",
+        "manual test scenario",
+        "lld",
+        "can this scenario be automated",
+        "can we automate this scenario",
+        "automate this scenario",
     ],
     "workflow_step": [
         "next step",
@@ -420,6 +435,7 @@ CONFIDENCE_BY_INTENT: dict[ChatIntent, float] = {
     "system_question": 0.84,
     "system_knowledge": 0.82,
     "workflow_start": 0.88,
+    "ticket_intake": 0.86,
     "workflow_step": 0.84,
     "workflow_status": 0.87,
     "show_stage_output": 0.85,
@@ -552,6 +568,15 @@ STRONG_SIGNALS: dict[ChatIntent, list[tuple[str, float]]] = {
         ("start analysis", 4.0), ("begin the workflow", 4.0), ("start the workflow", 4.0),
         ("run the analysis", 3.5), ("analyze this", 3.5), ("analyse this", 3.5),
         ("get started", 3.0), ("lets start", 3.0),
+    ],
+    "ticket_intake": [
+        ("create ticket from", 5.0), ("create a ticket from", 5.0),
+        ("turn this into a ticket", 5.0), ("make this a ticket", 5.0),
+        ("intake ticket", 5.0), ("manual test scenario", 4.5),
+        ("manual scenario", 4.0), ("uploaded scenario", 4.0),
+        ("can this scenario be automated", 5.0),
+        ("can we automate this scenario", 5.0),
+        ("automate this scenario", 4.5), ("lld", 3.5),
     ],
     "workflow_step": [
         ("keep going", 4.0), ("carry on", 3.5), ("next step", 4.0), ("run next", 4.0),
@@ -702,6 +727,7 @@ def _score_intents(normalized: str) -> tuple[ChatIntent, float]:
 # actionable one. Earlier in the list wins.
 _TIE_ORDER: list[ChatIntent] = [
     "test_case_suggestion",
+    "ticket_intake",
     "investigation_question",
     "self_healing_question",
     "workflow_step",

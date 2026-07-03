@@ -48,6 +48,40 @@ TAG_RE = re.compile(r"^\s*\[Tags\]\s+(.*)$", re.IGNORECASE)
 SETTING_RE = re.compile(r"^(Library|Resource|Suite Setup|Suite Teardown|Test Setup|Test Teardown)\s+(.*)$", re.IGNORECASE)
 HTML_TAG_RE = re.compile(r"<[^>]+>")
 SENSITIVE_PLACEHOLDER_RE = re.compile(r"(PLACEHOLDER|REDACTED|DEMO_|SOURCE_NAME_PLACEHOLDER)", re.IGNORECASE)
+TICKET_FIELD_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("ticket_id", ("ticket id", "ticket", "id")),
+    ("title", ("title", "summary")),
+    ("description", ("description", "overview")),
+    ("business_objective", ("business objective", "business goal")),
+    ("test_objective", ("test objective", "test goal", "objective")),
+    ("system_under_test", ("system under test", "sut")),
+    ("feature_or_service", ("feature", "service")),
+    ("scope", ("scope", "in scope", "test scope")),
+    ("out_of_scope", ("out of scope", "out-of-scope")),
+    ("preconditions", ("precondition", "pre-requisite", "prerequisite")),
+    ("assumptions", ("assumption",)),
+    ("environment", ("environment", "test environment")),
+    ("interfaces", ("interface", "api", "service interaction")),
+    ("input_data", ("input data", "test data", "payload")),
+    ("expected_outputs", ("expected output", "expected result", "expected response")),
+    ("validation_rules", ("validation", "assertion", "rule")),
+    ("test_steps", ("test step", "steps", "procedure")),
+    ("acceptance_criteria", ("acceptance criteria", "criteria")),
+    ("risks_or_constraints", ("risk", "constraint", "limitation")),
+    ("dependencies", ("dependency", "dependencies")),
+    ("required_tools", ("tool", "robot", "appium", "wireshark")),
+    ("priority", ("priority", "severity")),
+    ("status", ("status", "state")),
+    ("created_date", ("created", "creation date")),
+    ("last_updated_date", ("updated", "modified", "last update")),
+    ("architecture_summary", ("architecture", "component")),
+    ("data_flow", ("data flow", "sequence")),
+    ("configuration_requirements", ("configuration", "config")),
+    ("security_constraints", ("security", "auth")),
+    ("logging_requirements", ("logging", "log")),
+    ("monitoring_requirements", ("monitoring", "metric")),
+    ("error_handling", ("error handling", "failure handling")),
+)
 
 
 def generate_reference_profiles(corpus_root: Path = DEFAULT_CORPUS_ROOT) -> dict[str, Any]:
@@ -62,12 +96,14 @@ def generate_reference_profiles(corpus_root: Path = DEFAULT_CORPUS_ROOT) -> dict
     robot_style = build_robot_style_profile(raw_root)
     report_profile = build_report_profile(raw_root)
     execution_profile = build_execution_evidence_profile(raw_root)
+    ticket_profile = build_ticket_profile(raw_root)
 
     outputs = {
         "robot_keywords/keyword_registry.json": robot_keywords,
         "robot_style_profile/profile.json": robot_style,
         "report_profile/profile.json": report_profile,
         "execution_evidence_profile/profile.json": execution_profile,
+        "ticket_profile/profile.json": ticket_profile,
     }
     for rel_path, payload in outputs.items():
         path = normalized_root / rel_path
@@ -84,6 +120,7 @@ def generate_reference_profiles(corpus_root: Path = DEFAULT_CORPUS_ROOT) -> dict
             "robot_style_files": robot_style["summary"]["robot_files"],
             "report_files": report_profile["summary"]["report_files"],
             "execution_artifacts": execution_profile["summary"]["artifact_count"],
+            "ticket_files": ticket_profile["summary"]["ticket_files"],
         },
         "safety": {
             "source_is_sanitized_only": True,
@@ -326,6 +363,84 @@ def build_execution_evidence_profile(raw_root: Path) -> dict[str, Any]:
     }
 
 
+def build_ticket_profile(raw_root: Path) -> dict[str, Any]:
+    source_roots = [
+        raw_root / "ticket-examples",
+        raw_root / "lld-examples",
+    ]
+    files = sorted(
+        path
+        for root in source_roots
+        if root.is_dir()
+        for path in root.rglob("*")
+        if path.is_file() and path.name != "README.md"
+    )
+    artifact_types = Counter(path.suffix.lower() or "[none]" for path in files)
+    field_hits: Counter[str] = Counter()
+    architecture_terms: Counter[str] = Counter()
+    excerpts: list[str] = []
+
+    for path in files:
+        text = _read_text_artifact(path)
+        if not text:
+            continue
+        lowered = text.lower()
+        for field_name, terms in TICKET_FIELD_PATTERNS:
+            if any(term in lowered for term in terms):
+                field_hits[field_name] += 1
+        architecture_terms.update(_detect_ticket_architecture_terms(lowered))
+        if len(excerpts) < 5:
+            excerpts.append(_safe_excerpt(text, 450))
+
+    required_fields = [
+        field_name
+        for field_name, _ in TICKET_FIELD_PATTERNS
+        if field_name
+        not in {
+            "architecture_summary",
+            "data_flow",
+            "configuration_requirements",
+            "security_constraints",
+            "logging_requirements",
+            "monitoring_requirements",
+            "error_handling",
+        }
+    ]
+    return {
+        "schema_version": "aegis-ticket-profile.v1",
+        "generated_at": _generated_at(),
+        "source": "fixtures/reference_corpus/raw_sanitized/ticket-examples",
+        "summary": {
+            "ticket_files": len(files),
+            "artifact_types": dict(sorted(artifact_types.items())),
+            "field_coverage": dict(sorted(field_hits.items())),
+            "architecture_terms": dict(sorted(architecture_terms.items())),
+        },
+        "ticket_schema": {
+            "required_fields": required_fields,
+            "lld_like_sections": [
+                "architecture_summary",
+                "components_involved",
+                "data_flow",
+                "api_or_service_interactions",
+                "configuration_requirements",
+                "security_constraints",
+                "logging_requirements",
+                "monitoring_requirements",
+                "error_handling_expectations",
+                "test_data_requirements",
+            ],
+        },
+        "normalization_guidance": [
+            "Use the ticket as the first workflow context object.",
+            "Preserve domain intent, validation rules and tool needs.",
+            "Replace environments, addresses, identities and credentials with placeholders.",
+            "Separate in-scope behavior from out-of-scope constraints before generation.",
+        ],
+        "sample_safe_excerpts": excerpts,
+    }
+
+
 def _execution_profile_for(root: Path, *, expected: str) -> dict[str, Any]:
     files = sorted(path for path in root.rglob("*") if path.is_file() and path.name != "README.md") if root.is_dir() else []
     artifact_types = Counter(path.suffix.lower() or "[none]" for path in files)
@@ -377,6 +492,22 @@ def _detect_failure_patterns(text: str) -> Counter[str]:
         if any(term in lowered for term in terms):
             patterns[name] += 1
     return patterns
+
+
+def _detect_ticket_architecture_terms(lowered_text: str) -> Counter[str]:
+    terms = {
+        "api_or_service": ("api", "service", "endpoint", "request", "response"),
+        "database": ("database", "db", "sql", "record", "table"),
+        "network_or_trace": ("network", "trace", "pcap", "packet", "wireshark"),
+        "mobile_or_device": ("mobile", "device", "appium", "android", "ios"),
+        "security_or_auth": ("auth", "token", "credential", "permission", "role"),
+        "logging_or_monitoring": ("log", "monitor", "metric", "alarm", "event"),
+    }
+    hits: Counter[str] = Counter()
+    for category, needles in terms.items():
+        if any(needle in lowered_text for needle in needles):
+            hits[category] += 1
+    return hits
 
 
 def _append_keyword_entry(entries: list[dict[str, Any]], seen: set[tuple[str, str]], *, name: str, source: str, source_type: str, library: str, args: list[str], documentation: str) -> None:

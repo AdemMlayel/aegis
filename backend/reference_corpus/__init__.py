@@ -5,6 +5,7 @@ from backend.reference_corpus.profiles import (
     load_report_profile,
     load_robot_keyword_registry,
     load_robot_style_profile,
+    load_ticket_profile,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "load_report_profile",
     "load_robot_keyword_registry",
     "load_robot_style_profile",
+    "load_ticket_profile",
 ]

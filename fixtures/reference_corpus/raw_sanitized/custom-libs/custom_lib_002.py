@@ -297,33 +297,33 @@ class SOURCE_NAME_PLACEHOLDER:
             eleclick(
                 HOSTNAME_PLACEHOLDER, oesearch_download_path['Confirm_file_mangment_button'], "Confirm_file_mangment_button")
             max_attempts = 5
- 
+
             for attempt in range(1, max_attempts + 1):
                 HOSTNAME_PLACEHOLDER(f"PCAP download attempt {attempt}/{max_attempts}")
- 
+
                 eleclick(
                     HOSTNAME_PLACEHOLDER, oesearch_download_path['Download_Pcap_button'], "Download_Pcap_button")
                 HOSTNAME_PLACEHOLDER(15)
- 
+
                 pcap_files = list(Path(self.pcap_download_dir).glob("*.pcap"))
- 
+
                 if not pcap_files:
                     HOSTNAME_PLACEHOLDER(
                         f"Attempt {attempt}: No .pcap file found in {self.pcap_download_dir}, retrying...")
                     continue
- 
+
                 latest_pcap = max(pcap_files, key=lambda f: f.stat().st_mtime)
- 
+
                 if latest_pcap.stat().st_size == 0:
                     HOSTNAME_PLACEHOLDER(
                         f"Attempt {attempt}: Downloaded PCAP is empty: {latest_pcap}, retrying...")
                     latest_pcap.unlink()  # Remove empty file before retrying
                     continue
- 
+
                 HOSTNAME_PLACEHOLDER(
                     f"PCAP validated — file: {latest_pcap.name}, size: {latest_pcap.stat().st_size} bytes")
                 break
- 
+
             else:
                 HOSTNAME_PLACEHOLDER(
                     f"Failed to download a valid PCAP after {max_attempts} attempts")
@@ -332,7 +332,7 @@ class SOURCE_NAME_PLACEHOLDER:
             #     HOSTNAME_PLACEHOLDER, oesearch_download_path['Download_Pcap_button'], "Download_Pcap_button")
             # HOSTNAME_PLACEHOLDER(15)
 
-            
+
             # pcap_files = list(Path(self.pcap_download_dir).glob("*.pcap"))
             # if not pcap_files:
             #     HOSTNAME_PLACEHOLDER(
@@ -347,7 +347,7 @@ class SOURCE_NAME_PLACEHOLDER:
 
             # HOSTNAME_PLACEHOLDER(
             #     f"PCAP validated — file: {latest_pcap.name}, size: {latest_pcap.stat().st_size} bytes")
-            
+
 
             eleclick(
                 HOSTNAME_PLACEHOLDER, oesearch_download_path['Delete_Pcap_button'], "Delete_Pcap_button")

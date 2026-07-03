@@ -60,9 +60,9 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             stderr=HOSTNAME_PLACEHOLDER,
         )
         return HOSTNAME_PLACEHOLDER == 0  # 0 means success
-    
+
     def getCDRfilename_pgw(self, charging_id, cdr_folder):
-        
+
         # Initialize variables to store the CDR filename and path
         HOSTNAME_PLACEHOLDER = None
         filename = None
@@ -89,14 +89,14 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                 os.chdir(os.HOSTNAME_PLACEHOLDER(__file__))
             except OSError as e:
                 HOSTNAME_PLACEHOLDER(f"Could not change directory: {e}")
-                
+
             HOSTNAME_PLACEHOLDER(key_path=HOSTNAME_PLACEHOLDER)
 
             # Format date as YYYY-MM-DD (e.g., 2025-04-12)
             formatted_date = today_date.strftime("%Y-%m-%d")
 
             # Create the file pattern to search for
-            # Takes first 3 chars of cdr_folder + "cdr-" + today's date + *.gz # Example: "pgwcdr-2025-04-12*.gz" 
+            # Takes first 3 chars of cdr_folder + "cdr-" + today's date + *.gz # Example: "pgwcdr-2025-04-12*.gz"
             self.files_to_search = (
                 cdr_folder.split("/")[-1][:-1][:3] + "cdr-" + formatted_date + "*.gz"
             )
@@ -177,7 +177,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
         return HOSTNAME_PLACEHOLDER + "/" + HOSTNAME_PLACEHOLDER[:-3]
 
     def getCDRfilename_sgw(self, charging_id, cdr_folder):
-        
+
         # Initialize variables to store the CDR filename and path
         HOSTNAME_PLACEHOLDER = None
         filename = None
@@ -204,14 +204,14 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                 os.chdir(os.HOSTNAME_PLACEHOLDER(__file__))
             except OSError as e:
                 HOSTNAME_PLACEHOLDER(f"Could not change directory: {e}")
-                
+
             HOSTNAME_PLACEHOLDER(key_path=HOSTNAME_PLACEHOLDER)
 
             # Format date as YYYY-MM-DD (e.g., 2025-04-12)
             formatted_date = today_date.strftime("%Y-%m-%d")
 
             # Create the file pattern to search for
-            # Takes first 3 chars of cdr_folder + "cdr-" + today's date + *.gz # Example: "gwcdr-2025-04-12*.gz" 
+            # Takes first 3 chars of cdr_folder + "cdr-" + today's date + *.gz # Example: "gwcdr-2025-04-12*.gz"
             self.files_to_search = (
                 cdr_folder.split("/")[-1][:-1][:3] + "cdr-" + formatted_date + "*.gz"
             )
@@ -244,7 +244,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
 
             # Open the log file that contains the command output
             with open(HOSTNAME_PLACEHOLDER + "/HOSTNAME_PLACEHOLDER") as f:
-                output = f.read()                                                                                       
+                output = f.read()
                 # Use regex to find the filename in the command output
                 mo = HOSTNAME_PLACEHOLDER(output)
                 if mo:
@@ -604,7 +604,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
         return all_valid
 
     def getCDRfilename_list_pgw(self, cdr_folder, cdr_count):
-        
+
         # Initialize variables to store the CDR filenames and path
         HOSTNAME_PLACEHOLDER = []
         filename = None
@@ -660,7 +660,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             for expectstr, sendstr in zip(expectlist, sendlist):
                 HOSTNAME_PLACEHOLDER(expectstr, sendstr)
             HOSTNAME_PLACEHOLDER(f"Command execution completed on charging gateways: {HOSTNAME_PLACEHOLDER}")
-            
+
             # Logout from the remote server
             HOSTNAME_PLACEHOLDER()
 
@@ -668,18 +668,18 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             HOSTNAME_PLACEHOLDER(f"Opening log file: {HOSTNAME_PLACEHOLDER}/HOSTNAME_PLACEHOLDER")
             with open(HOSTNAME_PLACEHOLDER + "/HOSTNAME_PLACEHOLDER") as f:
                 output = f.read()
-                
+
                 # Use regex to find the filename in the command output
                 matches = HOSTNAME_PLACEHOLDER(output)
                 HOSTNAME_PLACEHOLDER(f"Found {len(matches)} regex matches in output")
-            
+
                 filenames_list = []
                 for match in matches:
                     filenames_list.append(match)
                     HOSTNAME_PLACEHOLDER(f"Added filename to list: {match}")
-                
+
                 HOSTNAME_PLACEHOLDER(f"Total filenames collected: {len(filenames_list)}")
-                
+
                 # Set CDR filename based on search result
                 for filename in filenames_list:
                     if filename:
@@ -687,9 +687,9 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                         HOSTNAME_PLACEHOLDER(f"Added CDR filename: {filename}")
                     else:
                         HOSTNAME_PLACEHOLDER("Empty filename found, skipping")
-                
+
                 HOSTNAME_PLACEHOLDER(f"Total CDR filenames: {len(HOSTNAME_PLACEHOLDER)}")
-                
+
                 # If a valid file was found, construct the full path to the file on remote server
                 for cdrfilename in HOSTNAME_PLACEHOLDER:
                     if cdrfilename != " we dont get file name this time":
@@ -698,51 +698,51 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                         HOSTNAME_PLACEHOLDER(f"Constructed remote path: {path_to_CDR_on_remote}")
                     else:
                         HOSTNAME_PLACEHOLDER("CDR filename indicates no file found this time")
-                
+
                 HOSTNAME_PLACEHOLDER(f"Total remote paths constructed: {len(self.path_list_to_CDR_on_remote)}")
-                
+
                 for path_to_CDR_on_remote in self.path_list_to_CDR_on_remote:
                     # If we have a path, process the file
                     if path_to_CDR_on_remote:
                         HOSTNAME_PLACEHOLDER(f"Processing CDR file at path: {path_to_CDR_on_remote}")
-                        
+
                         # Download the CDR file from remote server to local directory
                         HOSTNAME_PLACEHOLDER(f"Starting download of CDR file to: {HOSTNAME_PLACEHOLDER}")
                         HOSTNAME_PLACEHOLDER(path_to_CDR_on_remote, HOSTNAME_PLACEHOLDER)
                         HOSTNAME_PLACEHOLDER("CDR download completed successfully")
-                        
+
                         # Construct the CDR filename to uncompress
                         cdrfilename = path_to_CDR_on_remote.split("/")[-1]  # Extract filename from path
                         HOSTNAME_PLACEHOLDER(f"Extracted filename for uncompression: {cdrfilename}")
-                        
+
                         # Uncompress the downloaded .gz file
                         gunzip_command = f"gunzip {HOSTNAME_PLACEHOLDER}/{cdrfilename}"
                         HOSTNAME_PLACEHOLDER(f"Executing gunzip command: {gunzip_command}")
-                        
+
                         o, s = HOSTNAME_PLACEHOLDER(gunzip_command, withexitstatus=True)
-                        
+
                         # Log the output and status of gunzip command
                         HOSTNAME_PLACEHOLDER(f"Gunzip output: {o}")
                         HOSTNAME_PLACEHOLDER(f"Gunzip exit status: {s}")
-                        
+
                         if s == 0:
                             HOSTNAME_PLACEHOLDER("Gunzip command executed successfully")
                         else:
                             HOSTNAME_PLACEHOLDER(f"Gunzip command failed with exit status: {s}")
-                        
+
                         # Add the uncompressed file path to the list
                         uncompressed_path = HOSTNAME_PLACEHOLDER + "/" + cdrfilename[:-3]  # Remove the .gz extension
                         full_cdr_path.append(uncompressed_path)
                         HOSTNAME_PLACEHOLDER(f"Added uncompressed file path: {uncompressed_path}")
                     else:
                         HOSTNAME_PLACEHOLDER("Empty path_to_CDR_on_remote found, skipping processing")
-                
+
                 HOSTNAME_PLACEHOLDER(f"Total uncompressed CDR files processed: {len(full_cdr_path)}")
                 # Return the path to all uncompressed CDR files
         return full_cdr_path
-    
+
     def getCDRfilename_list_sgw(self, cdr_folder, cdr_count):
-        
+
         # Initialize variables to store the CDR filenames and path
         HOSTNAME_PLACEHOLDER = []
         filename = None
@@ -798,7 +798,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             for expectstr, sendstr in zip(expectlist, sendlist):
                 HOSTNAME_PLACEHOLDER(expectstr, sendstr)
             HOSTNAME_PLACEHOLDER(f"Command execution completed on charging gateways: {HOSTNAME_PLACEHOLDER}")
-            
+
             # Logout from the remote server
             HOSTNAME_PLACEHOLDER()
 
@@ -806,18 +806,18 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             HOSTNAME_PLACEHOLDER(f"Opening log file: {HOSTNAME_PLACEHOLDER}/HOSTNAME_PLACEHOLDER")
             with open(HOSTNAME_PLACEHOLDER + "/HOSTNAME_PLACEHOLDER") as f:
                 output = f.read()
-                
+
                 # Use regex to find the filename in the command output
                 matches = HOSTNAME_PLACEHOLDER(output)
                 HOSTNAME_PLACEHOLDER(f"Found {len(matches)} regex matches in output")
-            
+
                 filenames_list = []
                 for match in matches:
                     filenames_list.append(match)
                     HOSTNAME_PLACEHOLDER(f"Added filename to list: {match}")
-                
+
                 HOSTNAME_PLACEHOLDER(f"Total filenames collected: {len(filenames_list)}")
-                
+
                 # Set CDR filename based on search result
                 for filename in filenames_list:
                     if filename:
@@ -825,9 +825,9 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                         HOSTNAME_PLACEHOLDER(f"Added CDR filename: {filename}")
                     else:
                         HOSTNAME_PLACEHOLDER("Empty filename found, skipping")
-                
+
                 HOSTNAME_PLACEHOLDER(f"Total CDR filenames: {len(HOSTNAME_PLACEHOLDER)}")
-                
+
                 # If a valid file was found, construct the full path to the file on remote server
                 for cdrfilename in HOSTNAME_PLACEHOLDER:
                     if cdrfilename != " we dont get file name this time":
@@ -836,45 +836,45 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                         HOSTNAME_PLACEHOLDER(f"Constructed remote path: {path_to_CDR_on_remote}")
                     else:
                         HOSTNAME_PLACEHOLDER("CDR filename indicates no file found this time")
-                
+
                 HOSTNAME_PLACEHOLDER(f"Total remote paths constructed: {len(self.path_list_to_CDR_on_remote)}")
-                
+
                 for path_to_CDR_on_remote in self.path_list_to_CDR_on_remote:
                     # If we have a path, process the file
                     if path_to_CDR_on_remote:
                         HOSTNAME_PLACEHOLDER(f"Processing CDR file at path: {path_to_CDR_on_remote}")
-                        
+
                         # Download the CDR file from remote server to local directory
                         HOSTNAME_PLACEHOLDER(f"Starting download of CDR file to: {HOSTNAME_PLACEHOLDER}")
                         HOSTNAME_PLACEHOLDER(path_to_CDR_on_remote, HOSTNAME_PLACEHOLDER)
                         HOSTNAME_PLACEHOLDER("CDR download completed successfully")
-                        
+
                         # Construct the CDR filename to uncompress
                         cdrfilename = path_to_CDR_on_remote.split("/")[-1]  # Extract filename from path
                         HOSTNAME_PLACEHOLDER(f"Extracted filename for uncompression: {cdrfilename}")
-                        
+
                         # Uncompress the downloaded .gz file
                         gunzip_command = f"gunzip {HOSTNAME_PLACEHOLDER}/{cdrfilename}"
                         HOSTNAME_PLACEHOLDER(f"Executing gunzip command: {gunzip_command}")
-                        
+
                         o, s = HOSTNAME_PLACEHOLDER(gunzip_command, withexitstatus=True)
-                        
+
                         # Log the output and status of gunzip command
                         HOSTNAME_PLACEHOLDER(f"Gunzip output: {o}")
                         HOSTNAME_PLACEHOLDER(f"Gunzip exit status: {s}")
-                        
+
                         if s == 0:
                             HOSTNAME_PLACEHOLDER("Gunzip command executed successfully")
                         else:
                             HOSTNAME_PLACEHOLDER(f"Gunzip command failed with exit status: {s}")
-                        
+
                         # Add the uncompressed file path to the list
                         uncompressed_path = HOSTNAME_PLACEHOLDER + "/" + cdrfilename[:-3]  # Remove the .gz extension
                         full_cdr_path.append(uncompressed_path)
                         HOSTNAME_PLACEHOLDER(f"Added uncompressed file path: {uncompressed_path}")
                     else:
                         HOSTNAME_PLACEHOLDER("Empty path_to_CDR_on_remote found, skipping processing")
-                
+
                 HOSTNAME_PLACEHOLDER(f"Total uncompressed CDR files processed: {len(full_cdr_path)}")
                 # Return the path to all uncompressed CDR files
         return full_cdr_path
@@ -967,9 +967,9 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
     def check_archive(self, archive_path, number_of_days_cgs):
         HOSTNAME_PLACEHOLDER(f"Starting archive check for {len(HOSTNAME_PLACEHOLDER)} nodes")
         HOSTNAME_PLACEHOLDER(f"Archive path: {archive_path}")
-        
+
         archive_counts = {}
-        
+
         for ip, cgname in zip(HOSTNAME_PLACEHOLDER, HOSTNAME_PLACEHOLDER):
             HOSTNAME_PLACEHOLDER(f"Checking node {cgname} ({ip})")
             HOSTNAME_PLACEHOLDER = ip
@@ -979,23 +979,23 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                 HOSTNAME_PLACEHOLDER,
                 HOSTNAME_PLACEHOLDER + "/HOSTNAME_PLACEHOLDER",
             )
-            
+
             if not self.is_host_reachable(ip):
                 HOSTNAME_PLACEHOLDER(f"Host {ip} is unreachable.")
                 archive_counts[cgname] = False
                 continue
-            
+
             try:
                 HOSTNAME_PLACEHOLDER(f"Host {ip} is reachable, logging in")
                 HOSTNAME_PLACEHOLDER(key_path=HOSTNAME_PLACEHOLDER)
-                
+
                 # Calculate the cutoff date in YYYY-MM-DD format based on the number of days
                 today_date = HOSTNAME_PLACEHOLDER()
                 number_of_days = number_of_days_cgs[cgname]
                 cutoff_date = today_date - timedelta(days=number_of_days)
-                cutoff_date_str = cutoff_date.strftime("%Y-%m-%d")  
+                cutoff_date_str = cutoff_date.strftime("%Y-%m-%d")
                 HOSTNAME_PLACEHOLDER(f"Searching for CDRs older than {cutoff_date_str} ({number_of_days} days ago)")
-                
+
                 expect_str = "$"
                 send_str = (
                     "find "
@@ -1004,24 +1004,24 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                     + cutoff_date_str
                     + " | wc -l"
                 )
-                
+
                 HOSTNAME_PLACEHOLDER(f"Executing archive check command on {cgname}")
                 HOSTNAME_PLACEHOLDER(expect_str, send_str)
-                
+
                 HOSTNAME_PLACEHOLDER()
                 HOSTNAME_PLACEHOLDER(f"Logged out from {cgname}")
-                
-                # Filter log file and get count of CDR older than cutoff date 
+
+                # Filter log file and get count of CDR older than cutoff date
                 sshlogs = HOSTNAME_PLACEHOLDER + "/HOSTNAME_PLACEHOLDER"
                 HOSTNAME_PLACEHOLDER(f"Reading SSH log file: {sshlogs}")
-                
+
                 count = 0  # Default value
-                
+
                 try:
                     with open(sshlogs, 'r') as f:
                         content = f.read()
                         HOSTNAME_PLACEHOLDER(f"SSH log content: {repr(content[:200])}...")  # Log first 200 chars for debugging
-                        
+
                         # More robust regex to find the count
                         # Look for lines that contain only digits (possibly with whitespace)
                         regex_patterns = [
@@ -1029,7 +1029,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                             r'.*?(\d+)\s*$',            # Last number on a line
                             r'(\d+)'                    # Any number (fallback)
                         ]
-                        
+
                         for pattern in regex_patterns:
                             matches = re.findall(pattern, content, re.MULTILINE)
                             if matches:
@@ -1040,7 +1040,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                         else:
                             HOSTNAME_PLACEHOLDER("No numeric count found in SSH log, defaulting to 0")
                             count = 0
-                            
+
                 except FileNotFoundError:
                     HOSTNAME_PLACEHOLDER(f"SSH log file not found: {sshlogs}")
                     archive_counts[cgname] = False
@@ -1049,9 +1049,9 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                     HOSTNAME_PLACEHOLDER(f"Failed to read/parse file: {e}")
                     archive_counts[cgname] = False
                     continue
-                
+
                 HOSTNAME_PLACEHOLDER(f"Files found older than {cutoff_date_str}: {count}")
-                
+
                 if count > 0:
                     error_msg = f"VALIDATION FAILED: {count} CDRs records found older than {cutoff_date_str}"
                     HOSTNAME_PLACEHOLDER(error_msg)
@@ -1059,27 +1059,27 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                 else:
                     HOSTNAME_PLACEHOLDER(f"Archive check passed for {cgname}: no old CDRs found")
                     archive_counts[cgname] = True
-                    
+
             except Exception as e:
                 HOSTNAME_PLACEHOLDER(f"Error processing node {cgname}: {e}")
                 archive_counts[cgname] = False
                 continue
-        
+
         # Final results
         passed_nodes = [k for k, v in archive_counts.items() if v]
         failed_nodes = [k for k, v in archive_counts.items() if not v]
-        
+
         HOSTNAME_PLACEHOLDER(f"Archive check completed: {len(passed_nodes)} passed, {len(failed_nodes)} failed")
-        
+
         if failed_nodes:
             HOSTNAME_PLACEHOLDER(f"Failed nodes: {', '.join(failed_nodes)}")
         else:
             HOSTNAME_PLACEHOLDER("All nodes passed archive check")
-        
+
         # Only raise if you want to fail the entire test when any node fails
         # Otherwise, return the results and let the caller decide
         if failed_nodes:
             error_msg = f"Archive check failed for nodes: {', '.join(failed_nodes)}"
             raise ValueError(error_msg)
-            
+
         return all(archive_counts.values()), failed_nodes

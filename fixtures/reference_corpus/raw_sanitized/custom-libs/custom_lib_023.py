@@ -12,7 +12,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
 
     def get_apn_name(self):
         return self.cdr_search_fields["apn"]
-    
+
     def fill_dynamic_fields(self, messagename, pkt):
         HOSTNAME_PLACEHOLDER("filling dynamic fields")
         if (
@@ -36,4 +36,3 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                     self.cdr_search_fields[dest_field] = source_pkt_value
                 except KeyError:
                     print("not found")
-

@@ -1,15 +1,16 @@
 
 *** Settings ***
-# Config files
+
+Variables    ..LOCAL_PATH_PLACEHOLDER
 Variables    ..LOCAL_PATH_PLACEHOLDER
 Variables    ..LOCAL_PATH_PLACEHOLDER
 
-# Resource files
+
 Resource     ..LOCAL_PATH_PLACEHOLDER
 Resource     ..LOCAL_PATH_PLACEHOLDER
 Resource    SOURCE_NAME_PLACEHOLDER.robot
+Variables    ..LOCAL_PATH_PLACEHOLDER
 
-# Python libraries
 Library      Collections
 Library      DateTime
 Library      ..LOCAL_PATH_PLACEHOLDER
@@ -17,122 +18,53 @@ Library      ..LOCAL_PATH_PLACEHOLDER
 Library      ..LOCAL_PATH_PLACEHOLDER
 Library      ..LOCAL_PATH_PLACEHOLDER    ${nosqldatabase}    ${testdb}
 Library      ..LOCAL_PATH_PLACEHOLDER  ${ANRITSU}
-Library      ..LOCAL_PATH_PLACEHOLDER  ${MRF}
 Library      ..LOCAL_PATH_PLACEHOLDER
 Library    ..LOCAL_PATH_PLACEHOLDER
-
+Library    ..LOCAL_PATH_PLACEHOLDER    ${CMS}
+Library    Call_Flow.quick_validator
 *** Test Cases ***
+Basic_call_VoLTE_long_duration_call
+    # robot --variable sites:hamburg-hamburg --outputdir "..LOCAL_PATH_PLACEHOLDER" --test "Basic_call_VoLTE_long_duration_call" SOURCE_NAME_PLACEHOLDER.robot
+    [Documentation]    CTAS_LONG_CALL    TMSII00613035
+    [Tags]    SOURCE_NAME_PLACEHOLDER
 
-Performance_management_Statistics_retrieval
-    # robot --outputdir "..LOCAL_PATH_PLACEHOLDER" --test "Performance_management_Statistics_retrieval" SOURCE_NAME_PLACEHOLDER.robot
-
-    [Documentation]    Verify Performance Statistics retrieval in MRF
-    [Tags]      vIMS_MRF_014    TMSII00596730  
-
+    ${id}              Set Variable    ${vims_tcs}[Basic_call_VoLTE_long_duration_call][${sites}]
     # 1. Retrieve test data from MongoDB
-    &{tc_filter}       Create Dictionary    identifier=${ims_testcase_tmsids}[8] 
+    &{tc_filter}       Create Dictionary    identifier=${ims_testcase_tmsids}[${id}]
     ${test_data}       get_document    ${ims_collection}    ${tc_filter}
-    ${ims_tc9_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${False}     
-    ${tc_info}         Call Method    ${ims_tc9_obj}    get_testcase_info
-    ${ims_tc9_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${True}    ${tc_info}[tc_output_dir]   
-    ${tc_info}         Call Method    ${ims_tc9_obj}    get_testcase_info 
-   
-    # 2. Retrive statistics file from MRF GUI
-    ${retrieved_statistics}    SOURCE_NAME_PLACEHOLDER.retrieve_statistics        ${tc_info}[tc_dir]     ${retrieve_statistics_path}   
-    Should Be True    ${retrieved_statistics}
+    ${ims_tc75_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${False}
+    ${tc_info}         Call Method    ${ims_tc75_obj}    get_testcase_info
+    ${ims_tc75_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${True}    ${tc_info}[tc_output_dir]
+    ${tc_info}         Call Method    ${ims_tc75_obj}    get_testcase_info
+    ${devices_info}    Call Method    ${ims_tc75_obj}    get_devices_info
+    ${call_duration}   Call Method    ${ims_tc75_obj}    get_call_duration
+    ${trace_inputs}    Call Method    ${ims_tc75_obj}    get_trace_inputs
 
-Performance_management_Statistics_configuration
-    # robot --outputdir "..LOCAL_PATH_PLACEHOLDER" --test "Performance_management_Statistics_configuration" SOURCE_NAME_PLACEHOLDER.robot
+    # # 1. Verify Sim card
+    # ${device1_sim_ok}=     android_verify_active_sim_slot    ${devices_info}[device_1]    ${devices_info}[device_1][sim][sim_slot]
+    # ${device2_sim_ok}=     android_verify_active_sim_slot    ${devices_info}[device_2]    ${devices_info}[device_2][sim][sim_slot]
+    # Run Keyword If    '${device1_sim_ok}' == 'False'    android_set_active_sim_slot    ${devices_info}[device_1]    ${devices_info}[device_1][sim][sim_slot]
+    # Run Keyword If    '${device2_sim_ok}' == 'False'    android_set_active_sim_slot    ${devices_info}[device_2]    ${devices_info}[device_2][sim][sim_slot]
 
-    [Documentation]    Verify Performance Statistics retrieval in MRF
-    [Tags]      vIMS_MRF_015    TMSII00596731  
+    # # 2. Verify IMS registration for Devices
+    # android_registration_check    ${devices_info}[device_1]
+    # android_registration_check    ${devices_info}[device_2]
 
-    # 1. Retrieve test data from MongoDB
-    &{tc_filter}       Create Dictionary    identifier=${ims_testcase_tmsids}[9] 
-    ${test_data}       get_document    ${ims_collection}    ${tc_filter}
-    ${ims_tc10_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${False}     
-    ${tc_info}         Call Method    ${ims_tc10_obj}    get_testcase_info
-    ${ims_tc10_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${True}    ${tc_info}[tc_output_dir]   
-    ${tc_info}         Call Method    ${ims_tc10_obj}    get_testcase_info 
-   
-    # 2. Retrive statistics file from MRF GUI
-    ${configurate_statistics}    SOURCE_NAME_PLACEHOLDER.configurate_statistics        ${tc_info}[tc_dir]     ${configurate_statistics_path}   
-    Should Be True    ${configurate_statistics}
+    # 3. Execute VoLTE call scenario
+    ${start_time_stamp}    start_time_margin    60
+    initiate_android_call_session_ab   ${devices_info}[device_1]    ${devices_info}[device_2]    Notional_format=${True}
+    accept_android_call_session_ab    ${devices_info}[device_2]    ${call_duration}
+    Sleep    1 minutes
 
-MRF_Software_Level
-    # robot --outputdir "..LOCAL_PATH_PLACEHOLDER" --test "MRF_Software_Level" SOURCE_NAME_PLACEHOLDER.robot
-
-    [Documentation]    Verify Performance Statistics retrieval in MRF
-    [Tags]      vIMS_MRF_023    TMSII00596739  
-
-    # 1. Retrieve test data from MongoDB
-    &{tc_filter}       Create Dictionary    identifier=${ims_testcase_tmsids}[10] 
-    ${test_data}       get_document    ${ims_collection}    ${tc_filter}
-    ${ims_tc11_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${False}     
-    ${tc_info}         Call Method    ${ims_tc11_obj}    get_testcase_info
-    ${ims_tc11_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${True}    ${tc_info}[tc_output_dir]   
-    ${tc_info}         Call Method    ${ims_tc11_obj}    get_testcase_info 
-    ${mrf_validation}         Call Method    ${ims_tc11_obj}    get_mrf_validation 
-   
-
-    # 2. Retrive statistics file from MRF GUI
-    ${show_software_version}    SOURCE_NAME_PLACEHOLDER.show_software_version       ${tc_info}[tc_dir]     ${show_software_version_path}    ${mrf_validation}[fieldsforpresence]    
-    Should Be True    ${show_software_version}
-    
-MRF_Licensing
-    # robot --outputdir "..LOCAL_PATH_PLACEHOLDER" --test "MRF_Licensing" SOURCE_NAME_PLACEHOLDER.robot
-
-    [Documentation]    Verify Performance Statistics retrieval in MRF
-    [Tags]      vIMS_MRF_023    TMSII00596740  
-
-    # 1. Retrieve test data from MongoDB
-    &{tc_filter}       Create Dictionary    identifier=${ims_testcase_tmsids}[11] 
-    ${test_data}       get_document    ${ims_collection}    ${tc_filter}
-    ${ims_tc12_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${False}     
-    ${tc_info}         Call Method    ${ims_tc12_obj}    get_testcase_info
-    ${ims_tc12_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${True}    ${tc_info}[tc_output_dir]   
-    ${tc_info}         Call Method    ${ims_tc12_obj}    get_testcase_info 
-    ${mrf_validation}         Call Method    ${ims_tc12_obj}    get_mrf_validation 
-   
-
-    # 2. Retrive statistics file from MRF GUI
-    ${show_mrf_licensing}    SOURCE_NAME_PLACEHOLDER.show_mrf_licensing      ${tc_info}[tc_dir]     ${show_mrf_licensing_path}    ${mrf_validation}[fieldsforpresence]    
-    Should Be True    ${show_mrf_licensing}
-
-MRF_Node_Configuration
-    # robot --outputdir "..LOCAL_PATH_PLACEHOLDER" --test "MRF_Node_Configuration" SOURCE_NAME_PLACEHOLDER.robot
-
-    [Documentation]    Verify Performance Statistics retrieval in MRF
-    [Tags]      vIMS_MRF_027    TMSII00596743  
-
-    # 1. Retrieve test data from MongoDB
-    &{tc_filter}       Create Dictionary    identifier=${ims_testcase_tmsids}[12] 
-    ${test_data}       get_document    ${ims_collection}    ${tc_filter}
-    ${ims_tc13_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${False}     
-    ${tc_info}         Call Method    ${ims_tc13_obj}    get_testcase_info
-    ${ims_tc13_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${True}    ${tc_info}[tc_output_dir]   
-    ${tc_info}         Call Method    ${ims_tc13_obj}    get_testcase_info 
-    ${mrf_validation}         Call Method    ${ims_tc13_obj}    get_mrf_validation 
-
-    # 2. Retrive statistics file from MRF GUI
-    ${show_mrf_node_Configuration}    SOURCE_NAME_PLACEHOLDER.show_mrf_node_configuration      ${tc_info}[tc_dir]     ${show_mrf_node_Configuration_path}    ${mrf_validation}[fieldsforpresence]    
-    Should Be True    ${show_mrf_node_Configuration}
-
-MRF_Node_Service_Mode
-    # robot --outputdir "..LOCAL_PATH_PLACEHOLDER" --test "MRF_Node_Service_Mode" SOURCE_NAME_PLACEHOLDER.robot
-
-    [Documentation]    Verify Performance Statistics retrieval in MRF
-    [Tags]      vIMS_MRF_028    TMSII00596744  
-
-    # 1. Retrieve test data from MongoDB
-    &{tc_filter}       Create Dictionary    identifier=${ims_testcase_tmsids}[13] 
-    ${test_data}       get_document    ${ims_collection}    ${tc_filter}
-    ${ims_tc14_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${False}     
-    ${tc_info}         Call Method    ${ims_tc14_obj}    get_testcase_info
-    ${ims_tc14_obj}     Create Object    SOURCE_NAME_PLACEHOLDER    ${test_data}    ${True}    ${tc_info}[tc_output_dir]   
-    ${tc_info}         Call Method    ${ims_tc14_obj}    get_testcase_info 
-    ${mrf_validation}         Call Method    ${ims_tc14_obj}    get_mrf_validation 
-
-    # 2. Retrive statistics file from MRF GUI
-    ${mrf_node_service_node}    SOURCE_NAME_PLACEHOLDER.mrf_node_service_node     ${tc_info}[tc_dir]     ${mrf_node_service_node_path}    ${mrf_validation}[service_mode]    
-    Should Be True    ${mrf_node_service_node}
+    # 4. Collect Anritsu trace
+    ${initialize_anritsu_driver}    initialize_anritsu_driver    ${tc_info}[identifier]    ${tc_info}[tc_dir]
+    Should Be True    ${initialize_anritsu_driver}
+    ${start_oesearch}    start_oesearch_NewUi    ${Oesearch_NewUi}    ${start_time_stamp}    ${end_time_stamp}    ${trace_inputs}[Template]    ${devices_info}[device_1]    ${devices_info}[device_2]
+    Should Be True    ${start_oesearch}
+    log    Anritsu Trace Initiated: Successful
+    ${sleep_time}    sleep_time_for    oesearch
+    Sleep    ${sleep_time}
+    ${download_oesearch_pcap}    download_oesearch_pcap_NewUi    ${Oesearch_pcap_download_NewUi}
+    Should Be True    ${Oesearch_pcap_download}
+    ${success_message}=    Set Variable   [✓] Pcap Downloaded Successful
+    Log To Console    ${success_message}

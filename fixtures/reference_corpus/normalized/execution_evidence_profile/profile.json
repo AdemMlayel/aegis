@@ -33,9 +33,10 @@
       },
       "expected_status": "passed",
       "failure_patterns": {
-        "assertion": 2,
+        "assertion": 3,
+        "data": 2,
         "environment": 3,
-        "keyword_issue": 2,
+        "keyword_issue": 3,
         "robot_syntax": 3,
         "timeout": 3
       },

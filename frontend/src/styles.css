@@ -1603,6 +1603,28 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 .chat-composer textarea:focus { outline: none; }
 .chat-composer textarea::placeholder { color: #9aa3b2; }
+.chat-file-input { display: none; }
+.chat-attach {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.05s;
+}
+.chat-attach:hover:not(:disabled),
+.chat-attach.active {
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+  border-color: #d9d9f7;
+}
+.chat-attach:active:not(:disabled) { transform: scale(0.94); }
+.chat-attach:disabled { opacity: 0.5; cursor: not-allowed; }
+.chat-attach svg { width: 17px; height: 17px; }
 .chat-send {
   flex: 0 0 auto;
   width: 38px;
@@ -1619,6 +1641,44 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .chat-send:active:not(:disabled) { transform: scale(0.94); }
 .chat-send:disabled { background: #c9cdd9; cursor: not-allowed; }
 .chat-send svg { width: 17px; height: 17px; }
+.chat-attachment-chip {
+  max-width: var(--read-width);
+  margin: 8px auto 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  max-width: min(var(--read-width), calc(100% - 24px));
+  padding: 6px 9px;
+  border: 1px solid #d9d9f7;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.chat-attachment-chip > svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-deep);
+}
+.chat-attachment-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-attachment-chip button {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: transparent;
+}
+.chat-attachment-chip button:hover { background: rgba(91, 91, 214, 0.12); color: var(--ink); }
+.chat-attachment-chip button svg { width: 12px; height: 12px; }
 .chat-disclaimer {
   max-width: var(--read-width);
   margin: 8px auto 0;

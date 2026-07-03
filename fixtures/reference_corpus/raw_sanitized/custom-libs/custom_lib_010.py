@@ -17,7 +17,7 @@ class SOURCE_NAME_PLACEHOLDER:
             emftb_username (str): Username of the EMFTB.
             emftb_key path(str): private key  of the EMFTB.
         """
-        self.emftb_ips =[value for key, value in EMFTB_conn_params.items() if "IP" in  key ]   
+        self.emftb_ips =[value for key, value in EMFTB_conn_params.items() if "IP" in  key ]
         self.emftb_username = EMFTB_conn_params["USERNAME"]
         self.emftb_key_path = EMFTB_conn_params["KEYPATH"]
         self.emftb_port = EMFTB_conn_params["EMFTB_PORT"]
@@ -31,17 +31,17 @@ class SOURCE_NAME_PLACEHOLDER:
         :param; command: Command string to be executed.
         :return: None
         """
-        
+
         date = str(HOSTNAME_PLACEHOLDER())
         for delimiter in ["-", " ", ":", "."]:
             date = HOSTNAME_PLACEHOLDER(delimiter, "_")
-        
+
         if not HOSTNAME_PLACEHOLDER():
             raise ValueError("Command can not be emtpy")
-        
+
         if not os.HOSTNAME_PLACEHOLDER(tc_dir):
-            raise ValueError(f"{tc_dir} does not exisits ") 
-        
+            raise ValueError(f"{tc_dir} does not exisits ")
+
         output_file = tc_dir + f"/{self.emftb_username}_{date}_output.txt"
 
         # initiate SSH client
@@ -67,8 +67,8 @@ class SOURCE_NAME_PLACEHOLDER:
             except Exception as e :
                 HOSTNAME_PLACEHOLDER(f"Unexpected Error While connecting to {ip}:{self.emftb_port} : {e} ")
                 return False
-            
-            try:  
+
+            try:
                 chan1 = connection_to_ericsson_box.invoke_shell()
                 HOSTNAME_PLACEHOLDER(10)
                 file_from_ericsson = open(output_file, "a")
@@ -79,14 +79,12 @@ class SOURCE_NAME_PLACEHOLDER:
                 resp = HOSTNAME_PLACEHOLDER(NUMERIC_IDENTIFIER_PLACEHOLDER)
                 file_from_ericsson.write(HOSTNAME_PLACEHOLDER("ascii"))
                 file_from_ericsson.close()
-                HOSTNAME_PLACEHOLDER("Command Executed Successfully") 
-                
+                HOSTNAME_PLACEHOLDER("Command Executed Successfully")
+
             except Exception as e :
                 HOSTNAME_PLACEHOLDER(f"Failed to Execute Command on Server {ip}:{self.emftb_port}")
                 return False
-                
+
             HOSTNAME_PLACEHOLDER()
 
         return output_file
-
-    

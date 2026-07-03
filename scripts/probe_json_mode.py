@@ -1,9 +1,10 @@
 """Probe whether the vLLM endpoint accepts response_format=json_object cleanly."""
 import json
+import os
 import urllib.request
 import urllib.error
 
-BASE = "http://136.110.62.233:8000/v1"
+BASE = os.getenv("AEGISQA_PROBE_BASE_URL", "http://127.0.0.1:8000/v1")
 MODEL = "ibnzterrell/Nvidia-Llama-3.1-Nemotron-70B-Instruct-HF-AWQ-INT4"
 
 payload = {
@@ -19,7 +20,7 @@ payload = {
 req = urllib.request.Request(
     f"{BASE}/chat/completions",
     data=json.dumps(payload).encode(),
-    headers={"Content-Type": "application/json", "Authorization": "Bearer sk-local-vllm-no-auth"},
+    headers={"Content-Type": "application/json", "Authorization": "Bearer LOCAL_PLACEHOLDER_TOKEN"},
     method="POST",
 )
 try:

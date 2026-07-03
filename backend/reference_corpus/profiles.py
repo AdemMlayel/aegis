@@ -41,6 +41,11 @@ def load_execution_evidence_profile() -> dict[str, Any]:
     return _load_json("execution_evidence_profile/profile.json")
 
 
+@lru_cache(maxsize=1)
+def load_ticket_profile() -> dict[str, Any]:
+    return _load_json("ticket_profile/profile.json")
+
+
 def profile_available(profile: dict[str, Any]) -> bool:
     summary = profile.get("summary")
     return isinstance(summary, dict) and any(bool(value) for value in summary.values())

@@ -1,4 +1,4 @@
-import { Check, Send, Shield, Sparkles, X } from "lucide-react";
+import { Check, Paperclip, Send, Shield, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ChatAction, ChatMessage, ChatSession } from "../types";
 
@@ -7,11 +7,13 @@ type CopilotPanelProps = {
   busy: boolean;
   disabled: boolean;
   onSend: (message: string) => void;
+  onIntakeTicket: (description: string, file: File | null) => void;
   onConfirmAction: (actionId: string) => void;
   onCancelAction: (actionId: string) => void;
 };
 
 const SUGGESTIONS = [
+  "Create ticket from this scenario:",
   "Suggest test cases for this ticket",
   "Resume the workflow",
   "Where are we in the workflow?",
@@ -23,12 +25,15 @@ export function CopilotPanel({
   busy,
   disabled,
   onSend,
+  onIntakeTicket,
   onConfirmAction,
   onCancelAction
 }: CopilotPanelProps) {
   const [draft, setDraft] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const messages = session?.messages ?? [];
   const isEmpty = messages.length === 0;
@@ -46,8 +51,13 @@ export function CopilotPanel({
 
   function submit(message = draft) {
     const trimmed = message.trim();
-    if (!trimmed || disabled || busy) return;
-    onSend(trimmed);
+    if ((!trimmed && !selectedFile) || disabled || busy) return;
+    if (selectedFile) {
+      onIntakeTicket(trimmed, selectedFile);
+      setSelectedFile(null);
+    } else {
+      onSend(trimmed);
+    }
     setDraft("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -132,15 +142,45 @@ export function CopilotPanel({
             }}
             onKeyDown={onKeyDown}
           />
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="chat-file-input"
+            accept=".txt,.md,.robot,.json,.xml,.html,.csv,.yaml,.yml,.ini,.conf,.cfg,.properties"
+            disabled={disabled || busy}
+            onChange={(event) => {
+              setSelectedFile(event.target.files?.[0] ?? null);
+              event.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            className={`chat-attach ${selectedFile ? "active" : ""}`}
+            aria-label="Attach manual scenario or LLD"
+            title="Attach manual scenario or LLD"
+            disabled={disabled || busy}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Paperclip />
+          </button>
           <button
             type="submit"
             className="chat-send"
             aria-label="Send message"
-            disabled={disabled || busy || !draft.trim()}
+            disabled={disabled || busy || (!draft.trim() && !selectedFile)}
           >
             <Send />
           </button>
         </form>
+        {selectedFile ? (
+          <div className="chat-attachment-chip">
+            <Paperclip />
+            <span>{selectedFile.name}</span>
+            <button type="button" onClick={() => setSelectedFile(null)} title="Remove attachment">
+              <X />
+            </button>
+          </div>
+        ) : null}
         <p className="chat-disclaimer">
           AegisQA runs governed actions — you confirm anything that changes state.
         </p>

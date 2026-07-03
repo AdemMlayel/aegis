@@ -532,6 +532,7 @@ AuditEventType = Literal[
     "workflow_control",
     "stage_review",
     "artifact_revision",
+    "chat_ticket_intake",
     "report_package_exported",
 ]
 

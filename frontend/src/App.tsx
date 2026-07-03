@@ -23,6 +23,7 @@ import {
   getReportPackageManifest,
   getTokenBudgetStatus,
   getWorkflow,
+  intakeChatTicket,
   listArtifactRevisions,
   listDemoTickets,
   listExecutionEvents,
@@ -715,6 +716,41 @@ export default function App() {
     upsertChatSession(response.session);
   }
 
+  async function intakeCopilotTicket(description: string, file: File | null) {
+    if (file && file.size > 100_000) {
+      setError("Scenario upload is limited to 100 KB for the local demo intake.");
+      return;
+    }
+    const session = chatSession ?? await runAction("chat", () =>
+      createChatSession({
+        created_by: OPERATOR_ID,
+        context_id: context?.context_id ?? null,
+        ticket_id: selectedTicket?.id ?? null,
+        title: "AegisQA Copilot"
+      })
+    );
+    if (!session) return;
+    const fileContent = file ? await file.text() : null;
+    const response = await runAction("chat", () =>
+      intakeChatTicket({
+        sessionId: session.session_id,
+        actor: OPERATOR_ID,
+        description,
+        fileName: file?.name ?? null,
+        fileContent,
+        contentType: file?.type || null
+      })
+    );
+    if (!response) return;
+    setChatSession(response.session);
+    upsertChatSession(response.session);
+    if (response.session.ticket_id) {
+      setSelectedTicketId(response.session.ticket_id);
+    }
+    const ticketList = await listDemoTickets().catch(() => null);
+    if (ticketList) setTickets(ticketList);
+  }
+
   function upsertChatSession(session: ChatSession) {
     setChatSessions((current) => {
       const without = current.filter((item) => item.session_id !== session.session_id);
@@ -930,6 +966,7 @@ export default function App() {
             busy={busy === "chat"}
             disabled={false}
             onSend={(message) => void sendCopilotMessage(message)}
+            onIntakeTicket={(description, file) => void intakeCopilotTicket(description, file)}
             onConfirmAction={(actionId) => void confirmCopilotAction(actionId)}
             onCancelAction={(actionId) => void cancelCopilotAction(actionId)}
           />

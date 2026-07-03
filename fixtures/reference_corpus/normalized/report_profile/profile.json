@@ -6,12 +6,9 @@
       "Execution result",
       "Evidence",
       "Risk and confidence",
-      "Recommendations",
-      "Error"
+      "Recommendations"
     ],
-    "sample_safe_excerpts": [
-      "Microsoft Excel Compatible / Openpyxl 3.1.5 3.1 openpyxl 2026-05-13T10:35:30Z 2026-05-13T10:35:30Z phase leg call_id message type code error missing_headers missing_paths unexpected_paths status initiated originating leg LEG_MISSING [] [] [] FAIL initiated internal leg LEG_MISSING [] [] [] FAIL initiated terminating leg LEG_MISSING [] [] [] FAIL setup originating leg LEG_MISSING [] [] [] FAIL setup internal leg LEG_MISSING [] [] [] FAIL setup ter"
-    ],
+    "sample_safe_excerpts": [],
     "style_notes": [
       "Keep an executive summary before technical evidence.",
       "Separate evidence-backed facts from recommendations.",
@@ -22,12 +19,8 @@
   "schema_version": "aegis-report-profile.v1",
   "source": "fixtures/reference_corpus/raw_sanitized/report-example",
   "summary": {
-    "artifact_types": {
-      ".xlsx": 1
-    },
-    "report_files": 1,
-    "sections_detected": {
-      "error": 1
-    }
+    "artifact_types": {},
+    "report_files": 0,
+    "sections_detected": {}
   }
 }

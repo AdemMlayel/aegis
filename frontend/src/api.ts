@@ -531,6 +531,28 @@ export async function sendChatMessage(payload: {
   return parseResponse<{ session: ChatSession; message: ChatMessage }>(response);
 }
 
+export async function intakeChatTicket(payload: {
+  sessionId: string;
+  actor: string;
+  description?: string | null;
+  fileName?: string | null;
+  fileContent?: string | null;
+  contentType?: string | null;
+}): Promise<{ session: ChatSession; message: ChatMessage }> {
+  const response = await apiFetch(`${API_ROOT}/chat/sessions/${payload.sessionId}/ticket-intake`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      actor: payload.actor,
+      description: payload.description ?? null,
+      file_name: payload.fileName ?? null,
+      file_content: payload.fileContent ?? null,
+      content_type: payload.contentType ?? null
+    })
+  });
+  return parseResponse<{ session: ChatSession; message: ChatMessage }>(response);
+}
+
 export async function confirmChatAction(payload: {
   sessionId: string;
   actionId: string;

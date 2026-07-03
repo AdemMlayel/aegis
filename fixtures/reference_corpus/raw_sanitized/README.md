@@ -10,6 +10,7 @@ Raw sensitive files were not committed here.
 - `report-example/`: sanitized report artifact examples.
 - `successful-execution/`: sanitized successful execution artifacts.
 - `failed-execution/`: sanitized failed execution artifacts when available.
+- `ticket-examples/`: sanitized structured or semi-structured test tickets.
 - `lld-examples/`: sanitized low-level-design examples when available.
 
 ## Safety
@@ -25,5 +26,5 @@ Raw sensitive files were not committed here.
 
 ## Summary
 
-- Files sanitized: `51`
-- Redactions applied: `7024`
+- Files sanitized: `61`
+- Redactions applied: `15073`

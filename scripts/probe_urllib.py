@@ -8,14 +8,18 @@ import json
 import os
 import socket
 import time
+from urllib.parse import urlparse
 import urllib.request
 
-HOST = "34.142.189.205"
-URL = f"http://{HOST}:8000/v1/chat/completions"
+BASE_URL = os.getenv("AEGISQA_PROBE_BASE_URL", "http://127.0.0.1:8000/v1")
+URL = f"{BASE_URL.rstrip('/')}/chat/completions"
+parsed_url = urlparse(URL)
+HOST = parsed_url.hostname or "127.0.0.1"
+PORT = parsed_url.port or (443 if parsed_url.scheme == "https" else 80)
 
 print("proxy env:", {k: v for k, v in os.environ.items() if "proxy" in k.lower()} or "(none)")
 try:
-    print("getaddrinfo:", socket.getaddrinfo(HOST, 8000, proto=socket.IPPROTO_TCP)[0][4])
+    print("getaddrinfo:", socket.getaddrinfo(HOST, PORT, proto=socket.IPPROTO_TCP)[0][4])
 except Exception as e:  # noqa: BLE001
     print("getaddrinfo FAILED:", e)
 
@@ -33,7 +37,7 @@ req = urllib.request.Request(
     data=json.dumps(payload).encode("utf-8"),
     headers={
         "Content-Type": "application/json",
-        "Authorization": "Bearer sk-local-vllm-no-auth",
+        "Authorization": "Bearer LOCAL_PLACEHOLDER_TOKEN",
     },
     method="POST",
 )

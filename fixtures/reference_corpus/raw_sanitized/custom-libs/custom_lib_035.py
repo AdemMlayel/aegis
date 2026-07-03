@@ -134,4 +134,3 @@ if __name__ == "__main__"\
         :pass
     #G = SOURCE_NAME_PLACEHOLDER()
     #print(G.get_curr_username())
-

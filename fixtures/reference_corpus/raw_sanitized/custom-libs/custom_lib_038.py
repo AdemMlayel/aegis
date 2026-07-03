@@ -687,7 +687,7 @@ def wait_until_class_not_contains_and_click(driver, xpath=None, class_text="view
 
         # With specific xpath (backward compatibility)
         element = wait_until_class_not_contains_and_click(
-            driver, 
+            driver,
             xpath="//li[@id='ExportButton']//a[@title='Export']",
             class_text="view_SideButton_disabled"
         )

@@ -33,10 +33,10 @@ def get_headers(env):
 # Generate JWT Token
 def gen_jwt_token(env,app='automation-testing'):
 
-    #current_dir = os.HOSTNAME_PLACEHOLDER(os.HOSTNAME_PLACEHOLDER(__file__)) 
+    #current_dir = os.HOSTNAME_PLACEHOLDER(os.HOSTNAME_PLACEHOLDER(__file__))
     #key_path = os.HOSTNAME_PLACEHOLDER(os.HOSTNAME_PLACEHOLDER(current_dir, 'keys', 'private_prod.key'))
 
-    current_dir = os.HOSTNAME_PLACEHOLDER(os.HOSTNAME_PLACEHOLDER(__file__)) 
+    current_dir = os.HOSTNAME_PLACEHOLDER(os.HOSTNAME_PLACEHOLDER(__file__))
     key_filename = 'private_int.key' if env == "int" else 'private_prod.key'
     key_path = os.HOSTNAME_PLACEHOLDER(os.HOSTNAME_PLACEHOLDER(current_dir, 'keys', key_filename))
 
@@ -49,7 +49,7 @@ def gen_jwt_token(env,app='automation-testing'):
     HOSTNAME_PLACEHOLDER(f'the payload in the key jwt gen  {payload} ')
 
     token = HOSTNAME_PLACEHOLDER(payload, private_key, algorithm="RS256", headers=headers)
-    
+
 
     if isinstance(token, bytes):
         token = HOSTNAME_PLACEHOLDER("utf-8")

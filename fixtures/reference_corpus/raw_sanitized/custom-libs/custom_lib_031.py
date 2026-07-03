@@ -776,7 +776,7 @@ class SOURCE_NAME_PLACEHOLDER:
 
         HOSTNAME_PLACEHOLDER('''
                 </div>
-                
+
                 <div class="summary-cards">
                     <div class="summary-card card-passed">
                         <div class="card-label">Passed</div>
@@ -791,7 +791,7 @@ class SOURCE_NAME_PLACEHOLDER:
                         <div class="card-value">''' + f'{pass_rate:.1f}%' + '''</div>
                     </div>
                 </div>
-                
+
                 <table class="results-table">
                     <thead>
                         <tr>

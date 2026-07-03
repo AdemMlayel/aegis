@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend.storage.contexts import load_context
+from backend.storage.mock_tickets import get_mock_ticket_record
 
 
 def test_chat_session_can_answer_system_questions() -> None:
@@ -65,6 +66,7 @@ def test_system_knowledge_intent_does_not_shadow_operational_intents() -> None:
     assert classify_chat_intent("run next stage").intent == "workflow_step"
     assert classify_chat_intent("approve").intent == "approval_request"
     assert classify_chat_intent("execute the tests").intent == "execution_request"
+    assert classify_chat_intent("create ticket from this manual test scenario").intent == "ticket_intake"
 
 
 def test_chat_workflow_start_action_requires_confirmation_and_creates_context() -> None:
@@ -111,6 +113,157 @@ def test_chat_workflow_start_action_requires_confirmation_and_creates_context() 
     assert context.ticket.id == "DEMO-TELCO-IMS-001"
     assert context.workflow_control.state == "initialized"
     assert "Workflow session" in body["message"]["content"]
+
+
+def test_chat_ticket_intake_creates_sanitized_ticket_and_start_action() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/chat/sessions",
+        json={"created_by": "chat-tester"},
+    )
+    session_id = created.json()["session"]["session_id"]
+
+    response = client.post(
+        f"/api/v1/chat/sessions/{session_id}/ticket-intake",
+        json={
+            "actor": "chat-tester",
+            "file_name": "manual_scenario.md",
+            "content_type": "text/markdown",
+            "file_content": """
+Ticket ID: INTAKE-AUTO-001
+Title: Validate refund approval API
+Description: Verify a sanitized refund approval request through http://internal.example.test.
+Business objective: reduce manual regression effort.
+Test objective: automate the API approval happy path.
+System under test: INTERNAL_SERVICE_A
+Environment: TEST_ENVIRONMENT at 10.20.30.40
+Preconditions:
+- Test user exists
+- API token: super-secret-token
+Test Steps:
+1. Submit refund request payload
+2. Approve the refund request
+3. Read the final status
+Expected Outputs:
+- Request is accepted
+- Final status is approved
+Validation Rules:
+- Response status must be 200
+- Audit event must be written
+Required Tools:
+- Robot Framework
+- REST API client
+""",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    message = body["message"]
+    assert message["intent"] == "ticket_intake"
+    assert "Created sanitized ticket `INTAKE-AUTO-001`" in message["content"]
+    assert message["metadata"]["assessment"]["automatable"] is True
+    assert len(message["actions"]) == 1
+    action = message["actions"][0]
+    assert action["kind"] == "start_workflow"
+    assert action["ticket_id"] == "INTAKE-AUTO-001"
+
+    ticket = get_mock_ticket_record("INTAKE-AUTO-001")
+    assert ticket is not None
+    ticket_json = ticket.model_dump_json()
+    assert "http://internal.example.test" not in ticket_json
+    assert "10.20.30.40" not in ticket_json
+    assert "super-secret-token" not in ticket_json
+    assert "URL_PLACEHOLDER" in ticket_json
+    assert "IP_ADDRESS_PLACEHOLDER" in ticket_json
+    assert ticket.status == "ready"
+
+    confirmed = client.post(
+        f"/api/v1/chat/sessions/{session_id}/actions/{action['action_id']}/confirm",
+        json={"actor": "chat-tester"},
+    )
+    assert confirmed.status_code == 200
+    context = load_context(confirmed.json()["session"]["context_id"])
+    assert context is not None
+    assert context.ticket.id == "INTAKE-AUTO-001"
+
+
+def test_chat_ticket_intake_blocks_non_automatable_scenario() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/chat/sessions",
+        json={"created_by": "chat-tester"},
+    )
+    session_id = created.json()["session"]["session_id"]
+
+    response = client.post(
+        f"/api/v1/chat/sessions/{session_id}/ticket-intake",
+        json={
+            "actor": "chat-tester",
+            "description": """
+Ticket ID: INTAKE-MANUAL-001
+Title: Subjective brand quality review
+Description: Manual only visual inspection requiring human judgement.
+Expected Outputs:
+- The page looks good to the reviewer.
+""",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    message = body["message"]
+    assert message["intent"] == "ticket_intake"
+    assert message["metadata"]["assessment"]["automatable"] is False
+    assert message["metadata"]["assessment"]["readiness"] == "not_automatable"
+    assert message["actions"] == []
+    assert "not ready for automation" in message["content"]
+    ticket = get_mock_ticket_record("INTAKE-MANUAL-001")
+    assert ticket is not None
+    assert ticket.status == "blocked"
+
+
+def test_chat_message_can_create_ticket_from_pasted_description() -> None:
+    client = TestClient(app)
+    created = client.post(
+        "/api/v1/chat/sessions",
+        json={"created_by": "chat-tester"},
+    )
+    session_id = created.json()["session"]["session_id"]
+
+    response = client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages",
+        json={
+            "actor": "chat-tester",
+            "message": """
+Create ticket from this manual test scenario:
+Ticket ID: INTAKE-PASTE-001
+Title: Validate mobile login event
+Test objective: automate the mobile login success path.
+Test Steps:
+1. Launch the mobile app
+2. Enter valid sanitized credentials
+3. Tap login
+Expected Outputs:
+- Home screen is displayed
+Validation Rules:
+- Login success event is present in logs
+Required Tools:
+- Robot Framework
+- Appium
+""",
+        },
+    )
+
+    assert response.status_code == 200
+    message = response.json()["message"]
+    assert message["intent"] == "ticket_intake"
+    assert message["metadata"]["assessment"]["automatable"] is True
+    assert message["actions"][0]["kind"] == "start_workflow"
+    ticket = get_mock_ticket_record("INTAKE-PASTE-001")
+    assert ticket is not None
+    assert ticket.status == "ready"
+    assert "Appium" in ticket.required_tools
 
 
 def test_chat_can_report_workflow_status_and_plan_next_stage() -> None:

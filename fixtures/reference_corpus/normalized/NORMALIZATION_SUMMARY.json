@@ -4,7 +4,8 @@
     "execution_evidence_profile/profile.json",
     "report_profile/profile.json",
     "robot_keywords/keyword_registry.json",
-    "robot_style_profile/profile.json"
+    "robot_style_profile/profile.json",
+    "ticket_profile/profile.json"
   ],
   "safety": {
     "normalized_outputs_contain_no_original_paths": true,
@@ -15,8 +16,9 @@
   "source": "fixtures/reference_corpus/raw_sanitized",
   "summary": {
     "execution_artifacts": 3,
-    "report_files": 1,
+    "report_files": 0,
     "robot_keywords": 238,
-    "robot_style_files": 5
+    "robot_style_files": 12,
+    "ticket_files": 2
   }
 }

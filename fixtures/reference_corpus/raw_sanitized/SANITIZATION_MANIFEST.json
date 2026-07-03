@@ -2,66 +2,6 @@
   "files": [
     {
       "output_type": "sanitized_text",
-      "redaction_total": 21,
-      "redactions": {
-        "source_name_reference": 7,
-        "unix_path": 14
-      },
-      "source_extension": ".robot",
-      "source_path_hash": "69fdcba939493837",
-      "source_size_bytes": 4703,
-      "target_path": "robot-tests/robot_test_001.robot"
-    },
-    {
-      "output_type": "sanitized_text",
-      "redaction_total": 17,
-      "redactions": {
-        "source_name_reference": 5,
-        "unix_path": 12
-      },
-      "source_extension": ".robot",
-      "source_path_hash": "aa8c6901aad0595c",
-      "source_size_bytes": 5498,
-      "target_path": "robot-tests/robot_test_002.robot"
-    },
-    {
-      "output_type": "sanitized_text",
-      "redaction_total": 26,
-      "redactions": {
-        "source_name_reference": 11,
-        "unix_path": 15
-      },
-      "source_extension": ".robot",
-      "source_path_hash": "d71b0fd8a51062f7",
-      "source_size_bytes": 4211,
-      "target_path": "robot-tests/robot_test_003.robot"
-    },
-    {
-      "output_type": "sanitized_text",
-      "redaction_total": 34,
-      "redactions": {
-        "source_name_reference": 19,
-        "unix_path": 15
-      },
-      "source_extension": ".robot",
-      "source_path_hash": "3e0b63915b36e48a",
-      "source_size_bytes": 7948,
-      "target_path": "robot-tests/robot_test_004.robot"
-    },
-    {
-      "output_type": "sanitized_text",
-      "redaction_total": 43,
-      "redactions": {
-        "source_name_reference": 25,
-        "unix_path": 18
-      },
-      "source_extension": ".robot",
-      "source_path_hash": "5fae2ed1676e7825",
-      "source_size_bytes": 7553,
-      "target_path": "robot-tests/robot_test_005.robot"
-    },
-    {
-      "output_type": "sanitized_text",
       "redaction_total": 732,
       "redactions": {
         "hostname": 477,
@@ -597,6 +537,160 @@
       "target_path": "custom-libs/custom_lib_042.py"
     },
     {
+      "output_type": "sanitized_text",
+      "redaction_total": 21,
+      "redactions": {
+        "source_name_reference": 7,
+        "unix_path": 14
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "78ab7317b585d617",
+      "source_size_bytes": 4703,
+      "target_path": "robot-tests/robot_test_001.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 49,
+      "redactions": {
+        "source_name_reference": 31,
+        "unix_path": 18
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "0f48323aeab3a534",
+      "source_size_bytes": 13212,
+      "target_path": "robot-tests/robot_test_002.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 19,
+      "redactions": {
+        "source_name_reference": 5,
+        "unix_path": 14
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "2814d894d6913c10",
+      "source_size_bytes": 1792,
+      "target_path": "robot-tests/robot_test_003.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 23,
+      "redactions": {
+        "source_name_reference": 9,
+        "unix_path": 14
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "6f408114790b81e0",
+      "source_size_bytes": 2868,
+      "target_path": "robot-tests/robot_test_004.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 20,
+      "redactions": {
+        "source_name_reference": 5,
+        "unix_path": 15
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "eacc50ef3e4b66d1",
+      "source_size_bytes": 3978,
+      "target_path": "robot-tests/robot_test_005.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 25,
+      "redactions": {
+        "source_name_reference": 10,
+        "unix_path": 15
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "b702e6a1565e7454",
+      "source_size_bytes": 10583,
+      "target_path": "robot-tests/robot_test_006.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 26,
+      "redactions": {
+        "source_name_reference": 11,
+        "unix_path": 15
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "5896a000a9ae408d",
+      "source_size_bytes": 4211,
+      "target_path": "robot-tests/robot_test_007.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 21,
+      "redactions": {
+        "source_name_reference": 7,
+        "unix_path": 14
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "ac3e3011270afc68",
+      "source_size_bytes": 6716,
+      "target_path": "robot-tests/robot_test_008.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 34,
+      "redactions": {
+        "source_name_reference": 19,
+        "unix_path": 15
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "394aeddfe7cf9935",
+      "source_size_bytes": 7993,
+      "target_path": "robot-tests/robot_test_009.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 43,
+      "redactions": {
+        "source_name_reference": 25,
+        "unix_path": 18
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "b721b227d95db161",
+      "source_size_bytes": 7556,
+      "target_path": "robot-tests/robot_test_010.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 269,
+      "redactions": {
+        "source_name_reference": 187,
+        "unix_path": 82
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "26937daf24d3c0b4",
+      "source_size_bytes": 162899,
+      "target_path": "robot-tests/robot_test_011.robot"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 1,
+      "redactions": {
+        "hostname": 1
+      },
+      "source_extension": ".txt",
+      "source_path_hash": "aa249de5dec1aa2a",
+      "source_size_bytes": 73,
+      "target_path": "robot-tests/robot_test_012.txt"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 11,
+      "redactions": {
+        "unix_path": 11
+      },
+      "source_extension": ".robot",
+      "source_path_hash": "3dd3c59d99739f35",
+      "source_size_bytes": 35788,
+      "target_path": "robot-tests/robot_test_013.robot"
+    },
+    {
       "output_type": "sanitized_spreadsheet",
       "redaction_total": 71,
       "redactions": {
@@ -606,57 +700,92 @@
         "url": 21
       },
       "source_extension": ".xlsx",
-      "source_path_hash": "04367e3d424ab1ea",
+      "source_path_hash": "2464375061c7d829",
       "source_size_bytes": 5557,
-      "target_path": "report-example/report_example_001.xlsx"
+      "target_path": "robot-tests/robot_test_014.xlsx"
     },
     {
       "output_type": "sanitized_text",
-      "redaction_total": 1492,
+      "redaction_total": 1501,
       "redactions": {
-        "hostname": 1458,
+        "bearer_token": 6,
+        "hostname": 1412,
+        "ipv4": 18,
         "long_hex_identifier": 1,
-        "long_numeric_identifier": 2,
-        "source_name_reference": 5,
-        "unix_path": 15,
-        "url": 11
+        "long_numeric_identifier": 9,
+        "source_name_reference": 14,
+        "unix_path": 30,
+        "unquoted_sensitive_assignment": 1,
+        "url": 10
       },
       "source_extension": ".html",
-      "source_path_hash": "0e535d65c0c6fbc0",
-      "source_size_bytes": 242729,
+      "source_path_hash": "e961e6b0b5e9813d",
+      "source_size_bytes": 407023,
       "target_path": "successful-execution/successful_execution_001.html"
     },
     {
       "output_type": "sanitized_text",
-      "redaction_total": 21,
+      "redaction_total": 7661,
       "redactions": {
-        "hostname": 2,
-        "long_hex_identifier": 1,
-        "long_numeric_identifier": 1,
-        "source_name_reference": 9,
-        "unix_path": 8
+        "bearer_token": 35,
+        "email": 135,
+        "hostname": 1118,
+        "ipv4": 177,
+        "long_hex_identifier": 374,
+        "long_numeric_identifier": 5736,
+        "source_name_reference": 34,
+        "unix_path": 36,
+        "url": 16
       },
       "source_extension": ".xml",
-      "source_path_hash": "05c573167ab61b7a",
-      "source_size_bytes": 8993,
+      "source_path_hash": "ed6555fb0017eb24",
+      "source_size_bytes": 1011410,
       "target_path": "successful-execution/successful_execution_002.xml"
     },
     {
       "output_type": "sanitized_text",
-      "redaction_total": 1482,
+      "redaction_total": 1391,
       "redactions": {
-        "hostname": 1459,
+        "hostname": 1368,
         "long_numeric_identifier": 1,
-        "unix_path": 10,
-        "url": 12
+        "source_name_reference": 3,
+        "unix_path": 9,
+        "url": 10
       },
       "source_extension": ".html",
-      "source_path_hash": "a76ffa8207dff8a9",
-      "source_size_bytes": 244438,
+      "source_path_hash": "260593615c9c4fbe",
+      "source_size_bytes": 232621,
       "target_path": "successful-execution/successful_execution_003.html"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 66,
+      "redactions": {
+        "hostname": 13,
+        "source_name_reference": 1,
+        "unix_path": 43,
+        "url": 9
+      },
+      "source_extension": ".txt",
+      "source_path_hash": "dd2c0eb6ea5cfc6c",
+      "source_size_bytes": 9836,
+      "target_path": "ticket-examples/ticket_example_001.txt"
+    },
+    {
+      "output_type": "sanitized_text",
+      "redaction_total": 4,
+      "redactions": {
+        "hostname": 2,
+        "long_numeric_identifier": 1,
+        "source_name_reference": 1
+      },
+      "source_extension": ".txt",
+      "source_path_hash": "4d7c51b1efe9043e",
+      "source_size_bytes": 1808,
+      "target_path": "ticket-examples/ticket_example_002.txt"
     }
   ],
-  "generated_at": "2026-06-28T12:42:38.179302+00:00",
+  "generated_at": "1970-01-01T00:00:00+00:00",
   "safety": {
     "binary_media_copied": false,
     "filenames_generalized": true,
@@ -681,38 +810,45 @@
         "redactions": 0
       },
       "report-example": {
-        "files": 1,
-        "redactions": 71
+        "files": 0,
+        "redactions": 0
       },
       "robot-tests": {
-        "files": 5,
-        "redactions": 141
+        "files": 14,
+        "redactions": 633
       },
       "successful-execution": {
         "files": 3,
-        "redactions": 2995
+        "redactions": 10553
+      },
+      "ticket-examples": {
+        "files": 2,
+        "redactions": 70
       }
     },
-    "files": 51,
+    "files": 61,
     "redaction_types": {
-      "hostname": 6159,
-      "ipv4": 2,
-      "long_hex_identifier": 2,
-      "long_numeric_identifier": 39,
-      "source_name_reference": 508,
-      "unix_path": 245,
-      "unquoted_sensitive_assignment": 10,
-      "url": 57,
+      "bearer_token": 41,
+      "email": 135,
+      "hostname": 7154,
+      "ipv4": 197,
+      "long_hex_identifier": 375,
+      "long_numeric_identifier": 5782,
+      "source_name_reference": 796,
+      "unix_path": 501,
+      "unquoted_sensitive_assignment": 11,
+      "url": 79,
       "windows_path": 2
     },
-    "redactions": 7024
+    "redactions": 15073
   },
   "target_layout": [
-    "robot-tests",
     "custom-libs",
+    "robot-tests",
     "report-example",
     "successful-execution",
     "failed-execution",
+    "ticket-examples",
     "lld-examples"
   ]
 }

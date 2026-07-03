@@ -13,5 +13,3 @@ class SOURCE_NAME_PLACEHOLDER:
         doc['_id']=str(doc['_id'])
         HOSTNAME_PLACEHOLDER(doc)
         return doc
-
-        

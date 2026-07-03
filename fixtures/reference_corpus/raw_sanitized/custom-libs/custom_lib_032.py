@@ -390,7 +390,7 @@ class SOURCE_NAME_PLACEHOLDER:
                         border-radius: 5px;
                         border-left: 5px solid #007bff;
                     }}
-                    
+
                     </style>
                     """
 
@@ -434,7 +434,7 @@ class SOURCE_NAME_PLACEHOLDER:
                         <p><strong>Not Found (Optional):</strong> <span class="status-not-found-optional">{optional_not_found}</span></p>
                         <p><strong>Success Rate:</strong> {success_rate:.1f}% (mandatory messages)</p>
                         <p><strong>Overall Result:</strong> {'<span class="status-passed">VALIDATION PASSED</span>' if validation_passed else '<span class="status-failed">VALIDATION FAILED</span>'}</p>
-                        
+
                     </div>
                     """
             #
@@ -703,13 +703,13 @@ class SOURCE_NAME_PLACEHOLDER:
             </head>
             <body>
                 <h2>Sequence Validation Results</h2>
-                
+
                 <div class="summary">
                     <h3>Validation Summary</h3>
                     <p><strong>Overall Result:</strong> {'<span class="status-passed">SEQUENCE VALIDATION PASSED</span>' if validation_passed else '<span class="status-failed">SEQUENCE VALIDATION FAILED</span>'}</p>
                     {f'<p><strong>Error Details:</strong> <span class="status-failed">{error_message}</span></p>' if error_message else ''}
                 </div>
-                
+
                 <table class="validation-table">
                     <thead>
                         <tr>

@@ -33,6 +33,7 @@ MUTATING_INTENTS: set[ChatIntent] = {
     "workflow_step",
     "approval_request",
     "execution_request",
+    "ticket_intake",
 }
 
 

@@ -153,7 +153,7 @@ class SOURCE_NAME_PLACEHOLDER:
         button = WebDriverWait(HOSTNAME_PLACEHOLDER, 30).until(EC.element_to_be_clickable(locator))
         action = ActionChains(HOSTNAME_PLACEHOLDER)
         action.move_to_element(button).click().perform()
-        
+
     def context_click(self, locator):
         """
         Performs a context click (right-click) on the element specified by the locator.

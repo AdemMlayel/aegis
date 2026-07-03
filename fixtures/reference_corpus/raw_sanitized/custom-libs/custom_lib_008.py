@@ -17,7 +17,7 @@ class SOURCE_NAME_PLACEHOLDER:
         HOSTNAME_PLACEHOLDER = HOSTNAME_PLACEHOLDER()
         HOSTNAME_PLACEHOLDER(pycurl.SH_SHARE, pycurl.LOCK_DATA_DNS)
         HOSTNAME_PLACEHOLDER(pycurl.SH_SHARE, pycurl.LOCK_DATA_SSL_SESSION)
-        
+
         # Crear un pool de conexiones curl
         if use_pool:
             for _ in range(pool_size):

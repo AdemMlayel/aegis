@@ -99,11 +99,11 @@ class SOURCE_NAME_PLACEHOLDER:
 				dict: Output of the call.
 		"""
         url = self.__build_api_url__(path)
-       
+
         if gme_headers:
                 custom_headers = {"Accept": "application/json","Content-Type": "application/x-www-form-urlencoded"}
                 return self.do_post_with_full_url(url=url, data=data, parameters=parameters, headers=custom_headers)
-            
+
         return self.do_post_with_full_url(url=url, data=data, parameters=parameters)
 
     def do_post_with_full_url(self, url: str, data, parameters=None,headers=None):
@@ -145,7 +145,7 @@ class SOURCE_NAME_PLACEHOLDER:
 		"""
         HOSTNAME_PLACEHOLDER("The endpoint url is: %s",{url})
         HOSTNAME_PLACEHOLDER(f"Request header is: {HOSTNAME_PLACEHOLDER}")
-      
+
         return HOSTNAME_PLACEHOLDER(
             url, headers=HOSTNAME_PLACEHOLDER,  verify=False, timeout=50, params=parameters
         )
@@ -181,7 +181,7 @@ class SOURCE_NAME_PLACEHOLDER:
             verify=False, timeout=22, params=parameters
         )
 
-    #Code for latenecy dashboard start 
+    #Code for latenecy dashboard start
     def do_post_curl(self,path: str, data: Dict, parameters=None,response_buffer=None,header_buffer=None,curl_obj=None,gme_headers=False):
         """
 			POST API call with given path and returns dictionary.
@@ -195,7 +195,7 @@ class SOURCE_NAME_PLACEHOLDER:
         if gme_headers:
             custom_headers = {"Accept": "application/json","Content-Type": "application/x-www-form-urlencoded"}
             return self.do_post_curl_with_full_url(url=url, data=data, parameters=parameters,response_buffer=response_buffer,header_buffer=header_buffer,curl_obj=curl_obj,headers=custom_headers)
-        
+
         return self.do_post_curl_with_full_url(url=url, data=data, \
                                           parameters=parameters,response_buffer=response_buffer,header_buffer=header_buffer,curl_obj=curl_obj)
 
@@ -236,20 +236,20 @@ class SOURCE_NAME_PLACEHOLDER:
         HOSTNAME_PLACEHOLDER(f"hello data")
         HOSTNAME_PLACEHOLDER(HOSTNAME_PLACEHOLDER, response_buffer)
         HOSTNAME_PLACEHOLDER(f"hello buffer")
-        
+
 
         HOSTNAME_PLACEHOLDER(pycurl.SSL_VERIFYPEER, 0)
         HOSTNAME_PLACEHOLDER(pycurl.SSL_VERIFYHOST, 0)
         HOSTNAME_PLACEHOLDER(HOSTNAME_PLACEHOLDER, header_buffer.write)
         #HOSTNAME_PLACEHOLDER(HOSTNAME_PLACEHOLDER, True)
-        
-        
+
+
         HOSTNAME_PLACEHOLDER()
 
 
         # Total latency (manual calculation)
         latency = HOSTNAME_PLACEHOLDER() - start_time
-        
+
         status_code = HOSTNAME_PLACEHOLDER(pycurl.HTTP_CODE)
 
         pool_stablishment=False
@@ -259,7 +259,7 @@ class SOURCE_NAME_PLACEHOLDER:
 
         return response_buffer, latency_total_time, status_code, latency_details,header_buffer
 
-    
+
     def do_get_curl(self, path: str, parameters = None,response_buffer=None,header_buffer=None,curl_obj=None):
         """
 			Get API call with given path and returns dictionary.
@@ -296,20 +296,20 @@ class SOURCE_NAME_PLACEHOLDER:
         start_time = HOSTNAME_PLACEHOLDER()
         HOSTNAME_PLACEHOLDER(HOSTNAME_PLACEHOLDER, response_buffer)
         HOSTNAME_PLACEHOLDER(f"hello buffer")
-        
+
 
         HOSTNAME_PLACEHOLDER(pycurl.SSL_VERIFYPEER, 0)
         HOSTNAME_PLACEHOLDER(pycurl.SSL_VERIFYHOST, 0)
         HOSTNAME_PLACEHOLDER(HOSTNAME_PLACEHOLDER, header_buffer.write)
         #HOSTNAME_PLACEHOLDER(HOSTNAME_PLACEHOLDER, True)
-        
-        
+
+
         HOSTNAME_PLACEHOLDER()
 
 
         # Total latency (manual calculation)
         latency = HOSTNAME_PLACEHOLDER() - start_time
-        
+
         status_code = HOSTNAME_PLACEHOLDER(pycurl.HTTP_CODE)
 
         pool_stablishment=False
@@ -333,7 +333,7 @@ class SOURCE_NAME_PLACEHOLDER:
         server_processing_time = starttransfer_time - pretransfer_time
         content_transfer_time = total_time - starttransfer_time
         total_time_sumatorio = dns_time + tcp_handshake_time + ssl_handshake_time + server_processing_time + content_transfer_time
-        
+
         # Print results
         if not pool_stablishment:
             print(" ··········· Latency Hops ···········")
@@ -345,7 +345,7 @@ class SOURCE_NAME_PLACEHOLDER:
             print(f" ·· (1) Total Time Var: {total_time:.6f} seconds")
             print(f" ·· (2) Manual latency time: {latency:.6f} seconds")
             print("·····································")
-        
+
         latency_details = {
             'DNS_Lookup': f"{dns_time:.6f}",
             'TCP_Handshake': f"{tcp_handshake_time:.6f}",
@@ -461,11 +461,11 @@ class OpenGW:
                 return False, json_resp, response.status_code
         except Exception as ex:
             if response:
-            
+
                HOSTNAME_PLACEHOLDER(f"Exception occurred: {ex} (or) Failed with HTTP status code: {response.status_code}")
                return False, None, response.status_code
             else:
-               HOSTNAME_PLACEHOLDER(f"Exception occurred:{ex}") 
+               HOSTNAME_PLACEHOLDER(f"Exception occurred:{ex}")
                return False,None,0
 
     def generate_token(self, payload: Dict, parameters: Dict = None,with_curl=False,dashboard_dict=None,curl_obj=None,jwt=False,app='automation-testing') -> Tuple:
@@ -518,7 +518,7 @@ class OpenGW:
         except Exception as ex:
             HOSTNAME_PLACEHOLDER(f"Exception occurred: {ex} (or) Failed with HTTP status code: {response.status_code}")
             return False, None, response.status_code
-        
+
 
     def perform_kyc_match(self, url: str, payload: Dict, headers: Dict = None, \
                           parameters: Dict = None,version=None,with_curl=False,dashboard_dict=None,curl_obj=None) -> Tuple:
@@ -541,7 +541,7 @@ class OpenGW:
                 dashboard_dict["latency_api_details"]=latency_details
                 dashboard_dict["latency_api"]=str(latency_total_time)
                 dashboard_dict["status_code_api"]=status_code
-                
+
                 for line in header_lines:
                     if ": " in line:
                         key, value = HOSTNAME_PLACEHOLDER(": ", 1)
@@ -627,7 +627,7 @@ class OpenGW:
                 dashboard_dict["latency_api_details"]=latency_details
                 dashboard_dict["latency_api"]=str(latency_total_time)
                 dashboard_dict["status_code_api"]=status_code
-                
+
                 for line in header_lines:
                     if ": " in line:
                         key, value = HOSTNAME_PLACEHOLDER(": ", 1)
@@ -691,7 +691,7 @@ class OpenGW:
                 dashboard_dict["latency_api_details"]=latency_details
                 dashboard_dict["latency_api"]=str(latency_total_time)
                 dashboard_dict["status_code_api"]=status_code
-                
+
                 for line in header_lines:
                     if ": " in line:
                         key, value = HOSTNAME_PLACEHOLDER(": ", 1)
@@ -772,7 +772,7 @@ class OpenGW:
                 self.SOURCE_NAME_PLACEHOLDER.app_url = url
                 default_headers = self.SOURCE_NAME_PLACEHOLDER.headers
                 self.SOURCE_NAME_PLACEHOLDER.headers = headers
-                
+
                 response_buffer = io.BytesIO()
                 header_buffer = io.BytesIO()
                 response_buffer,latency_total_time, status_code, latency_details,header_buffer = self.SOURCE_NAME_PLACEHOLDER.do_post_curl(self.number_verification_verify_endpoint, HOSTNAME_PLACEHOLDER(payload), parameters,response_buffer,header_buffer,curl_obj)
@@ -785,7 +785,7 @@ class OpenGW:
                 dashboard_dict["latency_api_details"]=latency_details
                 dashboard_dict["latency_api"]=str(latency_total_time)
                 dashboard_dict["status_code_api"]=status_code
-                
+
                 for line in header_lines:
                     if ": " in line:
                         key, value = HOSTNAME_PLACEHOLDER(": ", 1)
@@ -853,7 +853,7 @@ class OpenGW:
                 dashboard_dict["latency_api_details"]=latency_details
                 dashboard_dict["latency_api"]=str(latency_total_time)
                 dashboard_dict["status_code_api"]=status_code
-                
+
                 for line in header_lines:
                     if ": " in line:
                         key, value = HOSTNAME_PLACEHOLDER(": ", 1)
@@ -917,7 +917,7 @@ class OpenGW:
                 dashboard_dict["latency_api_details"]=latency_details
                 dashboard_dict["latency_api"]=str(latency_total_time)
                 dashboard_dict["status_code_api"]=status_code
-                
+
                 for line in header_lines:
                     if ": " in line:
                         key, value = HOSTNAME_PLACEHOLDER(": ", 1)
@@ -932,7 +932,7 @@ class OpenGW:
             finally:
                 self.SOURCE_NAME_PLACEHOLDER.headers = default_headers
                 self.SOURCE_NAME_PLACEHOLDER.app_url = default_url
-                
+
         try:
             default_url = self.SOURCE_NAME_PLACEHOLDER.app_url
             self.SOURCE_NAME_PLACEHOLDER.app_url = url
@@ -1000,7 +1000,7 @@ class OpenGW:
                 self.SOURCE_NAME_PLACEHOLDER.app_url = url
                 default_headers = self.SOURCE_NAME_PLACEHOLDER.headers
                 self.SOURCE_NAME_PLACEHOLDER.headers = headers
-                
+
                 response_buffer = io.BytesIO()
                 header_buffer = io.BytesIO()
                 response_buffer,latency_total_time, status_code, latency_details,header_buffer = self.SOURCE_NAME_PLACEHOLDER.do_get_curl(self.get_telco_routing_endpoint, parameters,response_buffer,header_buffer,curl_obj)
@@ -1253,7 +1253,7 @@ class OpenGW:
         finally:
                 self.SOURCE_NAME_PLACEHOLDER.headers = default_headers
                 self.SOURCE_NAME_PLACEHOLDER.app_url = default_url
-    
+
     def device_connectivity(self,url: str,payload, headers: Dict=None,parameters: Dict=None)-> Tuple:
         try:
             default_url = self.SOURCE_NAME_PLACEHOLDER.app_url
@@ -1265,18 +1265,18 @@ class OpenGW:
             if HOSTNAME_PLACEHOLDER('device', {}).get('missing_request') == 'True':
                 HOSTNAME_PLACEHOLDER(f'in side the IF with no data in payload')
                 response= self.SOURCE_NAME_PLACEHOLDER.do_post_no_data(self.verify_device_status, parameters)
-                                    
-                
+
+
             else:
                 HOSTNAME_PLACEHOLDER(f'in side the ELSE with payload data in payload')
                 response = self.SOURCE_NAME_PLACEHOLDER.do_post(self.verify_device_status, \
                                                 HOSTNAME_PLACEHOLDER(payload), parameters)
-                
-                
-            
+
+
+
 
             HOSTNAME_PLACEHOLDER(response)
-            json_resp = HOSTNAME_PLACEHOLDER() 
+            json_resp = HOSTNAME_PLACEHOLDER()
             HOSTNAME_PLACEHOLDER(json_resp)
             HOSTNAME_PLACEHOLDER(f"Post operation response is {response}", )
             HOSTNAME_PLACEHOLDER(f"The url is: {HOSTNAME_PLACEHOLDER()}")
@@ -1309,15 +1309,15 @@ class OpenGW:
             if HOSTNAME_PLACEHOLDER('missing_request') == 'True':
                 HOSTNAME_PLACEHOLDER(f'in side the IF with no data in payload')
                 response= self.SOURCE_NAME_PLACEHOLDER.do_post_no_data(self.send_sms_endpoint, parameters)
-                                    
-                
+
+
             else:
                 HOSTNAME_PLACEHOLDER(f'in side the ELSE with payload data in payload')
                 response = self.SOURCE_NAME_PLACEHOLDER.do_post(self.send_sms_endpoint, \
                                                 HOSTNAME_PLACEHOLDER(payload), parameters)
-                
-                
-            
+
+
+
 
             HOSTNAME_PLACEHOLDER(response)
             HOSTNAME_PLACEHOLDER(f"raw response text is {HOSTNAME_PLACEHOLDER} end {len(HOSTNAME_PLACEHOLDER)}")

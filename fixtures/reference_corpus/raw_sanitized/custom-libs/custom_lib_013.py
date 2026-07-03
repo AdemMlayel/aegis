@@ -243,10 +243,10 @@ class SOURCE_NAME_PLACEHOLDER:
 
     def modify_data_from_lbsPortal(self, testcase_name, testcase_dir, record_param, modify_param, record_type):
         '''
-            Reverses changes done to existing record 
+            Reverses changes done to existing record
 
             Arg:
-                testcase_name 
+                testcase_name
                 testcase_dir    : download dir
                 record_param    : searched for record
                 modify_param    : changes to be made
@@ -334,10 +334,10 @@ class SOURCE_NAME_PLACEHOLDER:
 
     def reset_data_from_lbsPortal_changes(self, testcase_name, testcase_dir, modify_param, record_param, record_type):
         '''
-        Reverses changes done to existing record 
+        Reverses changes done to existing record
         Retruns True if True else False
             Arg:
-                testcase_name 
+                testcase_name
                 testcase_dir    : download dir
                 record_param    : searched for record
                 modify_param    : changes to be made

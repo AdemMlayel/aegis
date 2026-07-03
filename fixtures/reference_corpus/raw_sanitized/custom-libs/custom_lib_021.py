@@ -10,7 +10,7 @@ class SOURCE_NAME_PLACEHOLDER:
         self.tc_tms_id = self.test_data["tmsid"]
         self.tc_output_dir = self.test_data["tc_output_dir"]
         current_time = HOSTNAME_PLACEHOLDER()
-        self.original_dir = os.getcwd()  
+        self.original_dir = os.getcwd()
         if cd:
             if homedir:
                 os.chdir(homedir)
@@ -24,10 +24,10 @@ class SOURCE_NAME_PLACEHOLDER:
             )
             HOSTNAME_PLACEHOLDER(HOSTNAME_PLACEHOLDER)
             os.mkdir(HOSTNAME_PLACEHOLDER)
-         
+
             # return to original directory
-            os.chdir(self.original_dir)  
-            HOSTNAME_PLACEHOLDER("Current dir: " + os.getcwd()) 
+            os.chdir(self.original_dir)
+            HOSTNAME_PLACEHOLDER("Current dir: " + os.getcwd())
         else:
             HOSTNAME_PLACEHOLDER = os.getcwd()
 
@@ -134,13 +134,13 @@ class SOURCE_NAME_PLACEHOLDER:
     def get_SMFTB_inputs(self):
         self.SMFTB_inputs = self.test_data["teststeps"]["validation"]["SMFTB"]
         return self.SMFTB_inputs
-    
+
     def get_pgw_validation_inputs(self):
         self.pgw_validation_inputs = self.test_data["teststeps"]["validation"][
             "PGW_fields"
         ]
         return self.pgw_validation_inputs
-    
+
     def get_pcap_validation_messages(self, message_key):
         all_messages = self.test_data["teststeps"]["validation"]["pcap"]["messages"]
         for msg in all_messages:
@@ -152,12 +152,10 @@ class SOURCE_NAME_PLACEHOLDER:
         return self.test_data["teststeps"]["pcap_download"]
 
     def get_cmg_commands(self):
-        return self.test_data["teststeps"]["execution"]["cmg_commands"]       
-    
+        return self.test_data["teststeps"]["execution"]["cmg_commands"]
+
     def get_cmg_console_fields(self):
         return self.test_data ["teststeps"]["validation"]["console_output"]
-    
+
     def get_cmg_ports(self):
         return self.test_data["teststeps"]["execution"]["Ports"]
-        
-        

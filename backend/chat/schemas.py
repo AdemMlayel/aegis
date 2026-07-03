@@ -27,6 +27,7 @@ ChatIntent = Literal[
     "report_request",
     "knowledge_question",
     "action_history",
+    "ticket_intake",
     "help",
     "unknown",
 ]
@@ -149,6 +150,14 @@ class ChatMessageRequest(StrictModel):
     message: str = Field(min_length=1, max_length=10_000)
     context_id: str | None = None
     ticket_id: str | None = None
+
+
+class ChatTicketIntakeRequest(StrictModel):
+    actor: str = Field(default="local-user", min_length=1)
+    description: str | None = Field(default=None, max_length=100_000)
+    file_name: str | None = Field(default=None, max_length=255)
+    file_content: str | None = Field(default=None, max_length=100_000)
+    content_type: str | None = Field(default=None, max_length=120)
 
 
 class ChatMessageResponse(StrictModel):

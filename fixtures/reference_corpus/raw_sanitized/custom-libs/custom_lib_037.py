@@ -69,4 +69,3 @@ class Perform_actions:
             element_found.send_keys(param)
         elif action == 'grab_text':
             return element_found.text
-

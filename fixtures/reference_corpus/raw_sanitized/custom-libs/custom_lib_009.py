@@ -29,4 +29,3 @@ class SOURCE_NAME_PLACEHOLDER:
             HOSTNAME_PLACEHOLDER(f"DynamoDB storing response: {put_response}")
         except Exception as e:
             raise Exception(f"Error storing on DynamoDB: {str(e)}")
-    

@@ -6,11 +6,12 @@ to see whether long/idle generations get dropped (ETIMEDOUT) where short ones
 don't — distinguishing an idle-connection/firewall drop from a code issue.
 """
 import json
+import os
 import time
 import urllib.request
 
-HOST = "34.142.189.205"
-URL = f"http://{HOST}:8000/v1/chat/completions"
+BASE_URL = os.getenv("AEGISQA_PROBE_BASE_URL", "http://127.0.0.1:8000/v1")
+URL = f"{BASE_URL.rstrip('/')}/chat/completions"
 
 # A longer prompt + large max_tokens to force a slow generation.
 prompt = (
@@ -34,7 +35,7 @@ for max_tokens in (16, 512, 1500):
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
-            "Authorization": "Bearer sk-local-vllm-no-auth",
+            "Authorization": "Bearer LOCAL_PLACEHOLDER_TOKEN",
         },
         method="POST",
     )

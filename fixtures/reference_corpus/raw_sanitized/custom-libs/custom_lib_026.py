@@ -27,7 +27,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
         """Collect data from SGSN MME node including monitoring status, logs, traffic usage, comparisons and events"""
         HOSTNAME_PLACEHOLDER("Starting SGSN MME node data collection...")
         HOSTNAME_PLACEHOLDER(10)
-        
+
         # Check Monitoring Status
         HOSTNAME_PLACEHOLDER("Checking monitoring status...")
         Status = 'HOSTNAME_PLACEHOLDER("body > eui-container").HOSTNAME_PLACEHOLDER("main > div > div > div:nth-child(2) > e-status-overview").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-dashboard").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-table-widget:nth-child(1) > div:nth-child(1) > e-cnom-lib-table").HOSTNAME_PLACEHOLDER("div:nth-child(2) > e-cnom-internal-extended-table").HOSTNAME_PLACEHOLDER("div > div > table > tbody > tr:nth-child(1) > td:nth-child(2) > div > span")'
@@ -36,7 +36,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
 
         if "STARTED" in Monitoring_status:
             HOSTNAME_PLACEHOLDER("✓ Node is up and running")
-            
+
             # Overview Screenshot
             HOSTNAME_PLACEHOLDER(1)
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/Monitoring_status_overview.png')
@@ -47,7 +47,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             HOSTNAME_PLACEHOLDER("Switching to Logs tab...")
             SGW_C_menu_tab_btn = 'HOSTNAME_PLACEHOLDER("body > eui-container").HOSTNAME_PLACEHOLDER("main > div > div > HOSTNAME_PLACEHOLDER > e-status-overview").HOSTNAME_PLACEHOLDER("div > div > span > eui-tabs > eui-tab:nth-child(2)")'
             self.perform_action_obj.perform_action(SGW_C_menu_tab_btn, 'click')
-            
+
             HOSTNAME_PLACEHOLDER("Collecting log entries...")
             logs = []
             for cell in range(1, 11):
@@ -59,14 +59,14 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                 except Exception as e:
                     HOSTNAME_PLACEHOLDER(f"Could not retrieve log entry {cell}: {e}")
                     break
-                    
+
             HOSTNAME_PLACEHOLDER(f"✓ Found {len(logs)} log entries:")
             for i, log in enumerate(logs, 1):
                 HOSTNAME_PLACEHOLDER(f"  {i}. {log}")
-            
+
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/HOSTNAME_PLACEHOLDER')
             HOSTNAME_PLACEHOLDER(f"✓ Logs screenshot saved to: {output_dir}/HOSTNAME_PLACEHOLDER")
-            
+
             # SGSN-G Traffic Usage
             HOSTNAME_PLACEHOLDER(1)
             HOSTNAME_PLACEHOLDER("Switching to SGSN-G Traffic Usage tab...")
@@ -82,7 +82,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             self.perform_action_obj.perform_action(SMF_menu_tab_btn, 'click')
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/SGSN-W_Traffic_usage.png')
             HOSTNAME_PLACEHOLDER(f"✓ SGSN-W Traffic Usage screenshot saved to: {output_dir}/SGSN-W_Traffic_usage.png")
-            
+
             # Table Comparison
             HOSTNAME_PLACEHOLDER(1)
             HOSTNAME_PLACEHOLDER("Switching to Table Comparison tab...")
@@ -90,7 +90,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             self.perform_action_obj.perform_action(Table_Comparision_menu_tab, 'click')
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/Table_Comparison.png')
             HOSTNAME_PLACEHOLDER(f"✓ Table Comparison screenshot saved to: {output_dir}/Table_Comparison.png")
-            
+
             # Graph Comparison
             HOSTNAME_PLACEHOLDER(1)
             HOSTNAME_PLACEHOLDER("Switching to Graph Comparison tab...")
@@ -105,14 +105,14 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             event_menu_tab = 'HOSTNAME_PLACEHOLDER("body > eui-container").HOSTNAME_PLACEHOLDER("main > div > div > HOSTNAME_PLACEHOLDER > e-status-overview").HOSTNAME_PLACEHOLDER("div > div > span > eui-tabs > eui-tab:nth-child(7)")'
             self.perform_action_obj.perform_action(event_menu_tab, 'click')
             HOSTNAME_PLACEHOLDER(2)  # Allow tab to load
-            
+
             HOSTNAME_PLACEHOLDER("Collecting event data...")
             Events = []
-            
+
             # Use a simpler approach - try to collect events until we can't find more
             for cell in range(1, 11):
                 try:
-                    events_xpath = f'HOSTNAME_PLACEHOLDER("html > body > eui-container").HOSTNAME_PLACEHOLDER("main > div > div > div:nth-child(2) > e-status-overview").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-dashboard").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-table-widget > div:nth-child(1) > e-cnom-lib-table").HOSTNAME_PLACEHOLDER("div:nth-child(2) > e-cnom-internal-extended-table").HOSTNAME_PLACEHOLDER("div > div > table > tbody > tr:nth-child({cell}) > td:nth-child(2) > div > span")'               
+                    events_xpath = f'HOSTNAME_PLACEHOLDER("html > body > eui-container").HOSTNAME_PLACEHOLDER("main > div > div > div:nth-child(2) > e-status-overview").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-dashboard").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-table-widget > div:nth-child(1) > e-cnom-lib-table").HOSTNAME_PLACEHOLDER("div:nth-child(2) > e-cnom-internal-extended-table").HOSTNAME_PLACEHOLDER("div > div > table > tbody > tr:nth-child({cell}) > td:nth-child(2) > div > span")'
                     event = self.perform_action_obj.perform_action(events_xpath, 'grab_text')
                     if event and HOSTNAME_PLACEHOLDER():
                         HOSTNAME_PLACEHOLDER(event)
@@ -121,17 +121,17 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                 except Exception as e:
                     HOSTNAME_PLACEHOLDER(f"No more events found after row {cell-1}")
                     break
-            
+
             if Events:
                 HOSTNAME_PLACEHOLDER(f"✓ Detected events are:")
                 for i, event in enumerate(Events, 1):
                     HOSTNAME_PLACEHOLDER(f"  {i}. {event}")
             else:
                 HOSTNAME_PLACEHOLDER("No events detected in the table")
-                
+
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/HOSTNAME_PLACEHOLDER')
             HOSTNAME_PLACEHOLDER(f"✓ Events screenshot saved to: {output_dir}/HOSTNAME_PLACEHOLDER")
-            
+
             HOSTNAME_PLACEHOLDER("✓ SGSN MME node data collection completed successfully")
             return True
 
@@ -140,19 +140,19 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/Monitoring_status_error.png')
             HOSTNAME_PLACEHOLDER(f"Error screenshot saved to: {output_dir}/Monitoring_status_error.png")
             return False
-        
+
         else:
             HOSTNAME_PLACEHOLDER(f"⚠ Unexpected monitoring status: '{Monitoring_status}'")
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/Monitoring_status_unexpected.png')
             HOSTNAME_PLACEHOLDER(f"Unexpected status screenshot saved to: {output_dir}/Monitoring_status_unexpected.png")
             return False
-        
-    
+
+
     def Collect_data_WMG_node(self, output_dir):
         """Collect data from WMG node including monitoring status, logs, traffic usage, comparisons and events"""
         HOSTNAME_PLACEHOLDER("Starting WMG node data collection...")
         HOSTNAME_PLACEHOLDER(10)
-        
+
         # Check Monitoring Status
         HOSTNAME_PLACEHOLDER("Checking monitoring status...")
         Status = 'HOSTNAME_PLACEHOLDER("body > eui-container").HOSTNAME_PLACEHOLDER("main > div > div > div:nth-child(2) > e-status-overview").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-dashboard").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-table-widget:nth-child(1) > div:nth-child(1) > e-cnom-lib-table").HOSTNAME_PLACEHOLDER("div:nth-child(2) > e-cnom-internal-extended-table").HOSTNAME_PLACEHOLDER("div > div > table > tbody > tr:nth-child(1) > td:nth-child(2) > div > span")'
@@ -162,7 +162,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
         if "STARTED" in Monitoring_status:
             HOSTNAME_PLACEHOLDER("✓ Node is up and running")
             HOSTNAME_PLACEHOLDER(500)
-            
+
             # Overview Screenshot
             HOSTNAME_PLACEHOLDER(1)
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/Monitoring_status_overview.png')
@@ -183,7 +183,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             self.perform_action_obj.perform_action(Table_Comparision_menu_tab, 'click')
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/Table_Comparison.png')
             HOSTNAME_PLACEHOLDER(f"✓ Table Comparison screenshot saved to: {output_dir}/Table_Comparison.png")
-            
+
             # Graph Comparison
             HOSTNAME_PLACEHOLDER(1)
             HOSTNAME_PLACEHOLDER("Switching to Graph Comparison tab...")
@@ -197,14 +197,14 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             HOSTNAME_PLACEHOLDER("Switching to Events tab...")
             event_menu_tab = 'HOSTNAME_PLACEHOLDER("body > eui-container").HOSTNAME_PLACEHOLDER("main > div > div > HOSTNAME_PLACEHOLDER > e-status-overview").HOSTNAME_PLACEHOLDER("div > div > span > eui-tabs > eui-tab:nth-child(5)")'
             self.perform_action_obj.perform_action(event_menu_tab, 'click')
-            HOSTNAME_PLACEHOLDER(2) 
+            HOSTNAME_PLACEHOLDER(2)
             HOSTNAME_PLACEHOLDER("Collecting event data...")
             Events = []
-            
+
             # try to collect events until we can't find more
             for cell in range(1, 11):
                 try:
-                    events_xpath = f'HOSTNAME_PLACEHOLDER("html > body > eui-container").HOSTNAME_PLACEHOLDER("main > div > div > div:nth-child(2) > e-status-overview").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-dashboard").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-table-widget > div:nth-child(1) > e-cnom-lib-table").HOSTNAME_PLACEHOLDER("div:nth-child(2) > e-cnom-internal-extended-table").HOSTNAME_PLACEHOLDER("div > div > table > tbody > tr:nth-child({cell}) > td:nth-child(2) > div > span")'               
+                    events_xpath = f'HOSTNAME_PLACEHOLDER("html > body > eui-container").HOSTNAME_PLACEHOLDER("main > div > div > div:nth-child(2) > e-status-overview").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-dashboard").HOSTNAME_PLACEHOLDER("div > e-cnom-lib-table-widget > div:nth-child(1) > e-cnom-lib-table").HOSTNAME_PLACEHOLDER("div:nth-child(2) > e-cnom-internal-extended-table").HOSTNAME_PLACEHOLDER("div > div > table > tbody > tr:nth-child({cell}) > td:nth-child(2) > div > span")'
                     event = self.perform_action_obj.perform_action(events_xpath, 'grab_text')
                     if event and HOSTNAME_PLACEHOLDER():
                         HOSTNAME_PLACEHOLDER(event)
@@ -213,17 +213,17 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
                 except Exception as e:
                     HOSTNAME_PLACEHOLDER(f"No more events found after row {cell-1}")
                     break
-            
+
             if Events:
                 HOSTNAME_PLACEHOLDER(f"✓ Detected events are:")
                 for i, event in enumerate(Events, 1):
                     HOSTNAME_PLACEHOLDER(f"  {i}. {event}")
             else:
                 HOSTNAME_PLACEHOLDER("No events detected in the table")
-                
+
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/HOSTNAME_PLACEHOLDER')
             HOSTNAME_PLACEHOLDER(f"✓ Events screenshot saved to: {output_dir}/HOSTNAME_PLACEHOLDER")
-            
+
             HOSTNAME_PLACEHOLDER("✓ SGSN MME node data collection completed successfully")
             return True
 
@@ -232,15 +232,15 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/Monitoring_status_error.png')
             HOSTNAME_PLACEHOLDER(f"Error screenshot saved to: {output_dir}/Monitoring_status_error.png")
             return False
-        
+
         else:
             HOSTNAME_PLACEHOLDER(f"⚠ Unexpected monitoring status: '{Monitoring_status}'")
             HOSTNAME_PLACEHOLDER.save_screenshot(output_dir + '/Monitoring_status_unexpected.png')
             HOSTNAME_PLACEHOLDER(f"Unexpected status screenshot saved to: {output_dir}/Monitoring_status_unexpected.png")
             return False
         # ==================
-        
-        
+
+
 # Main Functions
     def initialize_cnom(self, cnom_obj: any, testcase_name: str, node_type: str, node_value: str, tc_dir):
         """
@@ -269,9 +269,9 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             raise Exception(
                 "Driver is not initialized. Please call the 'Initialize CNOM' keyword on this library instance before using 'Select Node'."
             )
-        
+
         cell_value, TB_value = "-1", "-1"
-        
+
         if node_type == "SGSN-MME":
             cell_value = "1"
             if node_value == "ESGSNTB1":
@@ -326,12 +326,12 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
         element verification, and screenshot capture for monitoring dashboard.
         """
         HOSTNAME_PLACEHOLDER("Starting PM Monitoring process")
-        
+
         try:
             # Initial delay for page stabilization
             HOSTNAME_PLACEHOLDER("Waiting for page stabilization (1 second)")
             HOSTNAME_PLACEHOLDER(1)
-            
+
             # Navigate to PM Monitor section
             HOSTNAME_PLACEHOLDER("Navigating to PM Monitor section")
             pm_monitor_element = WebDriverWait(HOSTNAME_PLACEHOLDER, 10).until(
@@ -339,28 +339,28 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             )
             HOSTNAME_PLACEHOLDER("PM Monitor element located successfully")
             pm_monitor_element.click()
-            
+
             # Select node for monitoring
             HOSTNAME_PLACEHOLDER(f"Selecting node for monitoring - Node: {self.node_value}, Type: {self.node_type}")
             self.Select_Node_Monitoring(self.node_value, self.node_type)
             HOSTNAME_PLACEHOLDER("Node selection completed")
-            
+
             # Wait for monitoring data to load
             HOSTNAME_PLACEHOLDER("Waiting for monitoring data to load (10 seconds)")
             HOSTNAME_PLACEHOLDER(10)
-            
+
             # Verify presence of Timeline of SGSN Nodes section
             Timeline_Of_SGSN_Nodes = "//h4[@class='elTimeline-title' and @e-id='title']"
             HOSTNAME_PLACEHOLDER("Verifying Timeline of SGSN Nodes section")
             ele_presence(HOSTNAME_PLACEHOLDER, Timeline_Of_SGSN_Nodes, "Timeline Of SGSN Nodes")
             HOSTNAME_PLACEHOLDER("Timeline of SGSN Nodes section verified successfully")
-            
+
             # Verify CPU Load (APs) section
             CPU_loads_aps = "//h4[@class='elTimeline-title' and text()='CPU Load (APs)']"
             HOSTNAME_PLACEHOLDER("Verifying CPU Load (APs) section")
             ele_presence(HOSTNAME_PLACEHOLDER, CPU_loads_aps, "CPU loads(APS)")
             HOSTNAME_PLACEHOLDER("CPU Load (APs) section verified successfully")
-            
+
             # Verify CPU Load (SS7/SCTP DPs) section
             CPU_loads_SS7_SCTPDPs = (
                 "//h4[@class='elTimeline-title' and text()='CPU Load (Payload DPs)']"
@@ -368,7 +368,7 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             HOSTNAME_PLACEHOLDER("Verifying CPU Load (SS7/SCTP DPs) section")
             ele_presence(HOSTNAME_PLACEHOLDER, CPU_loads_SS7_SCTPDPs, "CPU Load (SS7/SCTP DPs)")
             HOSTNAME_PLACEHOLDER("CPU Load (SS7/SCTP DPs) section verified successfully")
-            
+
             # Verify CPU Load (Payload DPs) section
             CPU_loads_Payload_Dps = (
                 "//h4[@class='elTimeline-title' and text()='CPU Load (Payload DPs)']"
@@ -376,35 +376,35 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             HOSTNAME_PLACEHOLDER("Verifying CPU Load (Payload DPs) section")
             ele_presence(HOSTNAME_PLACEHOLDER, CPU_loads_Payload_Dps, "CPU Load (Payload DPs)")
             HOSTNAME_PLACEHOLDER("CPU Load (Payload DPs) section verified successfully")
-            
+
             # Verify main CPU Load section
             CPU_Load = "//h3[@class='elLayouts-Dashboard-item-header elLayouts-Dashboard-item-header_draggable']/span[text()='CPU Load']"
             HOSTNAME_PLACEHOLDER("Verifying main CPU Load section")
             ele_presence(HOSTNAME_PLACEHOLDER, CPU_Load, "CPU Load")
             HOSTNAME_PLACEHOLDER("Main CPU Load section verified successfully")
-            
+
             # Capture first screenshot of monitoring summary
             screenshot_path1 = self.testcase_dir + "/PM Monitoring _summary.png"
             HOSTNAME_PLACEHOLDER.save_screenshot(screenshot_path1)
             HOSTNAME_PLACEHOLDER("First screenshot captured successfully")
-            
+
             actions = ActionChains(HOSTNAME_PLACEHOLDER)
             actions.send_keys(Keys.PAGE_DOWN).perform()
             HOSTNAME_PLACEHOLDER("Page scroll down executed")
-            
+
             # Brief pause for scroll completion
             HOSTNAME_PLACEHOLDER("Waiting for scroll completion (2 seconds)")
             HOSTNAME_PLACEHOLDER(2)
-            
+
             # Capture second screenshot after scrolling
             screenshot_path2 = self.testcase_dir + "/PM Monitoring _summary2.png"
             HOSTNAME_PLACEHOLDER(f"Capturing second screenshot: {screenshot_path2}")
             HOSTNAME_PLACEHOLDER.save_screenshot(screenshot_path2)
             HOSTNAME_PLACEHOLDER("Second screenshot captured successfully")
-            
+
             HOSTNAME_PLACEHOLDER("PM Monitoring process completed successfully")
             return True
-            
+
         except Exception as e:
             HOSTNAME_PLACEHOLDER(f"PM Monitoring process failed with error: {str(e)}")
             HOSTNAME_PLACEHOLDER("Full exception details:")
@@ -417,8 +417,8 @@ class SOURCE_NAME_PLACEHOLDER(SOURCE_NAME_PLACEHOLDER):
             HOSTNAME_PLACEHOLDER(f"Selecting node - Type: '{self.node_type}', Value: '{self.node_value}'")
             self.Select_Node_Monitoring(self.node_value,self.node_type)
             eleclick(HOSTNAME_PLACEHOLDER,trace_path['Apply'],"Apply Button")
-            
-            
+
+
             return self.Collect_data_SGSN_MME_node(output_dir)
 
     # ==================

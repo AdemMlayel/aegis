@@ -1,0 +1,140 @@
+{
+  "corpus_root": "fixtures/reference_corpus",
+  "generated_at": "1970-01-01T00:00:00+00:00",
+  "outputs": {
+    "intake_summary": "fixtures/reference_corpus/INTAKE_SUMMARY.json",
+    "normalized": "fixtures/reference_corpus/normalized",
+    "raw_sanitized": "fixtures/reference_corpus/raw_sanitized"
+  },
+  "raw_sensitive_inputs_committed": false,
+  "runtime_agents_read_quarantine": false,
+  "schema_version": "aegis-reference-corpus-intake.v1",
+  "source": "quarantined_sensitive_reference",
+  "steps": {
+    "inventory": {
+      "buckets": [
+        {
+          "bucket": "bucket_001",
+          "bytes": 582356,
+          "dirs": 0,
+          "extensions": {
+            ".py": 41,
+            ".robot": 1
+          },
+          "files": 42
+        },
+        {
+          "bucket": "bucket_002",
+          "bytes": 1651054,
+          "dirs": 0,
+          "extensions": {
+            ".html": 2,
+            ".xml": 1
+          },
+          "files": 3
+        },
+        {
+          "bucket": "bucket_003",
+          "bytes": 0,
+          "dirs": 0,
+          "extensions": {},
+          "files": 0
+        },
+        {
+          "bucket": "bucket_004",
+          "bytes": 0,
+          "dirs": 0,
+          "extensions": {},
+          "files": 0
+        },
+        {
+          "bucket": "bucket_005",
+          "bytes": 267929,
+          "dirs": 0,
+          "extensions": {
+            ".robot": 12,
+            ".xlsx": 1,
+            "[none]": 1
+          },
+          "files": 14
+        }
+      ],
+      "bytes": 2512983,
+      "dirs": 5,
+      "extensions": {
+        ".html": 2,
+        ".py": 41,
+        ".robot": 13,
+        ".txt": 1,
+        ".xlsx": 1,
+        ".xml": 1,
+        "[none]": 2
+      },
+      "files": 61,
+      "raw_paths_preserved": false,
+      "root_files": 2,
+      "schema_version": "aegis-quarantine-inventory.v1",
+      "source": "quarantined_sensitive_reference"
+    },
+    "normalization": {
+      "execution_artifacts": 3,
+      "report_files": 0,
+      "robot_keywords": 238,
+      "robot_style_files": 12,
+      "ticket_files": 2
+    },
+    "safety_scan": {
+      "files_scanned": 70,
+      "findings": {},
+      "passed": true,
+      "schema_version": "aegis-sanitized-safety-scan.v1"
+    },
+    "sanitization": {
+      "categories": {
+        "custom-libs": {
+          "files": 42,
+          "redactions": 3817
+        },
+        "failed-execution": {
+          "files": 0,
+          "redactions": 0
+        },
+        "lld-examples": {
+          "files": 0,
+          "redactions": 0
+        },
+        "report-example": {
+          "files": 0,
+          "redactions": 0
+        },
+        "robot-tests": {
+          "files": 14,
+          "redactions": 633
+        },
+        "successful-execution": {
+          "files": 3,
+          "redactions": 10553
+        },
+        "ticket-examples": {
+          "files": 2,
+          "redactions": 70
+        }
+      },
+      "files": 61,
+      "redaction_types": {
+        "bearer_token": 41,
+        "email": 135,
+        "hostname": 7154,
+        "ipv4": 197,
+        "long_hex_identifier": 375,
+        "long_numeric_identifier": 5782,
+        "source_name_reference": 796,
+        "unix_path": 501,
+        "unquoted_sensitive_assignment": 11,
+        "url": 79,
+        "windows_path": 2
+      },
+      "redactions": 15073
+    }
+  }
+}
